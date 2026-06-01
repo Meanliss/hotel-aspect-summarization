@@ -49,6 +49,79 @@ Per-file folders with `top10_hotels_pipeline_log.md` (auto-detected *Pipeline Is
 
 ---
 
+## From input to output — worked example
+
+Key idea: SemAE **never rewrites or splits a review**. It treats every sentence (across all reviews of an entity) as an independent unit, scores each one against each aspect, and copies the top-ranked sentences verbatim into the aspect summary.
+
+Concrete walk-through for entity `100597` (*Doubletree by Hilton Seattle Airport*, dev split):
+
+**Step 0 — input ([data/hasos/hasos_summ.json](data/hasos/hasos_summ.json))**
+
+The entity has ~25 raw reviews, e.g.
+
+```
+Review UR59977476 (rating 5, 6 sentences):
+  1. "We stayed here on a lay over home from Cancun."
+  2. "It was great to have a comfortable bed and room on our final night of holidays."
+  3. "The kids loved the pool which was warmer than the ones at the resort in Cancun..."
+  4. "The staff was friendly and we appreciated the cookies after a long flight..."
+  5. "Just a nice touch!"
+  6. "Shuttle was convenient and would definitely stay here again."
+
+Review UR115912623 (rating 4, 13 sentences):
+  ... "Very nice pool area although in cool, rainy Seattle I didn't get a chance to swim."
+  ... "Spacious room and very comfortable bedding."
+  ...
+```
+
+**Step 1 — flatten:** all sentences from all reviews of the entity are pooled into one list (here ~250 sentences). Review boundaries are dropped.
+
+**Step 2 — encode:** each sentence goes through the trained Transformer + VQ-VAE, producing a discrete code distribution `D_z` over the 1024-entry codebook (one distribution per output head, 8 heads).
+
+**Step 3 — seed prototypes:** for each of the 29 aspects we read seed words from [data/seeds_hasos/](data/seeds_hasos/) (e.g. `AM_POOL.txt` = pool, swim, hot tub, jacuzzi, ...), encode them, and build the aspect-prototype distribution `P_k`. The corpus-wide background `P_z` is computed once.
+
+**Step 4 — rank:** for each (entity, aspect) we score every sentence by
+
+$$\text{score}(s, k) = \mathrm{KL}(D_z(s) \,\|\, P_z) - \beta \cdot \mathrm{KL}(D_z(s) \,\|\, P_k), \quad \beta = 0.7$$
+
+Lower = more aspect-specific. Sentences are sorted ascending.
+
+**Step 5 — dedupe + truncate:** walk the ranked list top-down, drop a sentence if its TF-IDF cosine to the already-kept set exceeds the threshold, stop when the running token count reaches `--max_tokens` (40 by default).
+
+**Step 6 — write:** the kept sentences are concatenated verbatim into `outputs/hasos_aspects_run1/<aspect>/dev_100597`.
+
+**What this looks like** (same entity, three different aspects, real files from the run):
+
+| Aspect | Output file content |
+| --- | --- |
+| `AM_POOL` | *"Hotel pool is outside, heated to a nice temp and there is a hot tub nearby with a nice seating area all around. The swimming pool looked nice but we didn't get the chance to swim. Very nice pool area"* |
+| `SER_ATTITUDE` | *"The hotel staff was courteous and very helpful with our questions. The staff was friendly and helpful and we enjoyed the warm, chocolate chip cookie we were given at check-in. The manager comped our parking ($17/day) but he was supposed"* |
+| `FAC_ROOM` | *"Bed's in the room were the heavenly beds and I slept very well all 3 nights. The beds were very comfortable, room large enough for wheelchair, and bathroom clean. The room was spacious with a comfortable bed and a large"* |
+
+Notice each output is composed of sentences that **originally came from several different reviews of the same hotel** — the model is selecting + concatenating, not paraphrasing. So one entity with 25 reviews produces 29 short, aspect-focused extracts (one per aspect), totalling 1,450 files for the 50-entity dataset.
+
+```mermaid
+flowchart TB
+    subgraph Input["Input: 1 entity = many reviews"]
+        R1["Review 1<br/>6 sentences"]
+        R2["Review 2<br/>7 sentences"]
+        R3["Review 3<br/>13 sentences"]
+        RN["... ~25 reviews"]
+    end
+    Input --> Pool["Pool of ~250 sentences<br/>(review boundaries dropped)"]
+    Pool --> Enc["Encode each sentence<br/>D_z over 1024-code book"]
+    Enc --> Score{"For each of 29 aspects"}
+    Score --> A1["AM_POOL<br/>top-K by KL score"]
+    Score --> A2["SER_ATTITUDE<br/>top-K by KL score"]
+    Score --> A3["FAC_ROOM<br/>top-K by KL score"]
+    Score --> AN["... 29 aspect files"]
+    A1 --> O["outputs/hasos_aspects_run1/<br/>AM_POOL/dev_100597"]
+    A2 --> O2["outputs/hasos_aspects_run1/<br/>SER_ATTITUDE/dev_100597"]
+    A3 --> O3["outputs/hasos_aspects_run1/<br/>FAC_ROOM/dev_100597"]
+```
+
+---
+
 ## Pipeline 1 architecture — Trained SemAE
 
 ```mermaid
@@ -67,10 +140,12 @@ flowchart LR
 
 Training recipe (from `train_hasos.ps1`):
 
-- 10 epochs · batch size 5 · Adam lr 0.001 · label smoothing 0.1
-- Warmup 4 epochs (no quantization) → K-means codebook init at epoch 4 → full VQ-VAE training
+- **10 epochs** · batch size 5 · Adam lr 0.001 · label smoothing 0.1
+- **Warmup 4 epochs (no quantization)** → K-means codebook init at epoch 4 → 6 epochs of full VQ-VAE training
 - Losses: CE reconstruction + L1 (sparsity, coeff 1000) + entropy (coeff 5e-5)
 - Wall time: ~9 min on RTX 3500 Ada
+
+> **About "why 10 epochs, not 4?"** — The original SemAE/QT paper does **not** train for 4 epochs. The default in [src/train.py](src/train.py) is `--epochs 20` and `--warmup_epochs 4`. The `4` is the **warmup phase length** (transformer trained without quantization, then K-means initialises the codebook), not the total. For HASOS we use 10 total = 4 warmup + 6 quantized because the dataset is tiny (50 entities vs SPACE's 1.1 M reviews); beyond ~10 epochs the reconstruction loss plateaus and the codebook starts collapsing onto a few entries. Each epoch is the same data shown again — the model is **not** discarded between epochs, weights accumulate. So "every epoch is completely different" isn't accurate: it's the same model getting refined, with a one-time regime switch at epoch 4 (warmup → quantized).
 
 Inference recipe (from `run_aspect_inference_parallel.py`):
 
