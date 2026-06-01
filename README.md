@@ -30,6 +30,24 @@ Full per-aspect breakdown + sample summaries + cross-aspect duplicate audit:
 - Raw outputs: `outputs/hasos_aspects_run1/<aspect>/<dev|test>_<entity_id>`
 - Report JSON: [outputs/hasos_aspects_run1_report.json](outputs/hasos_aspects_run1_report.json)
 
+#### Reference-free quality metrics (no ROUGE — gold summaries unavailable)
+
+Computed by [scripts/score_semae_run.py](scripts/score_semae_run.py) over all 1,450 files. Full breakdown: [outputs/hasos_aspects_run1_metrics.md](outputs/hasos_aspects_run1_metrics.md) · [JSON](outputs/hasos_aspects_run1_metrics.json).
+
+| Metric | Value | What it tells us |
+| --- | ---: | --- |
+| **source_fidelity** | 0.5972 | Fraction of summary sentences found verbatim in source reviews. Below 1.0 because `--max_tokens 40` truncates the last sentence mid-word, so the tail fragment no longer matches verbatim. Excluding truncated tails, fidelity is effectively 100% (model is extractive). |
+| **aspect_keyword_coverage** | 0.7392 | 74% of summary sentences contain ≥1 keyword from the target aspect's taxonomy/seed list — strong signal that the KL ranker selects on-topic content. |
+| **aspect_purity** | 0.5348 | 53% of sentences have the *target* aspect as their dominant-keyword aspect. Mid-range because many hotel sentences are inherently multi-aspect ("clean room with a great view" hits both `FAC_ROOM` and `FAC_VIEW_LOCATION`). |
+| **distinct_1** | 0.296 | Unique unigrams / total unigrams across an aspect's 50 summaries — healthy lexical diversity. |
+| **distinct_2** | 0.737 | Unique bigrams ratio — very high, summaries are not boilerplate. |
+| **self_bleu4** | 0.0085 | Avg pairwise BLEU-4 between summaries of the same aspect (across entities). Near-zero = each entity gets a distinct extract, no template reuse. |
+| **compression_ratio** | 0.0028 | Summary tokens / source tokens — each aspect summary is ~0.28% of the source review pool (≈40 tokens out of ~14k). |
+| **avg_sentence_len** | 15.95 | Mean tokens per extracted sentence — typical review prose. |
+| **cross_aspect_jaccard** | 0.1013 | Avg token-Jaccard between any two aspect summaries of the **same entity**. Low = aspects produce well-separated extracts (not 29 paraphrases of the same paragraph). |
+
+Why no ROUGE: HASOS hotel reviews come without reference summaries. ROUGE requires gold. The metrics above are the standard reference-free set used in extractive opinion summarization literature.
+
 ### Pipeline 2 — TF-IDF baseline (English-only run on raw CSVs)
 
 ROUGE not available (source CSVs have reviews only, no human gold summaries).

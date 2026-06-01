@@ -30,6 +30,8 @@ outputs/**
 !outputs/hasos_aspects_run1/**
 !outputs/hasos_aspects_run1_report.md
 !outputs/hasos_aspects_run1_report.json
+!outputs/hasos_aspects_run1_metrics.md
+!outputs/hasos_aspects_run1_metrics.json
 
 # OS / editor cruft
 .DS_Store
