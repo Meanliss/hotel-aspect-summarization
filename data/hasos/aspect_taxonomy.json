@@ -1,0 +1,998 @@
+{
+  "aspects": [
+    {
+      "group": "FACILITY",
+      "code": "FAC_ROOM",
+      "measurement_scale": "Room, Bed & Sleep Quality",
+      "description": "Physical condition, cleanliness, spaciousness, furniture comfort, bed quality, and sleeping experience within guest rooms",
+      "aspect_keywords": [
+        "room",
+        "suite",
+        "bedroom",
+        "villa",
+        "accommodation",
+        "bed",
+        "mattress",
+        "pillow",
+        "blanket",
+        "duvet",
+        "bedding",
+        "balcony",
+        "workspace",
+        "desk",
+        "chair",
+        "sleep",
+        "sleeping",
+        "window"
+      ],
+      "positive_sentiment_keywords": [
+        "clean",
+        "spotless",
+        "spacious",
+        "roomy",
+        "cozy",
+        "comfortable",
+        "restful",
+        "relaxing",
+        "soft",
+        "modern",
+        "airy",
+        "tidy",
+        "quiet",
+        "elegant",
+        "bright"
+      ],
+      "negative_sentiment_keywords": [
+        "dirty",
+        "cramped",
+        "tiny",
+        "noisy",
+        "uncomfortable",
+        "hard",
+        "stiff",
+        "smelly",
+        "dusty",
+        "old",
+        "outdated",
+        "dark",
+        "messy",
+        "itchy",
+        "shabby"
+      ],
+      "neutral_sentiment_keywords": [
+        "standard",
+        "average",
+        "acceptable",
+        "decent",
+        "basic",
+        "normal",
+        "okay"
+      ]
+    },
+    {
+      "group": "FACILITY",
+      "code": "FAC_BATH",
+      "measurement_scale": "Bathroom & Sanitary Area",
+      "description": "Bathroom facilities, hygiene, maintenance, and usability",
+      "aspect_keywords": [
+        "bathroom",
+        "toilet",
+        "shower",
+        "bathtub",
+        "sink",
+        "restroom",
+        "washroom",
+        "faucet",
+        "towel"
+      ],
+      "positive_sentiment_keywords": [
+        "clean",
+        "hygienic",
+        "spacious",
+        "modern",
+        "luxurious",
+        "fresh"
+      ],
+      "negative_sentiment_keywords": [
+        "dirty",
+        "clogged",
+        "leaking",
+        "broken",
+        "smelly",
+        "small",
+        "outdated"
+      ],
+      "neutral_sentiment_keywords": [
+        "usable",
+        "standard",
+        "basic",
+        "average"
+      ]
+    },
+    {
+      "group": "FACILITY",
+      "code": "FAC_INTERIOR",
+      "measurement_scale": "Interior Design & Ambience",
+      "description": "Interior decoration, furniture aesthetics, lighting, and atmosphere of indoor spaces",
+      "aspect_keywords": [
+        "interior",
+        "decor",
+        "furniture",
+        "design",
+        "style",
+        "ambiance",
+        "lighting",
+        "atmosphere",
+        "aesthetic",
+        "theme"
+      ],
+      "positive_sentiment_keywords": [
+        "stylish",
+        "elegant",
+        "luxurious",
+        "modern",
+        "beautiful",
+        "cozy",
+        "impressive"
+      ],
+      "negative_sentiment_keywords": [
+        "outdated",
+        "ugly",
+        "old-fashioned",
+        "dark",
+        "dull",
+        "unattractive"
+      ],
+      "neutral_sentiment_keywords": [
+        "simple",
+        "ordinary",
+        "minimal",
+        "standard"
+      ]
+    },
+    {
+      "group": "FACILITY",
+      "code": "FAC_BUILDING",
+      "measurement_scale": "Building Infrastructure",
+      "description": "Structural condition and infrastructure quality of the hotel property",
+      "aspect_keywords": [
+        "building",
+        "elevator",
+        "hallway",
+        "corridor",
+        "infrastructure",
+        "property",
+        "lobby",
+        "entrance"
+      ],
+      "positive_sentiment_keywords": [
+        "modern",
+        "renovated",
+        "maintained",
+        "impressive",
+        "solid"
+      ],
+      "negative_sentiment_keywords": [
+        "broken",
+        "outdated",
+        "poorly maintained",
+        "damaged",
+        "old"
+      ],
+      "neutral_sentiment_keywords": [
+        "functional",
+        "standard",
+        "normal"
+      ]
+    },
+    {
+      "group": "FACILITY",
+      "code": "FAC_ENV",
+      "measurement_scale": "Noise & Environmental Comfort",
+      "description": "Environmental comfort including noise level and surrounding atmosphere",
+      "aspect_keywords": [
+        "quiet",
+        "peaceful",
+        "noisy",
+        "soundproof",
+        "calm",
+        "environment",
+        "neighborhood",
+        "surroundings"
+      ],
+      "positive_sentiment_keywords": [
+        "peaceful",
+        "quiet",
+        "relaxing",
+        "calm",
+        "tranquil"
+      ],
+      "negative_sentiment_keywords": [
+        "noisy",
+        "loud",
+        "disturbing",
+        "crowded",
+        "chaotic"
+      ],
+      "neutral_sentiment_keywords": [
+        "manageable",
+        "moderate",
+        "average"
+      ]
+    },
+    {
+      "group": "FACILITY",
+      "code": "FAC_CLIMATE",
+      "measurement_scale": "Air Conditioning & Ventilation",
+      "description": "Airflow, temperature control, and ventilation quality",
+      "aspect_keywords": [
+        "aircon",
+        "AC",
+        "ventilation",
+        "airflow",
+        "temperature",
+        "fan",
+        "cooling"
+      ],
+      "positive_sentiment_keywords": [
+        "cool",
+        "refreshing",
+        "strong",
+        "comfortable",
+        "pleasant"
+      ],
+      "negative_sentiment_keywords": [
+        "hot",
+        "weak",
+        "broken",
+        "stuffy",
+        "humid"
+      ],
+      "neutral_sentiment_keywords": [
+        "stable",
+        "acceptable",
+        "normal"
+      ]
+    },
+    {
+      "group": "FACILITY",
+      "code": "FAC_SECURITY",
+      "measurement_scale": "Physical Security Infrastructure",
+      "description": "Physical security systems and infrastructure inside the hotel",
+      "aspect_keywords": [
+        "CCTV",
+        "lock",
+        "keycard",
+        "guard",
+        "surveillance",
+        "gate",
+        "security",
+        "alarm"
+      ],
+      "positive_sentiment_keywords": [
+        "secure",
+        "protected",
+        "safe",
+        "reliable"
+      ],
+      "negative_sentiment_keywords": [
+        "unsafe",
+        "unsecured",
+        "risky",
+        "dangerous"
+      ],
+      "neutral_sentiment_keywords": [
+        "standard",
+        "sufficient",
+        "acceptable"
+      ]
+    },
+    {
+      "group": "FACILITY",
+      "code": "FAC_VIEW_LOCATION",
+      "measurement_scale": "View, Surroundings & Location",
+      "description": "Scenic view, surrounding environment, accessibility, and location convenience",
+      "aspect_keywords": [
+        "view",
+        "scenery",
+        "sea view",
+        "mountain view",
+        "city view",
+        "landscape",
+        "downtown",
+        "central",
+        "nearby",
+        "location",
+        "accessibility",
+        "neighborhood",
+        "beachfront",
+        "riverside"
+      ],
+      "positive_sentiment_keywords": [
+        "beautiful",
+        "scenic",
+        "convenient",
+        "central",
+        "accessible",
+        "amazing",
+        "stunning"
+      ],
+      "negative_sentiment_keywords": [
+        "blocked",
+        "remote",
+        "inconvenient",
+        "isolated",
+        "far",
+        "inaccessible"
+      ],
+      "neutral_sentiment_keywords": [
+        "average",
+        "typical",
+        "okay",
+        "decent"
+      ]
+    },
+    {
+      "group": "AMENITY",
+      "code": "AM_WIFI",
+      "measurement_scale": "Wifi & Connectivity",
+      "description": "Internet accessibility and connection quality",
+      "aspect_keywords": [
+        "wifi",
+        "internet",
+        "connection",
+        "network",
+        "signal"
+      ],
+      "positive_sentiment_keywords": [
+        "fast",
+        "stable",
+        "reliable",
+        "smooth"
+      ],
+      "negative_sentiment_keywords": [
+        "slow",
+        "weak",
+        "unstable",
+        "disconnected"
+      ],
+      "neutral_sentiment_keywords": [
+        "usable",
+        "average",
+        "okay"
+      ]
+    },
+    {
+      "group": "AMENITY",
+      "code": "AM_FOOD",
+      "measurement_scale": "Food & Beverage",
+      "description": "Food, drinks, restaurant, buffet, and dining quality",
+      "aspect_keywords": [
+        "breakfast",
+        "buffet",
+        "restaurant",
+        "cafe",
+        "menu",
+        "dining",
+        "meal",
+        "drink",
+        "beverage",
+        "coffee",
+        "bar",
+        "cuisine"
+      ],
+      "positive_sentiment_keywords": [
+        "delicious",
+        "tasty",
+        "flavorful",
+        "fresh",
+        "varied",
+        "excellent",
+        "satisfying",
+        "amazing"
+      ],
+      "negative_sentiment_keywords": [
+        "bland",
+        "cold",
+        "repetitive",
+        "salty",
+        "terrible",
+        "disappointing",
+        "awful"
+      ],
+      "neutral_sentiment_keywords": [
+        "okay",
+        "average",
+        "acceptable",
+        "decent"
+      ]
+    },
+    {
+      "group": "AMENITY",
+      "code": "AM_POOL",
+      "measurement_scale": "Pool & Water Facilities",
+      "description": "Swimming pool and water-related facilities",
+      "aspect_keywords": [
+        "pool",
+        "swimming pool",
+        "jacuzzi",
+        "water park",
+        "hot tub"
+      ],
+      "positive_sentiment_keywords": [
+        "relaxing",
+        "enjoyable",
+        "clean",
+        "spacious",
+        "refreshing"
+      ],
+      "negative_sentiment_keywords": [
+        "crowded",
+        "dirty",
+        "outdated",
+        "broken"
+      ],
+      "neutral_sentiment_keywords": [
+        "decent",
+        "sufficient",
+        "standard"
+      ]
+    },
+    {
+      "group": "AMENITY",
+      "code": "AM_WELLNESS",
+      "measurement_scale": "Gym, Spa & Wellness Facilities",
+      "description": "Wellness and fitness-related facilities and services",
+      "aspect_keywords": [
+        "gym",
+        "spa",
+        "sauna",
+        "fitness center",
+        "yoga",
+        "massage"
+      ],
+      "positive_sentiment_keywords": [
+        "relaxing",
+        "modern",
+        "enjoyable",
+        "professional"
+      ],
+      "negative_sentiment_keywords": [
+        "crowded",
+        "outdated",
+        "limited",
+        "expensive"
+      ],
+      "neutral_sentiment_keywords": [
+        "standard",
+        "adequate",
+        "acceptable"
+      ]
+    },
+    {
+      "group": "AMENITY",
+      "code": "AM_ENT",
+      "measurement_scale": "Entertainment & Recreation",
+      "description": "Entertainment and recreational facilities/services",
+      "aspect_keywords": [
+        "entertainment",
+        "kids zone",
+        "playground",
+        "game room",
+        "karaoke",
+        "netflix",
+        "TV",
+        "cinema"
+      ],
+      "positive_sentiment_keywords": [
+        "fun",
+        "enjoyable",
+        "entertaining",
+        "exciting"
+      ],
+      "negative_sentiment_keywords": [
+        "boring",
+        "limited",
+        "outdated"
+      ],
+      "neutral_sentiment_keywords": [
+        "okay",
+        "standard",
+        "average"
+      ]
+    },
+    {
+      "group": "AMENITY",
+      "code": "AM_TRANSPORT",
+      "measurement_scale": "Transportation & Parking",
+      "description": "Transportation support and parking convenience",
+      "aspect_keywords": [
+        "parking",
+        "shuttle",
+        "transport",
+        "airport transfer",
+        "taxi service",
+        "valet"
+      ],
+      "positive_sentiment_keywords": [
+        "convenient",
+        "punctual",
+        "spacious",
+        "smooth"
+      ],
+      "negative_sentiment_keywords": [
+        "unavailable",
+        "limited",
+        "delayed",
+        "difficult"
+      ],
+      "neutral_sentiment_keywords": [
+        "available",
+        "normal",
+        "acceptable"
+      ]
+    },
+    {
+      "group": "AMENITY",
+      "code": "AM_ROOM_UTIL",
+      "measurement_scale": "In-room Utilities",
+      "description": "Utilities and appliances available inside guest rooms",
+      "aspect_keywords": [
+        "minibar",
+        "kettle",
+        "microwave",
+        "coffee maker",
+        "refrigerator",
+        "TV",
+        "kitchen",
+        "hairdryer"
+      ],
+      "positive_sentiment_keywords": [
+        "useful",
+        "complete",
+        "convenient",
+        "functional"
+      ],
+      "negative_sentiment_keywords": [
+        "missing",
+        "limited",
+        "unavailable",
+        "broken"
+      ],
+      "neutral_sentiment_keywords": [
+        "basic",
+        "standard",
+        "average"
+      ]
+    },
+    {
+      "group": "AMENITY",
+      "code": "AM_UTILITY",
+      "measurement_scale": "Laundry & Utility Services",
+      "description": "Laundry and related utility support services",
+      "aspect_keywords": [
+        "laundry",
+        "washing",
+        "ironing",
+        "dry cleaning"
+      ],
+      "positive_sentiment_keywords": [
+        "efficient",
+        "fast",
+        "convenient"
+      ],
+      "negative_sentiment_keywords": [
+        "slow",
+        "expensive",
+        "unavailable"
+      ],
+      "neutral_sentiment_keywords": [
+        "standard",
+        "available",
+        "acceptable"
+      ]
+    },
+    {
+      "group": "SERVICE",
+      "code": "SER_ATTITUDE",
+      "measurement_scale": "Staff Attitude & Hospitality",
+      "description": "Friendliness, politeness, and hospitality of hotel staff",
+      "aspect_keywords": [
+        "staff",
+        "receptionist",
+        "concierge",
+        "waiter",
+        "waitress",
+        "employee",
+        "housekeeping",
+        "manager"
+      ],
+      "positive_sentiment_keywords": [
+        "friendly",
+        "welcoming",
+        "polite",
+        "helpful",
+        "attentive",
+        "warm",
+        "professional"
+      ],
+      "negative_sentiment_keywords": [
+        "rude",
+        "unfriendly",
+        "cold",
+        "impolite",
+        "disrespectful",
+        "careless"
+      ],
+      "neutral_sentiment_keywords": [
+        "professional",
+        "normal",
+        "standard"
+      ]
+    },
+    {
+      "group": "SERVICE",
+      "code": "SER_OPERATION",
+      "measurement_scale": "Operational Efficiency",
+      "description": "Operational processes and service efficiency",
+      "aspect_keywords": [
+        "check-in",
+        "check-out",
+        "booking",
+        "reservation",
+        "process",
+        "operation",
+        "queue"
+      ],
+      "positive_sentiment_keywords": [
+        "smooth",
+        "efficient",
+        "fast",
+        "organized",
+        "seamless"
+      ],
+      "negative_sentiment_keywords": [
+        "slow",
+        "confusing",
+        "delayed",
+        "inefficient"
+      ],
+      "neutral_sentiment_keywords": [
+        "acceptable",
+        "standard",
+        "manageable"
+      ]
+    },
+    {
+      "group": "SERVICE",
+      "code": "SER_SUPPORT",
+      "measurement_scale": "Support & Problem Resolution",
+      "description": "Responsiveness and effectiveness in handling customer needs and issues",
+      "aspect_keywords": [
+        "support",
+        "assistance",
+        "complaint",
+        "issue",
+        "solve",
+        "response",
+        "request",
+        "help"
+      ],
+      "positive_sentiment_keywords": [
+        "responsive",
+        "attentive",
+        "effective",
+        "supportive",
+        "proactive"
+      ],
+      "negative_sentiment_keywords": [
+        "ignored",
+        "unresolved",
+        "careless",
+        "ineffective"
+      ],
+      "neutral_sentiment_keywords": [
+        "manageable",
+        "acceptable",
+        "normal"
+      ]
+    },
+    {
+      "group": "SERVICE",
+      "code": "SER_COMM",
+      "measurement_scale": "Communication Ability",
+      "description": "Communication quality and language ability of staff",
+      "aspect_keywords": [
+        "communication",
+        "English",
+        "speaking",
+        "language",
+        "explanation"
+      ],
+      "positive_sentiment_keywords": [
+        "clear",
+        "understandable",
+        "fluent",
+        "communicative"
+      ],
+      "negative_sentiment_keywords": [
+        "poor",
+        "difficult",
+        "confusing",
+        "unclear"
+      ],
+      "neutral_sentiment_keywords": [
+        "basic",
+        "understandable",
+        "acceptable"
+      ]
+    },
+    {
+      "group": "EXPERIENCE",
+      "code": "EXP_OVERALL",
+      "measurement_scale": "Overall Stay Experience",
+      "description": "Overall impression and satisfaction toward the hotel stay",
+      "aspect_keywords": [
+        "stay",
+        "experience",
+        "trip",
+        "vacation",
+        "overall"
+      ],
+      "positive_sentiment_keywords": [
+        "amazing",
+        "satisfying",
+        "enjoyable",
+        "memorable",
+        "wonderful"
+      ],
+      "negative_sentiment_keywords": [
+        "disappointing",
+        "terrible",
+        "unpleasant",
+        "frustrating"
+      ],
+      "neutral_sentiment_keywords": [
+        "okay",
+        "average",
+        "fine"
+      ]
+    },
+    {
+      "group": "EXPERIENCE",
+      "code": "EXP_EMOTION",
+      "measurement_scale": "Emotional Experience",
+      "description": "Emotional comfort, enjoyment, relaxation, and atmosphere perception",
+      "aspect_keywords": [
+        "relaxing",
+        "memorable",
+        "peaceful",
+        "enjoyable",
+        "atmosphere",
+        "comfort"
+      ],
+      "positive_sentiment_keywords": [
+        "relaxing",
+        "pleasant",
+        "cozy",
+        "peaceful",
+        "enjoyable",
+        "refreshing"
+      ],
+      "negative_sentiment_keywords": [
+        "stressful",
+        "boring",
+        "frustrating",
+        "unpleasant",
+        "tiring"
+      ],
+      "neutral_sentiment_keywords": [
+        "ordinary",
+        "fine",
+        "normal"
+      ]
+    },
+    {
+      "group": "EXPERIENCE",
+      "code": "EXP_VALUE",
+      "measurement_scale": "Value for Money",
+      "description": "Perceived value relative to money spent and expectations",
+      "aspect_keywords": [
+        "value",
+        "worth",
+        "price",
+        "affordable",
+        "expensive",
+        "cost"
+      ],
+      "positive_sentiment_keywords": [
+        "worth it",
+        "affordable",
+        "reasonable",
+        "valuable"
+      ],
+      "negative_sentiment_keywords": [
+        "overpriced",
+        "costly",
+        "wasteful",
+        "expensive"
+      ],
+      "neutral_sentiment_keywords": [
+        "fair",
+        "moderate",
+        "acceptable"
+      ]
+    },
+    {
+      "group": "EXPERIENCE",
+      "code": "EXP_SAFETY",
+      "measurement_scale": "Subjective Safety Feeling",
+      "description": "Subjective perception of safety and personal comfort",
+      "aspect_keywords": [
+        "safe",
+        "secure",
+        "dangerous",
+        "risky",
+        "safety"
+      ],
+      "positive_sentiment_keywords": [
+        "safe",
+        "secure",
+        "comfortable",
+        "reassuring"
+      ],
+      "negative_sentiment_keywords": [
+        "unsafe",
+        "dangerous",
+        "risky",
+        "uncomfortable"
+      ],
+      "neutral_sentiment_keywords": [
+        "acceptable",
+        "manageable",
+        "normal"
+      ]
+    },
+    {
+      "group": "BRANDING",
+      "code": "BRA_REPUTE",
+      "measurement_scale": "Brand Reputation & Reliability",
+      "description": "Reputation, consistency, and trustworthiness of the hotel brand",
+      "aspect_keywords": [
+        "brand",
+        "reputation",
+        "standard",
+        "trust",
+        "chain hotel"
+      ],
+      "positive_sentiment_keywords": [
+        "reputable",
+        "reliable",
+        "trusted",
+        "consistent"
+      ],
+      "negative_sentiment_keywords": [
+        "inconsistent",
+        "overrated",
+        "unreliable"
+      ],
+      "neutral_sentiment_keywords": [
+        "recognized",
+        "known",
+        "standard"
+      ]
+    },
+    {
+      "group": "BRANDING",
+      "code": "BRA_LUXURY",
+      "measurement_scale": "Luxury & Premium Perception",
+      "description": "Perception of luxury, exclusiveness, and premium quality",
+      "aspect_keywords": [
+        "luxury",
+        "premium",
+        "five-star",
+        "upscale",
+        "prestige"
+      ],
+      "positive_sentiment_keywords": [
+        "luxurious",
+        "premium",
+        "elegant",
+        "exclusive",
+        "high-end"
+      ],
+      "negative_sentiment_keywords": [
+        "cheap",
+        "low-standard",
+        "mediocre"
+      ],
+      "neutral_sentiment_keywords": [
+        "standard",
+        "business-style",
+        "formal"
+      ]
+    },
+    {
+      "group": "LOYALTY",
+      "code": "LOY_RETURN",
+      "measurement_scale": "Revisit Intention",
+      "description": "Intention to stay again in the future",
+      "aspect_keywords": [
+        "return",
+        "revisit",
+        "stay again",
+        "come back",
+        "visit again"
+      ],
+      "positive_sentiment_keywords": [
+        "definitely return",
+        "revisit again",
+        "come back soon"
+      ],
+      "negative_sentiment_keywords": [
+        "never return",
+        "avoid",
+        "not come back"
+      ],
+      "neutral_sentiment_keywords": [
+        "may return",
+        "consider",
+        "possible"
+      ]
+    },
+    {
+      "group": "LOYALTY",
+      "code": "LOY_RECOMMEND",
+      "measurement_scale": "Recommendation Intention",
+      "description": "Intention to recommend the hotel to others",
+      "aspect_keywords": [
+        "recommend",
+        "recommendation",
+        "suggest",
+        "referral"
+      ],
+      "positive_sentiment_keywords": [
+        "highly recommend",
+        "strongly recommend",
+        "definitely recommend"
+      ],
+      "negative_sentiment_keywords": [
+        "would not recommend",
+        "cannot recommend"
+      ],
+      "neutral_sentiment_keywords": [
+        "can recommend",
+        "may recommend"
+      ]
+    },
+    {
+      "group": "LOYALTY",
+      "code": "LOY_PREFERENCE",
+      "measurement_scale": "Customer Preference & Attachment",
+      "description": "Long-term preference or emotional attachment toward the hotel",
+      "aspect_keywords": [
+        "favorite",
+        "preferred",
+        "loyalty",
+        "membership",
+        "attachment"
+      ],
+      "positive_sentiment_keywords": [
+        "favorite",
+        "loyal",
+        "preferred",
+        "attached"
+      ],
+      "negative_sentiment_keywords": [
+        "avoid",
+        "switch",
+        "dislike"
+      ],
+      "neutral_sentiment_keywords": [
+        "familiar",
+        "recognized",
+        "regular"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+1.000 laundry
+0.999 washing
+0.998 ironing
+0.997 dry cleaning
+0.996 utility services

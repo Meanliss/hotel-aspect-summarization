@@ -1,0 +1,9 @@
+1.000 cctv
+0.999 lock
+0.998 keycard
+0.997 guard
+0.996 surveillance
+0.995 gate
+0.994 security
+0.993 alarm
+0.992 physical security infrastructure

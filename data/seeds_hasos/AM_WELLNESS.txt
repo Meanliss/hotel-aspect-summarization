@@ -1,0 +1,7 @@
+1.000 gym
+0.999 spa
+0.998 sauna
+0.997 fitness center
+0.996 yoga
+0.995 massage
+0.994 wellness facilities

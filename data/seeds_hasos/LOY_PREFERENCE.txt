@@ -1,0 +1,6 @@
+1.000 favorite
+0.999 preferred
+0.998 loyalty
+0.997 membership
+0.996 attachment
+0.995 customer preference

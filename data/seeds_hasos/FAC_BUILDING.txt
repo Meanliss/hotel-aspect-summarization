@@ -1,0 +1,9 @@
+1.000 building
+0.999 elevator
+0.998 hallway
+0.997 corridor
+0.996 infrastructure
+0.995 property
+0.994 lobby
+0.993 entrance
+0.992 building infrastructure

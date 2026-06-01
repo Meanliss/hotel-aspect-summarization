@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.venv/
+venv/
+.env
+
+# Models & training artifacts (too large for git)
+models/
+logs/
+
+# Datasets — keep only seeds, taxonomy, and SentencePiece vocab
+data/amazon/
+data/space/
+data/hasos/hasos_summ.json
+
+# SentencePiece model binary is large; keep .vocab only
+data/sentencepiece/*.model
+
+# Raw CSVs at any level
+*.csv
+
+# Outputs: ignore everything except the hasos_english_only run
+outputs/**
+!outputs/hasos_english_only/
+!outputs/hasos_english_only/**
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -1,0 +1,6 @@
+1.000 luxury
+0.999 premium
+0.998 five-star
+0.997 upscale
+0.996 prestige
+0.995 premium perception

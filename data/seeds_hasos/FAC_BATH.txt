@@ -1,0 +1,10 @@
+1.000 bathroom
+0.999 toilet
+0.998 shower
+0.997 bathtub
+0.996 sink
+0.995 restroom
+0.994 washroom
+0.993 faucet
+0.992 towel
+0.991 sanitary area

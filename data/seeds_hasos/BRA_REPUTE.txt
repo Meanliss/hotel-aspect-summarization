@@ -1,0 +1,7 @@
+1.000 brand
+0.999 reputation
+0.998 standard
+0.997 trust
+0.996 chain hotel
+0.995 brand reputation
+0.994 reliability

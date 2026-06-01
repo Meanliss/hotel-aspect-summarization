@@ -1,0 +1,9 @@
+1.000 minibar
+0.999 kettle
+0.998 microwave
+0.997 coffee maker
+0.996 refrigerator
+0.995 tv
+0.994 kitchen
+0.993 hairdryer
+0.992 in-room utilities

@@ -1,0 +1,12 @@
+1.000 interior
+0.999 decor
+0.998 furniture
+0.997 design
+0.996 style
+0.995 ambiance
+0.994 lighting
+0.993 atmosphere
+0.992 aesthetic
+0.991 theme
+0.990 interior design
+0.989 ambience

@@ -1,0 +1,8 @@
+1.000 aircon
+0.999 ac
+0.998 ventilation
+0.997 airflow
+0.996 temperature
+0.995 fan
+0.994 cooling
+0.993 air conditioning

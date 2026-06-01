@@ -1,0 +1,10 @@
+1.000 staff
+0.999 receptionist
+0.998 concierge
+0.997 waiter
+0.996 waitress
+0.995 employee
+0.994 housekeeping
+0.993 manager
+0.992 staff attitude
+0.991 hospitality

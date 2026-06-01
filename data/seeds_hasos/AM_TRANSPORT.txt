@@ -1,0 +1,7 @@
+1.000 parking
+0.999 shuttle
+0.998 transport
+0.997 airport transfer
+0.996 taxi service
+0.995 valet
+0.994 transportation

@@ -1,0 +1,154 @@
+{
+  "input_csv": "C:\\Users\\dso3hc\\Downloads\\Implement\\hotel_review1.csv",
+  "detector_rule": "English-like if repaired text has at least 8 alphabetic chars, ASCII-letter ratio >= 0.86, at least 3 normalized tokens, and either 2 common English marker hits, or 1 marker plus 1 hotel-domain hit, or 2 hotel-domain hits with ASCII ratio >= 0.94.",
+  "total_rows": 607260,
+  "nonempty_reviews": 607260,
+  "english_reviews": 270658,
+  "english_sentences": 850307,
+  "rejected_reviews": 336602,
+  "reject_reasons": {
+    "low_ascii_letter_ratio": 234758,
+    "not_enough_english_markers": 70564,
+    "too_few_tokens": 7242,
+    "too_few_letters": 9285,
+    "no_english_sentences": 14753
+  },
+  "top_english_hotels": [
+    {
+      "hotel_id": "booking_02157",
+      "english_reviews": 1327
+    },
+    {
+      "hotel_id": "booking_02806",
+      "english_reviews": 1091
+    },
+    {
+      "hotel_id": "booking_02757",
+      "english_reviews": 985
+    },
+    {
+      "hotel_id": "booking_02798",
+      "english_reviews": 942
+    },
+    {
+      "hotel_id": "booking_02840",
+      "english_reviews": 933
+    },
+    {
+      "hotel_id": "booking_02787",
+      "english_reviews": 906
+    },
+    {
+      "hotel_id": "booking_02813",
+      "english_reviews": 884
+    },
+    {
+      "hotel_id": "booking_02886",
+      "english_reviews": 821
+    },
+    {
+      "hotel_id": "booking_02810",
+      "english_reviews": 815
+    },
+    {
+      "hotel_id": "booking_02897",
+      "english_reviews": 812
+    },
+    {
+      "hotel_id": "booking_02748",
+      "english_reviews": 808
+    },
+    {
+      "hotel_id": "booking_01182",
+      "english_reviews": 757
+    },
+    {
+      "hotel_id": "booking_02802",
+      "english_reviews": 701
+    },
+    {
+      "hotel_id": "booking_11979",
+      "english_reviews": 698
+    },
+    {
+      "hotel_id": "booking_02859",
+      "english_reviews": 674
+    },
+    {
+      "hotel_id": "booking_12019",
+      "english_reviews": 660
+    },
+    {
+      "hotel_id": "booking_02817",
+      "english_reviews": 641
+    },
+    {
+      "hotel_id": "booking_12020",
+      "english_reviews": 621
+    },
+    {
+      "hotel_id": "booking_03039",
+      "english_reviews": 575
+    },
+    {
+      "hotel_id": "booking_03208",
+      "english_reviews": 569
+    }
+  ],
+  "sample_kept": [
+    {
+      "ref_id": "booking_04272_2",
+      "hotel_id": "booking_04272",
+      "reason": "common_english_markers",
+      "ascii_letter_ratio": 1.0,
+      "marker_hits": 18,
+      "hotel_hits": 3,
+      "review": "The staff were very kind and helpful. The dog was also a sweetheart. The water pressure in the shower was weak. The bed mat was also hard, so it was hard for me to sleep."
+    },
+    {
+      "ref_id": "booking_04276_11",
+      "hotel_id": "booking_04276",
+      "reason": "common_english_markers",
+      "ascii_letter_ratio": 1.0,
+      "marker_hits": 4,
+      "hotel_hits": 2,
+      "review": "Location is superb, indoor decor with live plants top notch, trained staff, very good cook. Luxurious experience all the way. -"
+    },
+    {
+      "ref_id": "booking_04305_13",
+      "hotel_id": "booking_04305",
+      "reason": "common_english_markers",
+      "ascii_letter_ratio": 1.0,
+      "marker_hits": 7,
+      "hotel_hits": 1,
+      "review": "smelly roomaccess going to the room is a bit hard. especially when its raining helpful staff"
+    }
+  ],
+  "sample_rejected": [
+    {
+      "ref_id": "booking_04287_0",
+      "reason": "low_ascii_letter_ratio",
+      "ascii_letter_ratio": 0.717391304347826,
+      "marker_hits": 2,
+      "hotel_hits": 0,
+      "review": "Rất thích đệm và giường tại hhostels vì rất êm và cũng private. Địa điểm gần trung tâm mộc và các điểm checkin đẹp khác ở mộc châu. Nhà hàng thuộc A Pao ngay kế bên, đồ ăn rất ngon"
+    },
+    {
+      "ref_id": "booking_04272_1",
+      "reason": "low_ascii_letter_ratio",
+      "ascii_letter_ratio": 0.6666666666666666,
+      "marker_hits": 0,
+      "hotel_hits": 0,
+      "review": "Chỗ ở sạch sẽ, ấm cúng. Chị chủ rất nhiệt tình và chu đáo."
+    },
+    {
+      "ref_id": "booking_04325_3",
+      "reason": "low_ascii_letter_ratio",
+      "ascii_letter_ratio": 0.6578947368421053,
+      "marker_hits": 0,
+      "hotel_hits": 0,
+      "review": "Gọi điện và nhắn tin hỏi nhà nghỉ thái độ rất kém"
+    }
+  ],
+  "english_ratio": 0.4457036524717584
+}

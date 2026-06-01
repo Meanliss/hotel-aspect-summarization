@@ -1,0 +1,482 @@
+{
+  "input_csv": "C:\\Users\\dso3hc\\Downloads\\Implement\\hotel_review2.csv",
+  "overall": {
+    "review_count": 602919,
+    "sentence_count": 1933276,
+    "aspect_summary_cover": 0.7334846561739845,
+    "macro_cec": 0.5695109248942614,
+    "weighted_cec": 0.5739648842357309,
+    "matched_aspects": 29,
+    "aspect_count": 29,
+    "rouge_note": "ROUGE-1/2/L from the SemAE paper requires human gold summaries; this CSV has reviews only, so this trial reports image-formula CEC/ASC instead.",
+    "scoring_note": "unique_opinions and cluster_weight are counted on the whole input; summary/CEC/ASC use a capped representative evidence set per aspect.",
+    "language_filter": "english",
+    "include_vietnamese_aliases": false
+  },
+  "aspects": [
+    {
+      "aspect": "FAC_ROOM",
+      "group": "FACILITY",
+      "measurement_scale": "Room, Bed & Sleep Quality",
+      "matched_sentences": 543529,
+      "unique_opinions": 503905,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.040701097821065596,
+      "cec": 0.6137666924722455,
+      "asc_contribution": 0.02946847861630715,
+      "summary": [
+        "The room was clean and nice, very comfortable bed and great location.",
+        "The bed was comfortable and the room was clean.",
+        "The room was very comfortable, the staff were very friendly and helpful, breakfast was good and the location was great"
+      ]
+    },
+    {
+      "aspect": "FAC_BATH",
+      "group": "FACILITY",
+      "measurement_scale": "Bathroom & Sanitary Area",
+      "matched_sentences": 282033,
+      "unique_opinions": 256847,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.03861211217978742,
+      "cec": 0.6547614820040027,
+      "asc_contribution": 0.02743745494044317,
+      "summary": [
+        "The room was very clean and comfortable.",
+        "The room was very comfortable and clean.",
+        "The room was very spacious and clean."
+      ]
+    },
+    {
+      "aspect": "FAC_INTERIOR",
+      "group": "FACILITY",
+      "measurement_scale": "Interior Design & Ambience",
+      "matched_sentences": 95901,
+      "unique_opinions": 92089,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.03543256975406506,
+      "cec": 0.5963269866096356,
+      "asc_contribution": 0.02561664299784073,
+      "summary": [
+        "The hotel is beautiful and the room was very cozy.",
+        "The room is beautiful and clean.",
+        "The room is clean and beautiful."
+      ]
+    },
+    {
+      "aspect": "FAC_BUILDING",
+      "group": "FACILITY",
+      "measurement_scale": "Building Infrastructure",
+      "matched_sentences": 112751,
+      "unique_opinions": 109009,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.03595542665328182,
+      "cec": 0.5488105669596918,
+      "asc_contribution": 0.028858246194125463,
+      "summary": [
+        "The staff are very friendly, the room was great and the location is right in the middle of the old quarter, walking distance to everything.",
+        "It was in a great location in the heart of the old quarter!",
+        "The hotel is in the perfect location, in the heart of the Old Quarter."
+      ]
+    },
+    {
+      "aspect": "FAC_ENV",
+      "group": "FACILITY",
+      "measurement_scale": "Noise & Environmental Comfort",
+      "matched_sentences": 81000,
+      "unique_opinions": 78934,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.03495475830711925,
+      "cec": 0.522217524395037,
+      "asc_contribution": 0.02756036236888979,
+      "summary": [
+        "A very nice place to stay in a good location in the town, The bed was comfortable and the place was quite quiet.",
+        "It is in a great location and the environment is very quiet.",
+        "Also the room is big, the view is very beautiful, nice breakfast and the location is in a side street, so it’s quiet."
+      ]
+    },
+    {
+      "aspect": "FAC_CLIMATE",
+      "group": "FACILITY",
+      "measurement_scale": "Air Conditioning & Ventilation",
+      "matched_sentences": 132470,
+      "unique_opinions": 119706,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.03624559304186773,
+      "cec": 0.7138686001719363,
+      "asc_contribution": 0.027069214835886087,
+      "summary": [
+        "The room was clean and the bed very comfortable.",
+        "The bed was very comfortable and the room clean.",
+        "The room was very clean and the bed comfortable."
+      ]
+    },
+    {
+      "aspect": "FAC_SECURITY",
+      "group": "FACILITY",
+      "measurement_scale": "Physical Security Infrastructure",
+      "matched_sentences": 18585,
+      "unique_opinions": 18235,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.0304128168380478,
+      "cec": 0.473176021533148,
+      "asc_contribution": 0.02584227081968432,
+      "summary": [
+        "I’m not sure where to start…two night stay in top apartment…no safe in room or safe at reception, in my many years of travelling I’ve never come across this, we had to take all our valuables passports etc out with us daily as the doors did not lock properly, very tired and filthy room, the bed curtains were disgusting, mattress very old, there is a large broken glass panel on the rooftop of which someone is going to have a terrible accident with at some point, breakfast not acceptable, the bathroom smelt dreadful and lots of items broken including shower head hanging off the wall and door handle broken, the tv did not work, there was mention of a refund of which we said to be fair 50% would be acceptable but the manager/owner only came back with a 30% of one night stay of which we gave to the lady on reception for being so apologetic, I’m not quite sure why this hotel had such good reviews but I feel I need to let other potential guest know the true situation with this hotel, that’s what a review is for, a true and honest reflection of your experience!",
+        "Pool was fairly small but we were lucky to be the only ones swimming in it and it was lovely, location is a little outside the main city centre but close to bui vien walking street and there is lots of shops and cute cafes in sight of the hotel The bathroom was clean but a bit worn and parts of the property just seemed like it could do with a touch up but this didn’t bother us much, we couldn’t figure out how to work our safe but I’m sure the reception would have been able to help us if we had asked,",
+        "The location is great; the staff were very friendly and helpful; the room was both comfortable and quiet; the hotel had everything I needed, including a modest but adequate gym, as well as a fridge and an in-room safe."
+      ]
+    },
+    {
+      "aspect": "FAC_VIEW_LOCATION",
+      "group": "FACILITY",
+      "measurement_scale": "View, Surroundings & Location",
+      "matched_sentences": 356971,
+      "unique_opinions": 321132,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.03930452195335384,
+      "cec": 0.6184727103671651,
+      "asc_contribution": 0.03082393358080558,
+      "summary": [
+        "The bed is comfortable, the room has a good size and was very clean, the staff is super nice and helpful, the breakfast is good and the location is great!",
+        "The room was very comfortable, the staff were very friendly and helpful, breakfast was good and the location was great",
+        "The location was great and the staff was very friendly."
+      ]
+    },
+    {
+      "aspect": "AM_WIFI",
+      "group": "AMENITY",
+      "measurement_scale": "Wifi & Connectivity",
+      "matched_sentences": 26211,
+      "unique_opinions": 24839,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.03137084002621448,
+      "cec": 0.5197316911677267,
+      "asc_contribution": 0.02190112119391353,
+      "summary": [
+        "The check in was fast and the wifi was all good.",
+        "The wifi was good.",
+        "The wifi was strong and fast in the room."
+      ]
+    },
+    {
+      "aspect": "AM_FOOD",
+      "group": "AMENITY",
+      "measurement_scale": "Food & Beverage",
+      "matched_sentences": 322839,
+      "unique_opinions": 292661,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.0390167438565477,
+      "cec": 0.6030244668408926,
+      "asc_contribution": 0.03056968270778029,
+      "summary": [
+        "The room was very comfortable, the staff were very friendly and helpful, breakfast was good and the location was great",
+        "The bed is comfortable, the room has a good size and was very clean, the staff is super nice and helpful, the breakfast is good and the location is great!",
+        "The location was great and the breakfast was good on the rooftop."
+      ]
+    },
+    {
+      "aspect": "AM_POOL",
+      "group": "AMENITY",
+      "measurement_scale": "Pool & Water Facilities",
+      "matched_sentences": 252164,
+      "unique_opinions": 226720,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.03822536524728491,
+      "cec": 0.687716981858676,
+      "asc_contribution": 0.027902418850470827,
+      "summary": [
+        "The room was spacious and very clean.",
+        "The room was very spacious and clean.",
+        "The room was very clean and spacious."
+      ]
+    },
+    {
+      "aspect": "AM_WELLNESS",
+      "group": "AMENITY",
+      "measurement_scale": "Gym, Spa & Wellness Facilities",
+      "matched_sentences": 69241,
+      "unique_opinions": 67012,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.034447199528778547,
+      "cec": 0.5425941264578338,
+      "asc_contribution": 0.025416443356467127,
+      "summary": [
+        "The room was modern and clean, and the staff were professional and helpful.",
+        "It was very clean, the pool and spa was great, breakfast was also very good and the staff was really friendly and polite!",
+        "the location is great and the rooms are very clean and modern."
+      ]
+    },
+    {
+      "aspect": "AM_ENT",
+      "group": "AMENITY",
+      "measurement_scale": "Entertainment & Recreation",
+      "matched_sentences": 35237,
+      "unique_opinions": 34153,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.032357898795504624,
+      "cec": 0.494055239527853,
+      "asc_contribution": 0.027152204893084515,
+      "summary": [
+        "We liked the location it's within easy walking distance to the beach and restaurants - it's very private and nice gardens - the staff are friendly and the breakfast is good - the pool is fabulous and the room was clean and comfortable For us the bed was a bit hard and the breakfast menu was very limited",
+        "The room was very clean and comfortable, the shower was amazing and there was a good TV and AC.",
+        "The apartment I stayed in was great - clean, spacious and airy and light, with great facilities and a nice little balcony; the location is very good - on a side street in a bustling area and close to the tourist nightlife area as well as a nice park; the staff were pleasant and helpful - the girl came when I had an issue with the TV and she helped me organise a taxi to the airport when I was leaving and was responsive to my messages and the guy who met me to give me the keys was also very friendly and helpful...All in all I would definitely recommend this place in Ho Chi Minh..."
+      ]
+    },
+    {
+      "aspect": "AM_TRANSPORT",
+      "group": "AMENITY",
+      "measurement_scale": "Transportation & Parking",
+      "matched_sentences": 88957,
+      "unique_opinions": 82272,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.03508314748484779,
+      "cec": 0.6545212732866972,
+      "asc_contribution": 0.022229316264408085,
+      "summary": [
+        "The room was very spacious and clean.",
+        "The room was spacious and very clean.",
+        "The room was very clean and spacious."
+      ]
+    },
+    {
+      "aspect": "AM_ROOM_UTIL",
+      "group": "AMENITY",
+      "measurement_scale": "In-room Utilities",
+      "matched_sentences": 58180,
+      "unique_opinions": 56279,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.03390613385770286,
+      "cec": 0.49524832395820323,
+      "asc_contribution": 0.027119082270091254,
+      "summary": [
+        "The location of the hotel was very convenient.",
+        "The hotel was at a very convenient location and the staff were friendly and helpful.",
+        "The apartment I stayed in was great - clean, spacious and airy and light, with great facilities and a nice little balcony; the location is very good - on a side street in a bustling area and close to the tourist nightlife area as well as a nice park; the staff were pleasant and helpful - the girl came when I had an issue with the TV and she helped me organise a taxi to the airport when I was leaving and was responsive to my messages and the guy who met me to give me the keys was also very friendly and helpful...All in all I would definitely recommend this place in Ho Chi Minh..."
+      ]
+    },
+    {
+      "aspect": "AM_UTILITY",
+      "group": "AMENITY",
+      "measurement_scale": "Laundry & Utility Services",
+      "matched_sentences": 57132,
+      "unique_opinions": 55416,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.03385823286375327,
+      "cec": 0.5147554183316395,
+      "asc_contribution": 0.02192223184139168,
+      "summary": [
+        "The hotel was at a very convenient location and the staff were friendly and helpful.",
+        "The location of the hotel was very convenient.",
+        "The location of the hotel is very convenient."
+      ]
+    },
+    {
+      "aspect": "SER_ATTITUDE",
+      "group": "SERVICE",
+      "measurement_scale": "Staff Attitude & Hospitality",
+      "matched_sentences": 381124,
+      "unique_opinions": 328886,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.03937848014345657,
+      "cec": 0.7288913526734343,
+      "asc_contribution": 0.030813739296547703,
+      "summary": [
+        "The staff was very friendly and helpful.",
+        "The staff was very helpful and friendly.",
+        "The staff were very helpful and friendly."
+      ]
+    },
+    {
+      "aspect": "SER_OPERATION",
+      "group": "SERVICE",
+      "measurement_scale": "Operational Efficiency",
+      "matched_sentences": 60851,
+      "unique_opinions": 59806,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.03409455175476571,
+      "cec": 0.4583736404618217,
+      "asc_contribution": 0.025295245702406523,
+      "summary": [
+        "The check in.",
+        "The breakfast was very good and they allowed us to check-in early on the first day which was great.",
+        "I had dental implants put in and they were checking on me as I was by myself and although the staff were lovely, it was such a shame that I pointed out to the staff what booking.com had advertised the facilities at the hotel and they were full of apologies and I will explain myself in the next question When I was on your website in regards to the hotel, it stated that the hotel had this this this etc and none of it was there￼ for example from what I can remember I have got photos of everything that was missing there was no bar."
+      ]
+    },
+    {
+      "aspect": "SER_SUPPORT",
+      "group": "SERVICE",
+      "measurement_scale": "Support & Problem Resolution",
+      "matched_sentences": 62206,
+      "unique_opinions": 59789,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.03409367051266972,
+      "cec": 0.5574582968311831,
+      "asc_contribution": 0.019105228203999538,
+      "summary": [
+        "The staff was very attentive and friendly.",
+        "The staff were very friendly and helpful and attentive.",
+        "The staff were very friendly and attentive."
+      ]
+    },
+    {
+      "aspect": "SER_COMM",
+      "group": "SERVICE",
+      "measurement_scale": "Communication Ability",
+      "matched_sentences": 40601,
+      "unique_opinions": 39762,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.03282924863928296,
+      "cec": 0.5217101485223161,
+      "asc_contribution": 0.021883216400928183,
+      "summary": [
+        "The staff was very friendly and spoke good English and the room was also comfortable and nice.",
+        "The room was clean and the staff were friendly with good English.",
+        "The staff is very friendly, and speak good English."
+      ]
+    },
+    {
+      "aspect": "EXP_OVERALL",
+      "group": "EXPERIENCE",
+      "measurement_scale": "Overall Stay Experience",
+      "matched_sentences": 233534,
+      "unique_opinions": 211454,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.03800928300473003,
+      "cec": 0.4723079284157867,
+      "asc_contribution": 0.026825071763503572,
+      "summary": [
+        "The place was comfortable and the staff was amazing!",
+        "The breakfast in the hotel is amazing and staff are helpful and friendly.",
+        "We had a very nice stay at the hotel and the staff was so nice ."
+      ]
+    },
+    {
+      "aspect": "EXP_EMOTION",
+      "group": "EXPERIENCE",
+      "measurement_scale": "Emotional Experience",
+      "matched_sentences": 54392,
+      "unique_opinions": 52541,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.03369309438163468,
+      "cec": 0.51680774206968,
+      "asc_contribution": 0.02276307953403091,
+      "summary": [
+        "\"The room was very pleasant, it was cozy and clean.",
+        "It was a good location and the staff were very helpful and pleasant.",
+        "The staff is very friendly and super helpful.It was a very pleasant stay in this hotel."
+      ]
+    },
+    {
+      "aspect": "EXP_VALUE",
+      "group": "EXPERIENCE",
+      "measurement_scale": "Value for Money",
+      "matched_sentences": 71351,
+      "unique_opinions": 65126,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.03435870763791866,
+      "cec": 0.6091353686367414,
+      "asc_contribution": 0.025803964612606745,
+      "summary": [
+        "For the price, it is a good value.",
+        "The room was very nice and the value for money is great !",
+        "The room is good value for money and a good location."
+      ]
+    },
+    {
+      "aspect": "EXP_SAFETY",
+      "group": "EXPERIENCE",
+      "measurement_scale": "Subjective Safety Feeling",
+      "matched_sentences": 91744,
+      "unique_opinions": 79994,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.03499610806947721,
+      "cec": 0.7430003796813353,
+      "asc_contribution": 0.027146737706398253,
+      "summary": [
+        "The room was very clean and the bed comfortable.",
+        "The bed was very comfortable and the room clean.",
+        "The room was clean and the bed very comfortable."
+      ]
+    },
+    {
+      "aspect": "BRA_REPUTE",
+      "group": "BRANDING",
+      "measurement_scale": "Brand Reputation & Reliability",
+      "matched_sentences": 8263,
+      "unique_opinions": 8119,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.02790485247514823,
+      "cec": 0.525489644714135,
+      "asc_contribution": 0.02268365164309095,
+      "summary": [
+        "The room was clean and to a good standard.",
+        "This hotel is close to everything in the old quarter; the staff is really friendly and helpful; the facilities are brand new and the the breakfast is good for the price of the night.",
+        "The room was of a very high standard."
+      ]
+    },
+    {
+      "aspect": "BRA_LUXURY",
+      "group": "BRANDING",
+      "measurement_scale": "Luxury & Premium Perception",
+      "matched_sentences": 19857,
+      "unique_opinions": 19486,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.030618489688199843,
+      "cec": 0.5169779783856522,
+      "asc_contribution": 0.022085898418313592,
+      "summary": [
+        "The room was good, the staff is very friendly and helpful also the price of the room is very cheap.",
+        "The room was very clean and for the price the room was really cheap.",
+        "The pool is very nice, with a nice view, make a lot on the value of the hotel Gym is very small, breakfast is not at the standard of the hotel, a bit cheap."
+      ]
+    },
+    {
+      "aspect": "LOY_RETURN",
+      "group": "LOYALTY",
+      "measurement_scale": "Revisit Intention",
+      "matched_sentences": 22517,
+      "unique_opinions": 21219,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.030882583754077566,
+      "cec": 0.5842507259939158,
+      "asc_contribution": 0.019979322013293374,
+      "summary": [
+        "I will definitely come back to stay again",
+        "We recommend the hotel and would stay again if we come back to Hanoi.",
+        "I would definitely come back to stay here again!"
+      ]
+    },
+    {
+      "aspect": "LOY_RECOMMEND",
+      "group": "LOYALTY",
+      "measurement_scale": "Recommendation Intention",
+      "matched_sentences": 31965,
+      "unique_opinions": 28125,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.031755959164668675,
+      "cec": 0.576693202116808,
+      "asc_contribution": 0.019518746457283187,
+      "summary": [
+        "I would highly recommend a stay in this hotel.",
+        "We definitely would recommend to stay in this Hotel.",
+        "I would recommend this hotel highly."
+      ]
+    },
+    {
+      "aspect": "LOY_PREFERENCE",
+      "group": "LOYALTY",
+      "measurement_scale": "Customer Preference & Attachment",
+      "matched_sentences": 7369,
+      "unique_opinions": 7126,
+      "evidence_used_for_summary": 5000,
+      "cluster_weight": 0.027500512564747306,
+      "cec": 0.4516723074883869,
+      "asc_contribution": 0.022691648689992343,
+      "summary": [
+        "The pool was nice, there are three beaches close by (less than 1 km on foot, walking next to a street; extra services such as booking a taxi to go to the nearby national park or a bus to go to Hai Phong was hassle-free; every day, a new roll of toilet paper, two bottles of water, new towels and even toothbrushes were given to us; the beds were rather comfortable We weren't shown the rooms we had booked (but were offered the correct kind after complaining); the Wi-fi coverage was good but the internet was quite slow; the waiter in the attached bar speaks no English and messed up our order; the towels seemed to have been left damp in a plastic bag, making them smell like unwashed feet; the laundry service lost some of our socks, didn't put any effort in making the laundry look nice and it didn't smell fresh or clean; the cleaning staff usually made a ruckus, waking us at 7 am while cleaning the room next to ours; the drain in the bathroom, which also fully functions as a shower, was clogged, flooding the room; every evening/night, there was loud music being played at one of the buildings nearby, which made it more difficult to fall asleep since it was easily heard when laying in bed; there were ants crawling through our room.",
+        "The shower in our room had a head on it that just spurted water everywhere in the bathroom and you would have to stand out of the shower right in front for the water to get you if it was attached to the wall.",
+        "stayed here for three nights,when checked in,the host Tam welcomed me with fresh juice and fruits.the room i booked is big,actually i booked two different room,cuz the room type i preferred only available on the second and third day,so i booked another room on the first day.but the host asked me if i can stay at the same room,i really love that room,so agreed with him.the room is clean,full of Buddhist decor,beautiful,the dining room is big,cozy and it has a kitchen.but i was busy during the stay,no chance to use it.i only used the fridge inside the room.the room is comfortable, especially the bed,i had good sleeps here.the bathroom not big,but clean,the water pressure is strong,easy to use.though i never used hot water,but i did open it once,and it was hot.Tam,the host provided free mineral water everyday."
+      ]
+    }
+  ]
+}

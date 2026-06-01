@@ -1,0 +1,6 @@
+1.000 return
+0.999 revisit
+0.998 stay again
+0.997 come back
+0.996 visit again
+0.995 revisit intention

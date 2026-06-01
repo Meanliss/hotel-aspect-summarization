@@ -1,0 +1,6 @@
+1.000 safe
+0.999 secure
+0.998 dangerous
+0.997 risky
+0.996 safety
+0.995 subjective safety feeling

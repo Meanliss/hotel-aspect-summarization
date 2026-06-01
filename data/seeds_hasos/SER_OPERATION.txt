@@ -1,0 +1,8 @@
+1.000 check-in
+0.999 check-out
+0.998 booking
+0.997 reservation
+0.996 process
+0.995 operation
+0.994 queue
+0.993 operational efficiency

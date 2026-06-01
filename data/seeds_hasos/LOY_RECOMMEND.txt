@@ -1,0 +1,5 @@
+1.000 recommend
+0.999 recommendation
+0.998 suggest
+0.997 referral
+0.996 recommendation intention

@@ -1,0 +1,15 @@
+1.000 view
+0.999 scenery
+0.998 sea view
+0.997 mountain view
+0.996 city view
+0.995 landscape
+0.994 downtown
+0.993 central
+0.992 nearby
+0.991 location
+0.990 accessibility
+0.989 neighborhood
+0.988 beachfront
+0.987 riverside
+0.986 surroundings

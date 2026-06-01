@@ -1,0 +1,13 @@
+1.000 breakfast
+0.999 buffet
+0.998 restaurant
+0.997 cafe
+0.996 menu
+0.995 dining
+0.994 meal
+0.993 drink
+0.992 beverage
+0.991 coffee
+0.990 bar
+0.989 cuisine
+0.988 food

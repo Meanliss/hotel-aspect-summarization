@@ -1,0 +1,6 @@
+1.000 wifi
+0.999 internet
+0.998 connection
+0.997 network
+0.996 signal
+0.995 connectivity

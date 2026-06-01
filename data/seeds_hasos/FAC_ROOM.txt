@@ -1,0 +1,19 @@
+1.000 room
+0.999 suite
+0.998 bedroom
+0.997 villa
+0.996 accommodation
+0.995 bed
+0.994 mattress
+0.993 pillow
+0.992 blanket
+0.991 duvet
+0.990 bedding
+0.989 balcony
+0.988 workspace
+0.987 desk
+0.986 chair
+0.985 sleep
+0.984 sleeping
+0.983 window
+0.982 sleep quality

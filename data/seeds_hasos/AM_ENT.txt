@@ -1,0 +1,9 @@
+1.000 entertainment
+0.999 kids zone
+0.998 playground
+0.997 game room
+0.996 karaoke
+0.995 netflix
+0.994 tv
+0.993 cinema
+0.992 recreation
