@@ -203,6 +203,14 @@ if __name__ == '__main__':
                                  help='random seed',
                                  type=int,
                                  default=1)
+    other_arg_group.add_argument('--shard_idx',
+                                 help='which shard to run (0-based)',
+                                 type=int,
+                                 default=0)
+    other_arg_group.add_argument('--num_shards',
+                                 help='total number of shards for entity-level parallelism',
+                                 type=int,
+                                 default=1)
     args = argparser.parse_args()
 
     seed(1)
@@ -268,6 +276,16 @@ if __name__ == '__main__':
     f = open(summ_data_path, 'r', encoding='utf-8')
     summ_data = json.load(f)
     f.close()
+
+    # shard slicing for parallel runs (round-robin so review-counts are balanced)
+    if args.num_shards > 1:
+        if isinstance(summ_data, list):
+            summ_data = summ_data[args.shard_idx::args.num_shards]
+        else:
+            keys = sorted(summ_data.keys())[args.shard_idx::args.num_shards]
+            summ_data = {k: summ_data[k] for k in keys}
+        print('[shard {0}/{1}] processing {2} entities'.format(
+            args.shard_idx, args.num_shards, len(summ_data)), flush=True)
 
     # prepare summarization dataset
     summ_dataset = ReviewSummarizationDataset(summ_data,
@@ -447,7 +465,7 @@ if __name__ == '__main__':
             else:
                 summary_sentences = []
 
-            fout = open(file_path, 'w')
+            fout = open(file_path, 'w', encoding='utf-8')
             fout.write(delim.join(summary_sentences))
             fout.close()
 

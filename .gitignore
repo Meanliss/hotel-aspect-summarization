@@ -22,10 +22,14 @@ data/sentencepiece/*.model
 # Raw CSVs at any level
 *.csv
 
-# Outputs: ignore everything except the hasos_english_only run
+# Outputs: ignore everything except the hasos_english_only run and hasos_aspects_run1
 outputs/**
 !outputs/hasos_english_only/
 !outputs/hasos_english_only/**
+!outputs/hasos_aspects_run1/
+!outputs/hasos_aspects_run1/**
+!outputs/hasos_aspects_run1_report.md
+!outputs/hasos_aspects_run1_report.json
 
 # OS / editor cruft
 .DS_Store
