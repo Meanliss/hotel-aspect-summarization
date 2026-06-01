@@ -187,6 +187,30 @@ This was the original motivation to wire the **trained SemAE** path (Pipeline 1)
 
 ---
 
+## Fidelity to the original SemAE repo
+
+Compared to [brcsomnath/SemAE](https://github.com/brcsomnath/SemAE) (ACL 2022):
+
+| Component | Upstream | This repo | Match |
+| --- | --- | --- | :---: |
+| `src/semae.py` (VQ-VAE, codebook, heads) | original | unchanged | ✅ identical |
+| `src/train.py` (warmup + K-means + losses) | default `--epochs 20 --warmup_epochs 4` | unchanged code, invoked with `--epochs 10` | ✅ identical math |
+| `src/aspect_inference.py` (KL ranking, TF-IDF dedupe, max-token truncation) | original | added `--shard_idx/--num_shards`, UTF-8 file write | ✅ scoring math identical |
+| Snapshot naming `<run_id>_<epoch>_model.pt` | yes | yes (`hasos_run1_10_model.pt`) | ✅ |
+| Training dataset | SPACE (~1.1 M reviews) or Amazon | HASOS hotel (50 entities) | dataset swap |
+| Seeds / aspects | 6 (SPACE) | 29 (HASOS taxonomy in `data/seeds_hasos/`) | taxonomy swap |
+| Inference launcher | `evaluate_space_aspect.sh` (single process) | `run_aspect_inference_parallel.py` (4 shards) | wrapper differs, per-shard payload identical |
+| `--sample_sentences` flag (2-step sampling inside cluster) | **enabled** in README example | **disabled** here | ⚠️ deviation |
+
+**Two real deviations to be aware of:**
+
+1. **`--sample_sentences` is off.** The upstream README's aspect-inference example turns it on; we use deterministic top-K by KL score. Output is reproducible but less diverse than the paper's stochastic variant. Easy to flip on in `run_aspect_inference_parallel.py::build_cmd`.
+2. **10 epochs on 50 entities.** SPACE uses 20 epochs on ~1.1 M reviews; here the data:steps ratio is much lower, so the 1024-entry codebook is under-utilised in practice. Quality is still good (28/29 aspects at 100% first-sentence uniqueness) but with more data we'd expect a sharper aspect basis.
+
+Everything else — encoder, quantizer, KL ranking formula, TF-IDF redundancy filter, token budget — is the upstream code path, byte-for-byte.
+
+---
+
 ## How to reproduce
 
 ### Pipeline 1 — Trained SemAE
