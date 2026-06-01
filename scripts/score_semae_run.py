@@ -89,6 +89,22 @@ def load_taxonomy_keywords(tsv: Path):
     return out
 
 
+def load_aspect_descriptions(tsv: Path):
+    """Aspect-code -> a natural-language reference string (name + scale + description + keywords)."""
+    out = {}
+    lines = tsv.read_text(encoding="utf-8").splitlines()
+    for line in lines[1:]:
+        parts = line.split("\t")
+        if len(parts) < 8:
+            continue
+        code = parts[1].strip()
+        scale = parts[2].strip()
+        desc = parts[3].strip()
+        kws = parts[4].strip().replace(",", " ")
+        out[code] = f"{scale}. {desc}. Keywords: {kws}."
+    return out
+
+
 def load_source_index(summary_json: Path):
     """entity_id -> (set of source sentences, list of source tokens)."""
     data = json.loads(summary_json.read_text(encoding="utf-8"))
@@ -115,6 +131,10 @@ def main():
     ap.add_argument("--taxonomy_tsv", default=str(REPO_ROOT / "data" / "hasos" / "aspect_taxonomy.tsv"))
     ap.add_argument("--summary_json", default=str(REPO_ROOT / "data" / "hasos" / "hasos_summ.json"))
     ap.add_argument("--self_bleu_max_pairs", type=int, default=200)
+    ap.add_argument("--bert_score", action="store_true",
+                    help="also compute BERTScore F1 vs aspect description and vs source pool")
+    ap.add_argument("--bert_model", default="roberta-large")
+    ap.add_argument("--bert_batch_size", type=int, default=64)
     args = ap.parse_args()
 
     run_dir = Path(args.outputs_dir) / args.run_id
@@ -123,6 +143,7 @@ def main():
 
     seeds = load_seeds(Path(args.seeds_dir))
     tax = load_taxonomy_keywords(Path(args.taxonomy_tsv))
+    aspect_desc = load_aspect_descriptions(Path(args.taxonomy_tsv))
     # combined keyword set per aspect = seeds ∪ taxonomy
     aspect_kw = {a: seeds.get(a, set()) | tax.get(a, set()) for a in set(seeds) | set(tax)}
 
@@ -133,6 +154,8 @@ def main():
 
     # collect per-aspect summary tokens + per-entity per-aspect tokens for cross-aspect jaccard
     entity_aspect_tokens = defaultdict(dict)
+    # records for optional BERTScore pass: list of (aspect, ent_id, summary_text)
+    summary_records = []
 
     for aspect in all_aspects:
         adir = run_dir / aspect
@@ -197,6 +220,7 @@ def main():
             src_tokens_total += len(src_tokens)
             summary_token_lists.append(s_tokens_all)
             entity_aspect_tokens[ent_id][aspect] = set(s_tokens_all)
+            summary_records.append((aspect, ent_id, text))
 
         # self-BLEU: avg pairwise BLEU-4 across up to N pairs
         pairs = list(combinations(range(len(summary_token_lists)), 2))
@@ -229,6 +253,45 @@ def main():
             jaccards.append(jaccard(t1, t2))
     cross_jacc = sum(jaccards) / len(jaccards) if jaccards else 0.0
 
+    # optional BERTScore F1 (reference-free: vs aspect description and vs entity's source pool)
+    if args.bert_score and summary_records:
+        from bert_score import score as bert_score_fn
+        print(f"[bert] scoring {len(summary_records)} summaries with {args.bert_model} ...")
+        cands = [r[2] for r in summary_records]
+        refs_aspect = [aspect_desc.get(r[0], r[0]) for r in summary_records]
+        # source pool reference: first ~400 source tokens concatenated
+        def source_ref(ent_id):
+            _, src_toks = source.get(ent_id, (set(), []))
+            return " ".join(src_toks[:400]) if src_toks else ""
+        refs_source = [source_ref(r[1]) for r in summary_records]
+
+        device = "cuda" if __import__("torch").cuda.is_available() else "cpu"
+        _, _, f1_aspect = bert_score_fn(
+            cands, refs_aspect, model_type=args.bert_model, lang="en",
+            batch_size=args.bert_batch_size, device=device, verbose=False,
+        )
+        _, _, f1_source = bert_score_fn(
+            cands, refs_source, model_type=args.bert_model, lang="en",
+            batch_size=args.bert_batch_size, device=device, verbose=False,
+        )
+        f1_a = f1_aspect.tolist()
+        f1_s = f1_source.tolist()
+        # aggregate per aspect
+        by_aspect_a = defaultdict(list)
+        by_aspect_s = defaultdict(list)
+        for (aspect, _ent, _txt), fa, fs in zip(summary_records, f1_a, f1_s):
+            by_aspect_a[aspect].append(fa)
+            by_aspect_s[aspect].append(fs)
+        for aspect, vals in by_aspect_a.items():
+            per_aspect[aspect]["bert_f1_aspect"] = sum(vals) / len(vals)
+        for aspect, vals in by_aspect_s.items():
+            per_aspect[aspect]["bert_f1_source"] = sum(vals) / len(vals)
+        macro_bert_a = sum(f1_a) / len(f1_a)
+        macro_bert_s = sum(f1_s) / len(f1_s)
+    else:
+        macro_bert_a = None
+        macro_bert_s = None
+
     # macro aggregates
     def mean(key):
         vals = [v[key] for v in per_aspect.values() if v["n_sentences"] > 0]
@@ -244,6 +307,8 @@ def main():
         "compression_ratio": mean("compression_ratio"),
         "avg_sentence_len": mean("avg_sentence_len"),
         "cross_aspect_jaccard": cross_jacc,
+        "bert_f1_aspect": macro_bert_a,
+        "bert_f1_source": macro_bert_s,
     }
 
     out_json = Path(args.outputs_dir) / f"{args.run_id}_metrics.json"
@@ -264,6 +329,9 @@ def main():
     lines.append(f"| compression_ratio      | {macro['compression_ratio']:.4f} | summary tokens / source tokens (extractive compression) |")
     lines.append(f"| avg_sentence_len       | {macro['avg_sentence_len']:.2f} | mean tokens per summary sentence |")
     lines.append(f"| cross_aspect_jaccard   | {macro['cross_aspect_jaccard']:.4f} | avg token-Jaccard between any two aspect summaries of same entity (lower=better separation) |")
+    if macro.get('bert_f1_aspect') is not None:
+        lines.append(f"| bert_f1_aspect         | {macro['bert_f1_aspect']:.4f} | BERTScore-F1 (raw) between summary and aspect description text (higher=better aspect alignment) |")
+        lines.append(f"| bert_f1_source         | {macro['bert_f1_source']:.4f} | BERTScore-F1 (raw) between summary and entity source-review pool (higher=better semantic fidelity) |")
     lines.append("")
     lines.append("## Per-aspect breakdown\n")
     header = "| Aspect | n_files | n_sents | src_fid | kw_cov | purity | distinct1 | distinct2 | self_bleu4 | compr | avg_len |"
@@ -284,7 +352,10 @@ def main():
     print()
     print("Macro:")
     for k, v in macro.items():
-        print(f"  {k:25s} {v:.4f}")
+        if v is None:
+            print(f"  {k:25s} (skipped)")
+        else:
+            print(f"  {k:25s} {v:.4f}")
 
 
 if __name__ == "__main__":

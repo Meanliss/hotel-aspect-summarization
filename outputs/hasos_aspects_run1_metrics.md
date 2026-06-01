@@ -13,6 +13,8 @@
 | compression_ratio      | 0.0028 | summary tokens / source tokens (extractive compression) |
 | avg_sentence_len       | 15.95 | mean tokens per summary sentence |
 | cross_aspect_jaccard   | 0.1013 | avg token-Jaccard between any two aspect summaries of same entity (lower=better separation) |
+| bert_f1_aspect         | 0.8126 | BERTScore-F1 (raw) between summary and aspect description text (higher=better aspect alignment) |
+| bert_f1_source         | 0.8072 | BERTScore-F1 (raw) between summary and entity source-review pool (higher=better semantic fidelity) |
 
 ## Per-aspect breakdown
 

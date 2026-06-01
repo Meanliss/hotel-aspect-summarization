@@ -45,6 +45,8 @@ Computed by [scripts/score_semae_run.py](scripts/score_semae_run.py) over all 1,
 | **compression_ratio** | 0.0028 | Summary tokens / source tokens — each aspect summary is ~0.28% of the source review pool (≈40 tokens out of ~14k). |
 | **avg_sentence_len** | 15.95 | Mean tokens per extracted sentence — typical review prose. |
 | **cross_aspect_jaccard** | 0.1013 | Avg token-Jaccard between any two aspect summaries of the **same entity**. Low = aspects produce well-separated extracts (not 29 paraphrases of the same paragraph). |
+| **bert_f1_aspect** | 0.8126 | BERTScore-F1 (roberta-large, raw) between each summary and its target-aspect description text. >0.80 = summaries are semantically aligned with the aspect concept, not just keyword-overlapping. |
+| **bert_f1_source** | 0.8072 | BERTScore-F1 between summary and the entity's source-review pool (first ~400 tokens). High value confirms the extracted content is semantically anchored in the source, not hallucinated. |
 
 Why no ROUGE: HASOS hotel reviews come without reference summaries. ROUGE requires gold. The metrics above are the standard reference-free set used in extractive opinion summarization literature.
 
