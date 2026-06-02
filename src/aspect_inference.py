@@ -173,6 +173,15 @@ if __name__ == '__main__':
         '--newline_sentence_split',
         help='one sentence per line (don\'t use if evaluating with ROUGE)',
         action='store_true')
+    out_arg_group.add_argument(
+        '--sentiment_split',
+        help='also write per-sentiment files in <output_path>_sentiment/',
+        action='store_true')
+    out_arg_group.add_argument(
+        '--taxonomy',
+        help='taxonomy JSON for sentiment keywords (default: ../data/hasos/aspect_taxonomy.json)',
+        type=str,
+        default='../data/hasos/aspect_taxonomy.json')
 
     other_arg_group = argparser.add_argument_group('Other arguments')
     other_arg_group.add_argument('--run_id',
@@ -362,6 +371,39 @@ if __name__ == '__main__':
         return results
 
     all_texts = []
+
+    # Load taxonomy sentiment keywords for --sentiment_split
+    taxonomy_sentiment = {}
+    if args.sentiment_split:
+        with open(args.taxonomy, 'r', encoding='utf-8') as tf:
+            taxonomy_data = json.load(tf)
+        # Handle both formats: {"aspects": [...]} or [...]
+        entries = taxonomy_data['aspects'] if isinstance(taxonomy_data, dict) else taxonomy_data
+        for entry in entries:
+            code = entry.get('CODE') or entry.get('code')
+            pos_key = 'POSITIVE_SENTIMENT_KEYWORDS' if 'POSITIVE_SENTIMENT_KEYWORDS' in entry else 'positive_sentiment_keywords'
+            neg_key = 'NEGATIVE_SENTIMENT_KEYWORDS' if 'NEGATIVE_SENTIMENT_KEYWORDS' in entry else 'negative_sentiment_keywords'
+            neu_key = 'NEUTRAL_SENTIMENT_KEYWORDS' if 'NEUTRAL_SENTIMENT_KEYWORDS' in entry else 'neutral_sentiment_keywords'
+            taxonomy_sentiment[code] = {
+                'pos': set(w.lower() for w in entry.get(pos_key, [])),
+                'neg': set(w.lower() for w in entry.get(neg_key, [])),
+                'neu': set(w.lower() for w in entry.get(neu_key, [])),
+            }
+        print('[sentiment] loaded keywords for {0} aspects'.format(len(taxonomy_sentiment)))
+
+    def classify_sentiment(sentence, aspect):
+        """Keyword-based sentiment: count keyword hits, return pos/neg/neu."""
+        if aspect not in taxonomy_sentiment:
+            return 'neu'
+        sent_lower = sentence.lower()
+        scores = {}
+        for label, keywords in taxonomy_sentiment[aspect].items():
+            scores[label] = sum(1 for kw in keywords if kw in sent_lower)
+        best = max(scores, key=scores.get)
+        if scores[best] == 0:
+            return 'neu'
+        return best
+
     ranked_entity_sentences = defaultdict(dict)
 
     with torch.no_grad():
@@ -468,6 +510,25 @@ if __name__ == '__main__':
             fout = open(file_path, 'w', encoding='utf-8')
             fout.write(delim.join(summary_sentences))
             fout.close()
+
+            # Sentiment-split write
+            if args.sentiment_split and summary_sentences:
+                sentiment_root = output_path + '_sentiment'
+                buckets = {'pos': [], 'neg': [], 'neu': []}
+                for sent in summary_sentences:
+                    label = classify_sentiment(sent, aspect)
+                    buckets[label].append(sent)
+
+                prefix = 'dev_' if entity_id in summ_dataset.dev_entity_ids else 'test_'
+                for label, sents in buckets.items():
+                    if not sents:
+                        continue
+                    sent_dir = os.path.join(sentiment_root,
+                                            '{0}__{1}'.format(aspect, label))
+                    os.makedirs(sent_dir, exist_ok=True)
+                    with open(os.path.join(sent_dir, prefix + entity_id),
+                              'w', encoding='utf-8') as fs:
+                        fs.write(delim.join(sents))
 
         if args.no_eval:
             continue
