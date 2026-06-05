@@ -13,7 +13,7 @@
 
 set -euo pipefail
 
-API_KEY="ef2f7426247eb93575d02a8e5f1da86ae1ec7a640d101abe3439e0f1c409f253"
+API_KEY="${VAST_API_KEY:?Set VAST_API_KEY before running this script}"
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 MODEL_DIR="$PROJECT_DIR/models"
 LOG_FILE="$PROJECT_DIR/logs/vastai_train.log"

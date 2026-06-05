@@ -362,6 +362,15 @@ class ReviewCollator():
     def collate_reviews_generation(self, samples):
         '''Collates samples in a batch, by adding appropriate padding and bos/eos tokens'''
         src_reviews, labels, _ = zip(*samples)
+        return self._collate_reviews_generation(src_reviews)
+
+    def collate_reviews_generation_with_ids(self, samples):
+        '''Collates generation samples and keeps source full_ids for diagnostics.'''
+        src_reviews, labels, full_ids = zip(*samples)
+        src, tgt, gld = self._collate_reviews_generation(src_reviews)
+        return src, tgt, gld, full_ids
+
+    def _collate_reviews_generation(self, src_reviews):
         max_tokens = max([
             len(src_sentence) for src_review in src_reviews
             for src_sentence in src_review

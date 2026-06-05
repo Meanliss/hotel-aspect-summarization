@@ -50,6 +50,8 @@ def build_cmd(args, shard_idx, shard_run_id):
         "--num_shards", str(args.num_shards),
         "--sample_sentences",
         "--no_eval",
+        "--trace_jsonl", str(LOGS_DIR / f"{shard_run_id}.trace.jsonl"),
+        "--trace_sample_limit", str(args.trace_sample_limit),
     ]
     if args.sentiment_split:
         cmd.append("--sentiment_split")
@@ -118,6 +120,8 @@ def main():
                         help="comma-separated aspect codes; default: taxonomy")
     parser.add_argument("--sentiment_split", action="store_true",
                         help="enable keyword-based sentiment splitting")
+    parser.add_argument("--trace_sample_limit", type=int, default=40,
+                        help="max trace sample rows emitted per shard")
     parser.add_argument("--keep_shards", action="store_true",
                         help="don't delete per-shard output folders")
     args = parser.parse_args()
@@ -133,6 +137,7 @@ def main():
     processes = []
     log_files = []
     print(f"[main] launching {args.num_shards} shards on GPU {args.gpu}")
+    print(f"[main] trace_sample_limit={args.trace_sample_limit}")
     if args.sentiment_split:
         print("[main] sentiment_split ENABLED — will write <run_id>_sentiment/ tree")
     start = time.time()

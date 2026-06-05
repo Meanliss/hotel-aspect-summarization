@@ -20,6 +20,7 @@ class SequenceQuantizerSoftEMA(nn.Module):
                  num_samples=10,
                  temp=1.0,
                  epsilon=1e-5,
+                 safe_normalize=False,
                  padding_idx=None):
         super(SequenceQuantizerSoftEMA, self).__init__()
 
@@ -38,6 +39,13 @@ class SequenceQuantizerSoftEMA(nn.Module):
         self.temp = temp
 
         self._epsilon = epsilon
+        self.safe_normalize = safe_normalize
+
+    def normalize(self, tensor):
+        norm = tensor.norm(2, dim=1)[:, None]
+        if self.safe_normalize:
+            norm = norm.clamp_min(self._epsilon)
+        return tensor / norm
 
     def entropy(self, tensor):
         return torch.mean(
@@ -66,8 +74,8 @@ class SequenceQuantizerSoftEMA(nn.Module):
         flat_input = inputs.reshape(-1, self.d_model)
 
         # Calculate distances
-        norm_C = self.codebook / self.codebook.norm(2, dim=1)[:, None]
-        flat_input = flat_input / flat_input.norm(2, dim=1)[:, None]
+        norm_C = self.normalize(self.codebook)
+        flat_input = self.normalize(flat_input)
 
         # (input size x codebook size)
         distances = F.softmax(torch.matmul(flat_input, norm_C.t()), dim=1)
@@ -93,8 +101,8 @@ class SequenceQuantizerSoftEMA(nn.Module):
         # Flatten input
         flat_input = inputs.reshape(-1, self.d_model)
 
-        flat_input = flat_input / flat_input.norm(2, dim=1)[:, None]
-        codebook = self.codebook / self.codebook.norm(2, dim=1)[:, None]
+        flat_input = self.normalize(flat_input)
+        codebook = self.normalize(self.codebook)
 
         # Calculate distances
         distances = F.softmax(torch.matmul(flat_input, codebook.t()).reshape(
@@ -122,6 +130,7 @@ class TransformerDocumentQuantizerSoftEMA(SequenceQuantizerSoftEMA):
                  entropy_cost=0.00005,
                  ema_decay=0.99,
                  epsilon=1e-5,
+                 safe_normalize=False,
                  nlayers=3,
                  internal_nheads=4,
                  output_nheads=4,
@@ -135,7 +144,8 @@ class TransformerDocumentQuantizerSoftEMA(SequenceQuantizerSoftEMA):
                              entropy_cost=entropy_cost,
                              temp=temp,
                              num_samples=num_samples,
-                             epsilon=epsilon)
+                             epsilon=epsilon,
+                             safe_normalize=safe_normalize)
         self.nlayers = nlayers
         self.internal_nheads = internal_nheads
         self.output_nheads = output_nheads

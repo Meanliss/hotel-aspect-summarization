@@ -7,6 +7,7 @@ import json
 import argparse
 from random import seed
 import re
+import time
 
 try:
     from nltk.corpus import stopwords
@@ -182,6 +183,16 @@ if __name__ == '__main__':
         help='taxonomy JSON for sentiment keywords (default: ../data/hasos/aspect_taxonomy.json)',
         type=str,
         default='../data/hasos/aspect_taxonomy.json')
+    out_arg_group.add_argument(
+        '--trace_jsonl',
+        help='optional JSONL trace path for pipeline stage/sample logs',
+        type=str,
+        default='')
+    out_arg_group.add_argument(
+        '--trace_sample_limit',
+        help='max ranked/write sample rows to emit into trace_jsonl',
+        type=int,
+        default=30)
 
     other_arg_group = argparser.add_argument_group('Other arguments')
     other_arg_group.add_argument('--run_id',
@@ -241,6 +252,36 @@ if __name__ == '__main__':
 
     assert args.model != '', 'Please give model path'
 
+    trace_file = None
+
+    def emit_trace(stage, **payload):
+        if trace_file is None:
+            return
+        row = {
+            'time': time.strftime('%Y-%m-%dT%H:%M:%S%z'),
+            'stage': stage,
+            'run_id': args.run_id,
+            'shard_idx': args.shard_idx,
+            'num_shards': args.num_shards,
+        }
+        row.update(payload)
+        trace_file.write(json.dumps(row, ensure_ascii=False) + '\n')
+        trace_file.flush()
+
+    if args.trace_jsonl:
+        os.makedirs(os.path.dirname(os.path.abspath(args.trace_jsonl)),
+                  exist_ok=True)
+        trace_file = open(args.trace_jsonl, 'w', encoding='utf-8')
+        emit_trace('start',
+                   summary_data=summ_data_path,
+                   model=model_path,
+                   sentencepiece=spm_path,
+                   seedsdir=seeds_path,
+                   output_path=output_path,
+                   sentiment_split=bool(args.sentiment_split),
+                   max_tokens=args.max_tokens,
+                   beta=beta)
+
     # read aspect seed words
     aspects = args.gold_aspects.split(',')
     num_aspects = len(aspects)
@@ -263,6 +304,10 @@ if __name__ == '__main__':
             seeds[seed_word.lower()] = True
         f.close()
         aspect_seeds[aspect] = seeds
+    emit_trace('seeds_loaded',
+               aspects=len(aspects),
+               max_num_seeds=args.max_num_seeds,
+               seedsdir=seeds_path)
 
     # aspect mapping tools
     token_pattern = re.compile(r'(?u)\b\w\w+\b')
@@ -285,6 +330,8 @@ if __name__ == '__main__':
     f = open(summ_data_path, 'r', encoding='utf-8')
     summ_data = json.load(f)
     f.close()
+    emit_trace('summary_data_loaded',
+               entities=len(summ_data) if hasattr(summ_data, '__len__') else None)
 
     # shard slicing for parallel runs (round-robin so review-counts are balanced)
     if args.num_shards > 1:
@@ -295,6 +342,10 @@ if __name__ == '__main__':
             summ_data = {k: summ_data[k] for k in keys}
         print('[shard {0}/{1}] processing {2} entities'.format(
             args.shard_idx, args.num_shards, len(summ_data)), flush=True)
+        emit_trace('shard_selected',
+                   entities=len(summ_data),
+                   shard_idx=args.shard_idx,
+                   num_shards=args.num_shards)
 
     # prepare summarization dataset
     summ_dataset = ReviewSummarizationDataset(summ_data,
@@ -307,6 +358,12 @@ if __name__ == '__main__':
     bos_id = summ_dataset.bos_id()
     eos_id = summ_dataset.eos_id()
     unk_id = summ_dataset.unk_id()
+    emit_trace('dataset_prepared',
+               vocab_size=vocab_size,
+               pad_id=pad_id,
+               bos_id=bos_id,
+               eos_id=eos_id,
+               unk_id=unk_id)
 
     # wrapper for collate function
     collator = ReviewCollator(padding_idx=pad_id,
@@ -336,6 +393,11 @@ if __name__ == '__main__':
     codebook_size = model.codebook_size
     d_model = model.d_model
     model.eval()
+    emit_trace('model_loaded',
+               nheads=nheads,
+               codebook_size=codebook_size,
+               d_model=d_model,
+               device=str(device))
 
     # Prepare Aspect data
     def normalize_tokens(text):
@@ -390,6 +452,10 @@ if __name__ == '__main__':
                 'neu': set(w.lower() for w in entry.get(neu_key, [])),
             }
         print('[sentiment] loaded keywords for {0} aspects'.format(len(taxonomy_sentiment)))
+        emit_trace('sentiment_taxonomy_loaded',
+                   aspects=len(taxonomy_sentiment),
+                   taxonomy=args.taxonomy,
+                   method='taxonomy_keyword_post_rank')
 
     def classify_sentiment(sentence, aspect):
         """Keyword-based sentiment: count keyword hits, return pos/neg/neu."""
@@ -405,20 +471,28 @@ if __name__ == '__main__':
         return best
 
     ranked_entity_sentences = defaultdict(dict)
+    ranked_entity_records = defaultdict(dict)
+    trace_ranked_samples = 0
 
     with torch.no_grad():
         for entity_id, entity_loader in tqdm(summ_dls.items()):
+            current_entity_id = entity_id
             texts = []
+            text_sources = []
             distances = []
 
             for batch in entity_loader:
                 src = batch[0].to(device)
                 ids = batch[2]
                 for full_id in ids:
-                    entity_id, review_id = full_id.split('__')
-                    texts.extend(
-                        summ_dataset.reviews[entity_id][review_id]
-                        [:args.max_rev_len])
+                    source_entity_id, review_id = full_id.split('__')
+                    review_sents = summ_dataset.reviews[source_entity_id][
+                        review_id][:args.max_rev_len]
+                    texts.extend(review_sents)
+                    text_sources.extend([{
+                        'entity_id': source_entity_id,
+                        'review_id': review_id
+                    } for _ in review_sents])
 
                 batch_size, nsent, ntokens = src.size()
 
@@ -437,6 +511,10 @@ if __name__ == '__main__':
 
             distances = torch.stack(distances)
             P_k = torch.mean(distances, dim=0)
+            emit_trace('entity_encoded',
+                       entity_id=current_entity_id,
+                       sentences=len(texts),
+                       aspect_candidates=len(aspect_wise_sentences))
 
             for aspect in aspect_wise_sentences.keys():
                 aspect_dist = []
@@ -460,8 +538,30 @@ if __name__ == '__main__':
                 ranked_sentence_texts = [
                     texts[idx] for idx in ranked_sentence_indices
                 ]
-                ranked_entity_sentences[entity_id][
+                ranked_entity_sentences[current_entity_id][
                     aspect] = ranked_sentence_texts
+                ranked_records = []
+                for rank, idx in enumerate(ranked_sentence_indices, 1):
+                    source = text_sources[idx] if idx < len(text_sources) else {}
+                    ranked_records.append({
+                        'rank': rank,
+                        'score': float(dist[idx]),
+                        'sentence': texts[idx],
+                        'review_id': source.get('review_id'),
+                    })
+                ranked_entity_records[current_entity_id][aspect] = ranked_records
+                if trace_ranked_samples < args.trace_sample_limit:
+                    for rec in ranked_records[:3]:
+                        if trace_ranked_samples >= args.trace_sample_limit:
+                            break
+                        emit_trace('ranked_sentence_sample',
+                                   entity_id=current_entity_id,
+                                   aspect=aspect,
+                                   rank=rec['rank'],
+                                   score=rec['score'],
+                                   review_id=rec.get('review_id'),
+                                   sentence=rec['sentence'])
+                        trace_ranked_samples += 1
 
             all_texts.extend(texts)
 
@@ -476,6 +576,7 @@ if __name__ == '__main__':
     # write summaries
     dict_results = {'dev': {}, 'test': {}, 'all': {}}
     all_outputs = []
+    trace_write_samples = 0
 
     if args.newline_sentence_split:
         delim = '\n'
@@ -510,9 +611,17 @@ if __name__ == '__main__':
             fout = open(file_path, 'w', encoding='utf-8')
             fout.write(delim.join(summary_sentences))
             fout.close()
+            if trace_write_samples < args.trace_sample_limit:
+                emit_trace('summary_written',
+                           entity_id=entity_id,
+                           aspect=aspect,
+                           output_path=file_path,
+                           sentences=len(summary_sentences),
+                           summary=delim.join(summary_sentences))
+                trace_write_samples += 1
 
             # Sentiment-split write
-            if args.sentiment_split and summary_sentences:
+            if args.sentiment_split:
                 sentiment_root = output_path + '_sentiment'
                 buckets = {'pos': [], 'neg': [], 'neu': []}
                 for sent in summary_sentences:
@@ -521,14 +630,20 @@ if __name__ == '__main__':
 
                 prefix = 'dev_' if entity_id in summ_dataset.dev_entity_ids else 'test_'
                 for label, sents in buckets.items():
-                    if not sents:
-                        continue
                     sent_dir = os.path.join(sentiment_root,
                                             '{0}__{1}'.format(aspect, label))
                     os.makedirs(sent_dir, exist_ok=True)
-                    with open(os.path.join(sent_dir, prefix + entity_id),
-                              'w', encoding='utf-8') as fs:
+                    sent_path = os.path.join(sent_dir, prefix + entity_id)
+                    with open(sent_path, 'w', encoding='utf-8') as fs:
                         fs.write(delim.join(sents))
+                    if trace_write_samples < args.trace_sample_limit:
+                        emit_trace('sentiment_written',
+                                   entity_id=entity_id,
+                                   aspect=aspect,
+                                   sentiment=label,
+                                   output_path=sent_path,
+                                   sentences=len(sents))
+                        trace_write_samples += 1
 
         if args.no_eval:
             continue
@@ -568,6 +683,9 @@ if __name__ == '__main__':
 
     if args.no_eval:
         print('Skipping ROUGE evaluation because --no_eval was set.')
+        emit_trace('complete', no_eval=True)
+        if trace_file is not None:
+            trace_file.close()
         raise SystemExit(0)
 
     ftxt = open(os.path.join(eval_path, 'eval_{0}.txt'.format(args.run_id)),
@@ -580,3 +698,6 @@ if __name__ == '__main__':
                  encoding='utf-8')
     fjson.write(json.dumps(dict_results))
     fjson.close()
+    emit_trace('complete', no_eval=False)
+    if trace_file is not None:
+        trace_file.close()

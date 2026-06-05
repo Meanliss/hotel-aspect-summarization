@@ -1,4 +1,5 @@
 import argparse
+from contextlib import nullcontext
 import json
 import os.path
 from random import seed
@@ -33,6 +34,172 @@ from utils.training import *
 
 # parts of the code has been
 # adapted from: https://github.com/stangelid/qt
+
+def tensor_summary(tensor):
+    tensor = tensor.detach()
+    finite = torch.isfinite(tensor)
+    finite_count = int(finite.sum().item())
+    total = tensor.numel()
+    if finite_count == 0:
+        return {
+            'finite': 0,
+            'total': total,
+            'min': None,
+            'max': None,
+            'mean_abs': None,
+        }
+    values = tensor[finite]
+    return {
+        'finite': finite_count,
+        'total': total,
+        'min': float(values.min().item()),
+        'max': float(values.max().item()),
+        'mean_abs': float(values.abs().mean().item()),
+    }
+
+
+def first_bad_parameter(model):
+    for name, param in model.named_parameters():
+        tensors = []
+        if param is not None:
+            tensors.append(('param', param.data))
+        if param.grad is not None:
+            tensors.append(('grad', param.grad.data))
+        for kind, tensor in tensors:
+            finite = torch.isfinite(tensor)
+            if not bool(finite.all().item()):
+                bad = int((~finite).sum().item())
+                return name, kind, bad, tensor_summary(tensor)
+    return None
+
+
+def grad_report(model):
+    report = {
+        'bad_tensors': 0,
+        'bad_elements': 0,
+        'first_bad': None,
+        'max_abs_grad': 0.0,
+        'robust_norm': 0.0,
+        'grad_tensors': 0,
+    }
+    for name, param in model.named_parameters():
+        if param.grad is None:
+            continue
+        report['grad_tensors'] += 1
+        grad = param.grad.detach()
+        finite = torch.isfinite(grad)
+        if not bool(finite.all().item()):
+            bad = int((~finite).sum().item())
+            report['bad_tensors'] += 1
+            report['bad_elements'] += bad
+            if report['first_bad'] is None:
+                report['first_bad'] = {
+                    'name': name,
+                    'bad_elements': bad,
+                    'summary': tensor_summary(grad),
+                }
+            grad = grad[finite]
+        if grad.numel() == 0:
+            continue
+        max_abs = float(grad.abs().max().item())
+        if max_abs > report['max_abs_grad']:
+            report['max_abs_grad'] = max_abs
+    if report['max_abs_grad'] == 0.0:
+        return report
+    scaled_sq_sum = 0.0
+    scale = report['max_abs_grad']
+    for param in model.parameters():
+        if param.grad is None:
+            continue
+        grad = param.grad.detach()
+        finite = torch.isfinite(grad)
+        grad = grad[finite]
+        if grad.numel() == 0:
+            continue
+        scaled = grad.to(dtype=torch.float64) / scale
+        scaled_sq_sum += float(torch.sum(scaled * scaled).item())
+    report['robust_norm'] = float(scale * np.sqrt(scaled_sq_sum))
+    return report
+
+
+def zero_bad_grad_values(model):
+    for param in model.parameters():
+        if param.grad is None:
+            continue
+        finite = torch.isfinite(param.grad)
+        if not bool(finite.all().item()):
+            param.grad.data = torch.where(finite, param.grad.data,
+                                          torch.zeros_like(param.grad.data))
+
+
+def clip_gradients(model, max_norm, report):
+    if max_norm <= 0.0:
+        return 0.0
+    if report['bad_elements'] > 0:
+        return report['robust_norm']
+    norm = report['robust_norm']
+    if norm > max_norm and norm > 0.0:
+        scale = max_norm / (norm + 1e-12)
+        for param in model.parameters():
+            if param.grad is not None:
+                param.grad.data.mul_(scale)
+    return norm
+
+
+def batch_diagnostics(src, tgt, gld, full_ids):
+    src_ne_pad = src != 0
+    sent_lengths = src_ne_pad.sum(dim=2)
+    review_lengths = (sent_lengths > 0).sum(dim=1)
+    return {
+        'ids': list(full_ids) if full_ids is not None else [],
+        'batch_size': int(src.size(0)),
+        'max_sentences': int(src.size(1)),
+        'max_src_tokens': int(src.size(2)),
+        'max_tgt_tokens': int(tgt.size(2)),
+        'non_padding_tokens': int((tgt != 0).sum().item()),
+        'review_lengths': [int(x) for x in review_lengths.detach().cpu()],
+        'max_sentence_tokens': int(sent_lengths.max().item()),
+        'zero_sentence_slots': int((sent_lengths == 0).sum().item()),
+    }
+
+
+def log_nonfinite(prefix, epoch, batch_idx, loss, g_loss, q_loss, src, tgt, gld,
+                  full_ids, extra=None):
+    print('NONFINITE_DIAGNOSTIC {0} epoch={1} batch={2}'.format(
+        prefix, epoch + 1, batch_idx))
+    print('  loss={0} g_loss={1} q_loss={2}'.format(
+        float(loss.detach().item()) if torch.is_tensor(loss) and loss.numel() == 1 else loss,
+        float(g_loss.detach().item()) if torch.is_tensor(g_loss) and g_loss.numel() == 1 else g_loss,
+        float(q_loss.detach().item()) if torch.is_tensor(q_loss) and q_loss.numel() == 1 else q_loss))
+    print('  batch={0}'.format(batch_diagnostics(src, tgt, gld, full_ids)))
+    if extra is not None:
+        print('  extra={0}'.format(extra))
+
+
+def finite_tensor_info(name, tensor):
+    summary = tensor_summary(tensor)
+    return '{0}: finite={1}/{2} min={3} max={4} mean_abs={5}'.format(
+        name, summary['finite'], summary['total'], summary['min'],
+        summary['max'], summary['mean_abs'])
+
+
+def parse_epoch_batch_limits(value):
+    limits = {}
+    if not value:
+        return limits
+    for item in value.split(','):
+        item = item.strip()
+        if not item:
+            continue
+        epoch_text, batch_text = item.split(':', 1)
+        epoch = int(epoch_text)
+        batch = int(batch_text)
+        if epoch <= 0 or batch <= 0:
+            raise ValueError('Epoch and batch limits must be positive: {0}'.
+                             format(item))
+        limits[epoch] = batch
+    return limits
+
 
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser(
@@ -143,6 +310,60 @@ if __name__ == '__main__':
         help='VQ-VAE commitment coefficient (default: 0.00005)',
         type=float,
         default=0.00005)
+    train_arg_group.add_argument(
+        '--grad_clip',
+        help='clip gradient norm to this value; disabled if <= 0 (default: 0)',
+        type=float,
+        default=0.0)
+    train_arg_group.add_argument(
+        '--skip_nonfinite',
+        help='compat alias for --nonfinite_policy skip',
+        action='store_true')
+    train_arg_group.add_argument(
+        '--diagnose_nonfinite',
+        help='log loss, batch, parameter, and gradient diagnostics',
+        action='store_true')
+    train_arg_group.add_argument(
+        '--nonfinite_policy',
+        help='what to do when loss/gradients contain NaN/Inf (default: fail)',
+        choices=['fail', 'skip', 'zero_bad_grads'],
+        default='fail')
+    train_arg_group.add_argument(
+        '--safe_normalize',
+        help='clamp quantizer normalization denominators by epsilon',
+        action='store_true')
+    train_arg_group.add_argument(
+        '--normalize_epsilon',
+        help='epsilon used by --safe_normalize (default: 1e-5)',
+        type=float,
+        default=1e-5)
+    train_arg_group.add_argument(
+        '--max_train_batches',
+        help='optional per-epoch train batch limit for diagnostics',
+        type=int,
+        default=None)
+    train_arg_group.add_argument(
+        '--max_train_batches_by_epoch',
+        help='comma-separated 1-indexed limits like 1:11061,2:1409',
+        default='')
+    train_arg_group.add_argument(
+        '--detect_anomaly_batch',
+        help='enable torch autograd anomaly detection for this 1-indexed train batch',
+        type=int,
+        default=None)
+    train_arg_group.add_argument(
+        '--detect_anomaly_epoch',
+        help='epoch used with --detect_anomaly_batch (1-indexed, default: any epoch)',
+        type=int,
+        default=None)
+    train_arg_group.add_argument(
+        '--bool_attn_masks',
+        help='use boolean causal attention masks to match PyTorch padding mask dtype',
+        action='store_true')
+    train_arg_group.add_argument(
+        '--disable_tf32',
+        help='disable TF32 matmul/cudnn kernels for numerical diagnostics',
+        action='store_true')
 
     train_arg_group = argparser.add_argument_group('Soft EMA hyperparams')
     train_arg_group.add_argument(
@@ -232,6 +453,16 @@ if __name__ == '__main__':
         help='number of iterations for kmeans (default: 50)',
         type=int,
         default=50)
+    kmeans_arg_group.add_argument(
+        '--kmeans_bad_vector_policy',
+        help='what to do when K-means input has zero/non-finite vectors',
+        choices=['fail', 'filter'],
+        default='fail')
+    kmeans_arg_group.add_argument(
+        '--kmeans_max_bad_vectors',
+        help='max zero/non-finite K-means vectors allowed when filtering',
+        type=int,
+        default=0)
 
     other_arg_group = argparser.add_argument_group('Other arguments')
     other_arg_group.add_argument(
@@ -274,10 +505,35 @@ if __name__ == '__main__':
         'random seed for dataset (only affects batching and entity subsampling)',
         type=int,
         default=1)
+    other_arg_group.add_argument(
+        '--no_eval',
+        help='skip dev/test evaluation after train epoch',
+        action='store_true')
+    other_arg_group.add_argument(
+        '--resume_model',
+        help='load a saved model snapshot before training',
+        type=str,
+        default='')
+    other_arg_group.add_argument(
+        '--start_epoch',
+        help='zero-based epoch index to resume from',
+        type=int,
+        default=0)
 
     args = argparser.parse_args()
+    if args.skip_nonfinite:
+        args.nonfinite_policy = 'skip'
+    max_train_batches_by_epoch = parse_epoch_batch_limits(
+        args.max_train_batches_by_epoch)
 
     seed(args.data_seed)
+    if args.disable_tf32:
+        torch.backends.cuda.matmul.allow_tf32 = False
+        torch.backends.cudnn.allow_tf32 = False
+        try:
+            torch.set_float32_matmul_precision('highest')
+        except AttributeError:
+            pass
 
     if args.gpu >= 0:
         device = torch.device('cuda:{0}'.format(args.gpu))
@@ -288,6 +544,9 @@ if __name__ == '__main__':
     spm_path = args.sentencepiece
     save_path = args.savedir
     log_path = args.logdir
+    os.makedirs(save_path, exist_ok=True)
+    if log_path != '':
+        os.makedirs(log_path, exist_ok=True)
 
     # read data from json file
     print("Reading data ...")
@@ -323,9 +582,12 @@ if __name__ == '__main__':
                               eos_idx=dataset.eos_id())
 
     # one dataloader per split
+    train_collate_fn = collator.collate_reviews_generation
+    if args.diagnose_nonfinite:
+        train_collate_fn = collator.collate_reviews_generation_with_ids
     train_dl = DataLoader(dataset,
                           batch_sampler=train_sampler,
-                          collate_fn=collator.collate_reviews_generation)
+                          collate_fn=train_collate_fn)
     dev_dl = DataLoader(dataset,
                         batch_sampler=dev_sampler,
                         collate_fn=collator.collate_reviews_generation)
@@ -357,10 +619,17 @@ if __name__ == '__main__':
                                      d_ff=args.d_ff,
                                      use_in_pos=args.in_pos,
                                      use_out_pos=args.out_pos,
+                                     use_bool_attention_masks=args.bool_attn_masks,
                                      ema_decay=args.ema_decay,
+                                     epsilon=args.normalize_epsilon,
+                                     safe_normalize=args.safe_normalize,
                                      dropout=args.dropout)
 
     model.to(device)
+    if args.resume_model != '':
+        print('Loading resume model: {0}'.format(args.resume_model))
+        model = torch.load(args.resume_model, map_location=device)
+        model.to(device)
 
     # prepare optimizer and learning rate scheduler
     if args.lr_drop_all:
@@ -409,11 +678,23 @@ if __name__ == '__main__':
     if args.logdir != '':
         tb_writer = tb.SummaryWriter(os.path.join(log_path, args.run_id))
 
-    for epoch in range(args.epochs):
+    for epoch in range(args.start_epoch, args.epochs):
+        train_batch_limit = max_train_batches_by_epoch.get(
+            epoch + 1, args.max_train_batches)
         # initialize loss and counts for accuracy
         running_loss = 0.0
         running_g_loss = 0.0
         running_q_loss = 0.0
+        epoch_stats = {
+            'finite_batches': 0,
+            'skipped_batches': 0,
+            'bad_loss_batches': 0,
+            'bad_grad_batches': 0,
+            'zeroed_bad_grad_batches': 0,
+            'max_grad_norm': 0.0,
+            'max_abs_grad': 0.0,
+            'first_bad': None,
+        }
         model.train()
 
         # quantize or not
@@ -428,7 +709,11 @@ if __name__ == '__main__':
                     if i == args.kmeans_batches:
                         break
 
-                    src, tgt, gld = [x.to(device) for x in batch]
+                    if args.diagnose_nonfinite:
+                        src, tgt, gld, _ = batch
+                    else:
+                        src, tgt, gld = batch
+                    src, tgt, gld = [x.to(device) for x in (src, tgt, gld)]
                     out, _ = model.encode(src, quantize=False)
                     sentence_vecs.append(
                         out.reshape(-1, args.d_model).detach().to('cpu'))
@@ -436,6 +721,27 @@ if __name__ == '__main__':
                                           dim=0).detach().numpy()
 
                 length = np.sqrt((sentence_vecs**2).sum(axis=1))[:, None]
+                valid = np.isfinite(sentence_vecs).all(axis=1) \
+                    & np.isfinite(length[:, 0]) & (length[:, 0] > 0)
+                bad_vectors = int((~valid).sum())
+                if bad_vectors > 0:
+                    print('KMEANS_VECTOR_DIAGNOSTIC total={0} bad={1} policy={2}'.
+                          format(sentence_vecs.shape[0], bad_vectors,
+                                 args.kmeans_bad_vector_policy))
+                    if args.kmeans_bad_vector_policy == 'fail':
+                        raise ValueError(
+                            'K-means input has {0} zero/non-finite vectors'.
+                            format(bad_vectors))
+                    if bad_vectors > args.kmeans_max_bad_vectors:
+                        raise ValueError(
+                            'K-means bad vector count {0} exceeds limit {1}'.
+                            format(bad_vectors, args.kmeans_max_bad_vectors))
+                    sentence_vecs = sentence_vecs[valid]
+                    length = length[valid]
+                if sentence_vecs.shape[0] < args.codebook_size:
+                    raise ValueError(
+                        'Not enough finite vectors for K-means: {0} < {1}'.
+                        format(sentence_vecs.shape[0], args.codebook_size))
                 sentence_vecs = sentence_vecs / length
 
                 kmeans_codebook, _ = kmeans(sentence_vecs,
@@ -465,7 +771,12 @@ if __name__ == '__main__':
 
         train_dataloader = tqdm(train_dl)
         for i, batch in enumerate(train_dataloader, 1):
-            src, tgt, gld = [x.to(device) for x in batch]
+            full_ids = None
+            if args.diagnose_nonfinite:
+                src, tgt, gld, full_ids = batch
+            else:
+                src, tgt, gld = batch
+            src, tgt, gld = [x.to(device) for x in (src, tgt, gld)]
             batch_size, nsent, src_ntokens = src.size()
 
             optimizer.zero_grad()
@@ -479,20 +790,84 @@ if __name__ == '__main__':
             else:
                 residual_coeff = 0.0
 
-            out, q_loss = \
-                    model(src, tgt, quantize=quantize, residual_coeff=residual_coeff)
-            if args.label_smoothing > 0.0:
-                out = F.log_softmax(out, dim=-1)
+            anomaly_enabled = (
+                args.detect_anomaly_batch is not None
+                and i == args.detect_anomaly_batch
+                and (args.detect_anomaly_epoch is None
+                     or epoch + 1 == args.detect_anomaly_epoch))
+            if anomaly_enabled:
+                print('ANOMALY_DIAGNOSTIC enabled epoch={0} batch={1}'.
+                      format(epoch + 1, i))
 
-            g_loss = criterion(out.flatten(end_dim=-2), gld.flatten())
-            non_padding_elem = (tgt != pad_id).sum().item()
-            g_loss /= batch_size * nsent
-            q_loss *= float(non_padding_elem) / (batch_size * nsent)
+            context = torch.autograd.detect_anomaly(check_nan=True) \
+                if anomaly_enabled else nullcontext()
+            with context:
+                logits, q_loss = \
+                        model(src, tgt, quantize=quantize, residual_coeff=residual_coeff)
+                if anomaly_enabled:
+                    print('  {0}'.format(finite_tensor_info('logits', logits)))
+                    print('  {0}'.format(finite_tensor_info('q_loss', q_loss if torch.is_tensor(q_loss) else torch.tensor(q_loss))))
+                out = logits
+                if args.label_smoothing > 0.0:
+                    out = F.log_softmax(out, dim=-1)
+                    if anomaly_enabled:
+                        print('  {0}'.format(
+                            finite_tensor_info('log_softmax', out)))
 
-            loss = g_loss + q_loss
+                g_loss = criterion(out.flatten(end_dim=-2), gld.flatten())
+                non_padding_elem = (tgt != pad_id).sum().item()
+                g_loss /= batch_size * nsent
+                q_loss *= float(non_padding_elem) / (batch_size * nsent)
 
-            loss.backward()
+                loss = g_loss + q_loss
+
+                if not torch.isfinite(loss):
+                    epoch_stats['bad_loss_batches'] += 1
+                    if epoch_stats['first_bad'] is None:
+                        epoch_stats['first_bad'] = 'loss epoch={0} batch={1}'.format(
+                            epoch + 1, i)
+                    if args.diagnose_nonfinite:
+                        log_nonfinite('loss', epoch, i, loss, g_loss, q_loss,
+                                      src, tgt, gld, full_ids)
+                    if args.nonfinite_policy == 'skip':
+                        epoch_stats['skipped_batches'] += 1
+                        continue
+                    raise RuntimeError(
+                        'Non-finite loss at epoch {0}, batch {1}'.format(
+                            epoch + 1, i))
+
+                loss.backward()
+            report = grad_report(model)
+            if report['robust_norm'] > epoch_stats['max_grad_norm']:
+                epoch_stats['max_grad_norm'] = report['robust_norm']
+            if report['max_abs_grad'] > epoch_stats['max_abs_grad']:
+                epoch_stats['max_abs_grad'] = report['max_abs_grad']
+
+            if report['bad_elements'] > 0:
+                epoch_stats['bad_grad_batches'] += 1
+                if epoch_stats['first_bad'] is None:
+                    epoch_stats['first_bad'] = 'grad epoch={0} batch={1} {2}'\
+                        .format(epoch + 1, i, report['first_bad'])
+                if args.diagnose_nonfinite:
+                    log_nonfinite('grad', epoch, i, loss, g_loss, q_loss, src,
+                                  tgt, gld, full_ids, extra=report)
+                if args.nonfinite_policy == 'skip':
+                    epoch_stats['skipped_batches'] += 1
+                    optimizer.zero_grad()
+                    continue
+                if args.nonfinite_policy == 'zero_bad_grads':
+                    zero_bad_grad_values(model)
+                    epoch_stats['zeroed_bad_grad_batches'] += 1
+                    report = grad_report(model)
+                else:
+                    raise RuntimeError(
+                        'Non-finite gradients at epoch {0}, batch {1}: {2}'.
+                        format(epoch + 1, i, report['first_bad']))
+
+            if args.grad_clip > 0.0:
+                clip_gradients(model, args.grad_clip, report)
             optimizer.step()
+            epoch_stats['finite_batches'] += 1
 
             running_loss += loss.item()
             running_g_loss += g_loss.item()
@@ -530,92 +905,117 @@ if __name__ == '__main__':
                 running_g_loss = 0.0
                 running_q_loss = 0.0
 
-        with torch.no_grad():
+            if train_batch_limit is not None and i >= train_batch_limit:
+                print('Stopping train epoch {0} early at diagnostic batch limit {1}'.
+                      format(epoch + 1, train_batch_limit))
+                break
+
+        print('EPOCH_DIAGNOSTIC epoch={0} finite_batches={1} skipped_batches={2} '
+              'bad_loss_batches={3} bad_grad_batches={4} zeroed_bad_grad_batches={5} '
+              'max_grad_norm={6:.6g} max_abs_grad={7:.6g} first_bad={8}'.
+              format(epoch + 1, epoch_stats['finite_batches'],
+                     epoch_stats['skipped_batches'],
+                     epoch_stats['bad_loss_batches'],
+                     epoch_stats['bad_grad_batches'],
+                     epoch_stats['zeroed_bad_grad_batches'],
+                     epoch_stats['max_grad_norm'],
+                     epoch_stats['max_abs_grad'], epoch_stats['first_bad']))
+
+        if not args.no_eval:
+            with torch.no_grad():
             # initialize loss
-            running_loss = 0.0
-            running_g_loss = 0.0
-            running_q_loss = 0.0
-            model.eval()
-            for i, batch in enumerate(dev_dl):
-                src, tgt, gld = [x.to(device) for x in batch]
-                batch_size, nsent, src_ntokens = src.size()
+                running_loss = 0.0
+                running_g_loss = 0.0
+                running_q_loss = 0.0
+                model.eval()
+                for i, batch in enumerate(dev_dl):
+                    if args.diagnose_nonfinite:
+                        src, tgt, gld, _ = batch
+                    else:
+                        src, tgt, gld = batch
+                    src, tgt, gld = [x.to(device) for x in (src, tgt, gld)]
+                    batch_size, nsent, src_ntokens = src.size()
 
-                out, q_loss = \
-                        model(src, tgt, quantize=quantize, residual_coeff=residual_coeff)
-                g_loss = valid_criterion(out.flatten(end_dim=-2),
-                                         gld.flatten())
+                    out, q_loss = \
+                            model(src, tgt, quantize=quantize, residual_coeff=residual_coeff)
+                    g_loss = valid_criterion(out.flatten(end_dim=-2),
+                                             gld.flatten())
 
-                non_padding_elem = (tgt != pad_id).sum().item()
-                g_loss /= batch_size * nsent
-                q_loss *= float(non_padding_elem) / (batch_size * nsent)
+                    non_padding_elem = (tgt != pad_id).sum().item()
+                    g_loss /= batch_size * nsent
+                    q_loss *= float(non_padding_elem) / (batch_size * nsent)
 
-                loss = g_loss + q_loss
+                    loss = g_loss + q_loss
 
-                running_loss += loss.item()
-                running_g_loss += g_loss.item()
+                    running_loss += loss.item()
+                    running_g_loss += g_loss.item()
 
-                # log average loss per batch every k passes
-                if args.logdir != '' and i % args.log_every == args.log_every - 1:
-                    step = epoch * nbatches_dev + i
-                    running_uq_loss = running_q_loss / args.commitment_cost
-                    tb_writer.add_scalar('loss/dev',
-                                         running_loss / args.log_every, step)
-                    tb_writer.add_scalar('g_loss/dev',
-                                         running_g_loss / args.log_every, step)
-                    tb_writer.add_scalar('q_loss/dev',
-                                         running_q_loss / args.log_every, step)
-                    tb_writer.add_scalar('uq_loss/dev',
-                                         running_uq_loss / args.log_every,
-                                         step)
-                    tb_writer.add_scalar('residual_coeff/dev', residual_coeff,
-                                         step)
-                    running_loss = 0.0
-                    running_g_loss = 0.0
-                    running_q_loss = 0.0
+                    # log average loss per batch every k passes
+                    if args.logdir != '' and i % args.log_every == args.log_every - 1:
+                        step = epoch * nbatches_dev + i
+                        running_uq_loss = running_q_loss / args.commitment_cost
+                        tb_writer.add_scalar('loss/dev',
+                                             running_loss / args.log_every, step)
+                        tb_writer.add_scalar('g_loss/dev',
+                                             running_g_loss / args.log_every, step)
+                        tb_writer.add_scalar('q_loss/dev',
+                                             running_q_loss / args.log_every, step)
+                        tb_writer.add_scalar('uq_loss/dev',
+                                             running_uq_loss / args.log_every,
+                                             step)
+                        tb_writer.add_scalar('residual_coeff/dev', residual_coeff,
+                                             step)
+                        running_loss = 0.0
+                        running_g_loss = 0.0
+                        running_q_loss = 0.0
 
             # initialize loss
-            running_loss = 0.0
-            running_g_loss = 0.0
-            running_q_loss = 0.0
-            model.eval()
-            for i, batch in enumerate(test_dl):
-                src, tgt, gld = [x.to(device) for x in batch]
-                batch_size, nsent, src_ntokens = src.size()
+                running_loss = 0.0
+                running_g_loss = 0.0
+                running_q_loss = 0.0
+                model.eval()
+                for i, batch in enumerate(test_dl):
+                    if args.diagnose_nonfinite:
+                        src, tgt, gld, _ = batch
+                    else:
+                        src, tgt, gld = batch
+                    src, tgt, gld = [x.to(device) for x in (src, tgt, gld)]
+                    batch_size, nsent, src_ntokens = src.size()
 
-                out, q_loss = \
-                        model(src, tgt, quantize=quantize, residual_coeff=residual_coeff)
-                g_loss = valid_criterion(out.flatten(end_dim=-2),
-                                         gld.flatten())
+                    out, q_loss = \
+                            model(src, tgt, quantize=quantize, residual_coeff=residual_coeff)
+                    g_loss = valid_criterion(out.flatten(end_dim=-2),
+                                             gld.flatten())
 
-                non_padding_elem = (tgt != pad_id).sum().item()
-                g_loss /= batch_size * nsent
-                q_loss *= float(non_padding_elem) / (batch_size * nsent)
+                    non_padding_elem = (tgt != pad_id).sum().item()
+                    g_loss /= batch_size * nsent
+                    q_loss *= float(non_padding_elem) / (batch_size * nsent)
 
-                loss = g_loss + q_loss
+                    loss = g_loss + q_loss
 
-                running_loss += loss.item()
-                running_g_loss += g_loss.item()
-                if quantize:
-                    running_q_loss += q_loss.item()
+                    running_loss += loss.item()
+                    running_g_loss += g_loss.item()
+                    if quantize:
+                        running_q_loss += q_loss.item()
 
-                # log average loss per batch every k passes
-                if args.logdir != '' and i % args.log_every == args.log_every - 1:
-                    step = epoch * nbatches_dev + i
-                    running_uq_loss = running_q_loss / args.commitment_cost
-                    tb_writer.add_scalar('loss/test',
-                                         running_loss / args.log_every, step)
-                    tb_writer.add_scalar('g_loss/test',
-                                         running_g_loss / args.log_every, step)
-                    tb_writer.add_scalar('q_loss/test',
-                                         running_q_loss / args.log_every, step)
-                    tb_writer.add_scalar('uq_loss/test',
-                                         running_uq_loss / args.log_every,
-                                         step)
-                    tb_writer.add_scalar('residual_coeff/test', residual_coeff,
-                                         step)
-                    running_loss = 0.0
-                    running_g_loss = 0.0
-                    running_q_loss = 0.0
+                    # log average loss per batch every k passes
+                    if args.logdir != '' and i % args.log_every == args.log_every - 1:
+                        step = epoch * nbatches_dev + i
+                        running_uq_loss = running_q_loss / args.commitment_cost
+                        tb_writer.add_scalar('loss/test',
+                                             running_loss / args.log_every, step)
+                        tb_writer.add_scalar('g_loss/test',
+                                             running_g_loss / args.log_every, step)
+                        tb_writer.add_scalar('q_loss/test',
+                                             running_q_loss / args.log_every, step)
+                        tb_writer.add_scalar('uq_loss/test',
+                                             running_uq_loss / args.log_every,
+                                             step)
+                        tb_writer.add_scalar('residual_coeff/test', residual_coeff,
+                                             step)
+                        running_loss = 0.0
+                        running_g_loss = 0.0
+                        running_q_loss = 0.0
 
         # save model snapshot
         if args.save_every is not None and epoch % args.save_every == args.save_every - 1:

@@ -20,6 +20,7 @@ class SemanticAutoencoderModel(nn.Module):
                  temp: float = 1.0,
                  num_samples: int = 10,
                  epsilon: float = 1e-5,
+                 safe_normalize: bool = False,
                  nlayers: int = 3,
                  internal_nheads: int = 4,
                  output_nheads: int = 8,
@@ -27,6 +28,7 @@ class SemanticAutoencoderModel(nn.Module):
                  dropout: float = 0.1,
                  use_in_pos: bool = False,
                  use_out_pos: bool = False,
+                 use_bool_attention_masks: bool = False,
                  padding_idx: int = 0,
                  unk_idx: int = 1,
                  bos_idx: int = 2,
@@ -37,6 +39,7 @@ class SemanticAutoencoderModel(nn.Module):
         self.codebook_size = codebook_size
         self.use_in_pos = use_in_pos
         self.use_out_pos = use_out_pos
+        self.use_bool_attention_masks = use_bool_attention_masks
         self.padding_idx = padding_idx
         self.unk_idx = unk_idx
         self.bos_idx = bos_idx
@@ -62,6 +65,7 @@ class SemanticAutoencoderModel(nn.Module):
             entropy_cost=entropy_cost,
             ema_decay=ema_decay,
             epsilon=epsilon,
+            safe_normalize=safe_normalize,
             nlayers=nlayers,
             internal_nheads=internal_nheads,
             output_nheads=output_nheads,
@@ -133,7 +137,8 @@ class SemanticAutoencoderModel(nn.Module):
         tgt_emb = self.out_embed(tgt).reshape(batch_size * nsent, ntokens,
                                               -1).transpose(0, 1)
         tgt = tgt.reshape(batch_size * nsent, ntokens)
-        tgt_mask = generate_square_subsequent_mask(ntokens).to(device)
+        tgt_mask = generate_square_subsequent_mask(
+            ntokens, bool_mask=self.use_bool_attention_masks).to(device)
         if self.padding_idx is not None:
             tgt_key_padding_mask = self.get_padding_mask(tgt)
 
@@ -187,10 +192,12 @@ class SemanticAutoencoderModel(nn.Module):
         return batch == self.padding_idx
 
 
-def generate_square_subsequent_mask(sz):
+def generate_square_subsequent_mask(sz, bool_mask=False):
     """Generate a square mask for the sequence. The masked positions are filled with float('-inf').
         Unmasked positions are filled with float(0.0).
     """
+    if bool_mask:
+        return torch.triu(torch.ones(sz, sz, dtype=torch.bool), diagonal=1)
     mask = (torch.triu(torch.ones(sz, sz)) == 1).transpose(0, 1)
     mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(
         mask == 1, float(0.0))
