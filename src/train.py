@@ -82,6 +82,7 @@ def grad_report(model):
         'robust_norm': 0.0,
         'grad_tensors': 0,
     }
+    sq_norm = 0.0
     for name, param in model.named_parameters():
         if param.grad is None:
             continue
@@ -98,27 +99,16 @@ def grad_report(model):
                     'bad_elements': bad,
                     'summary': tensor_summary(grad),
                 }
-            grad = grad[finite]
+            grad = torch.where(finite, grad, torch.zeros_like(grad))
         if grad.numel() == 0:
             continue
         max_abs = float(grad.abs().max().item())
         if max_abs > report['max_abs_grad']:
             report['max_abs_grad'] = max_abs
-    if report['max_abs_grad'] == 0.0:
-        return report
-    scaled_sq_sum = 0.0
-    scale = report['max_abs_grad']
-    for param in model.parameters():
-        if param.grad is None:
-            continue
-        grad = param.grad.detach()
-        finite = torch.isfinite(grad)
-        grad = grad[finite]
-        if grad.numel() == 0:
-            continue
-        scaled = grad.to(dtype=torch.float64) / scale
-        scaled_sq_sum += float(torch.sum(scaled * scaled).item())
-    report['robust_norm'] = float(scale * np.sqrt(scaled_sq_sum))
+        param_norm = float(torch.linalg.vector_norm(grad.float(), ord=2).item())
+        if np.isfinite(param_norm):
+            sq_norm += param_norm * param_norm
+    report['robust_norm'] = float(np.sqrt(sq_norm))
     return report
 
 
@@ -628,7 +618,7 @@ if __name__ == '__main__':
     model.to(device)
     if args.resume_model != '':
         print('Loading resume model: {0}'.format(args.resume_model))
-        model = torch.load(args.resume_model, map_location=device)
+        model = torch.load(args.resume_model, map_location=device, weights_only=False)
         model.to(device)
 
     # prepare optimizer and learning rate scheduler

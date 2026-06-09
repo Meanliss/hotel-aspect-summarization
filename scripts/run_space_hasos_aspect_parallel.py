@@ -126,6 +126,11 @@ def main():
                         help="don't delete per-shard output folders")
     args = parser.parse_args()
 
+    model_path = Path(args.model)
+    if not model_path.is_absolute():
+        model_path = REPO_ROOT / model_path
+    args.model = str(model_path.resolve())
+
     if not args.gold_aspects:
         args.gold_aspects = aspect_codes_from_taxonomy(
             DATA_DIR / "hasos" / "aspect_taxonomy.tsv"

@@ -334,6 +334,11 @@ def main() -> None:
     out = Path(args.output) if args.output else OUTPUTS_DIR / f"{args.run_id}_pipeline_report.pptx"
     write_pptx(args.run_id, out)
     print(f"wrote {out}")
+    if args.output is None:
+        alias = OUTPUTS_DIR / f"{args.run_id}_report.pptx"
+        if alias != out:
+            write_pptx(args.run_id, alias)
+            print(f"wrote {alias}")
 
 
 if __name__ == "__main__":

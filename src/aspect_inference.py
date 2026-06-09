@@ -7,7 +7,7 @@ import json
 import argparse
 from random import seed
 import re
-import time
+import time as time_module
 
 try:
     from nltk.corpus import stopwords
@@ -258,7 +258,7 @@ if __name__ == '__main__':
         if trace_file is None:
             return
         row = {
-            'time': time.strftime('%Y-%m-%dT%H:%M:%S%z'),
+            'time': time_module.strftime('%Y-%m-%dT%H:%M:%S%z'),
             'stage': stage,
             'run_id': args.run_id,
             'shard_idx': args.shard_idx,

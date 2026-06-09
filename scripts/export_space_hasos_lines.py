@@ -127,11 +127,18 @@ def main() -> None:
 
     aspect_jsonl = OUTPUTS_DIR / f"{args.run_id}_aspect_lines.jsonl"
     aspect_tsv = OUTPUTS_DIR / f"{args.run_id}_aspect_lines.tsv"
+    aspect_jsonl_alias = OUTPUTS_DIR / f"{args.run_id}_lines.jsonl"
+    aspect_tsv_alias = OUTPUTS_DIR / f"{args.run_id}_lines.tsv"
     sent_jsonl = OUTPUTS_DIR / f"{args.run_id}_aspect_sentiment_lines.jsonl"
     sent_tsv = OUTPUTS_DIR / f"{args.run_id}_aspect_sentiment_lines.tsv"
 
     write_jsonl(aspect_jsonl, aspect)
     write_tsv(aspect_tsv, aspect, [
+        "run_id", "aspect", "split", "entity_id", "sentence_index",
+        "sentence", "output_path"
+    ])
+    write_jsonl(aspect_jsonl_alias, aspect)
+    write_tsv(aspect_tsv_alias, aspect, [
         "run_id", "aspect", "split", "entity_id", "sentence_index",
         "sentence", "output_path"
     ])
@@ -142,6 +149,7 @@ def main() -> None:
     ])
 
     print(f"aspect_rows={len(aspect)} -> {aspect_jsonl}")
+    print(f"aspect_rows={len(aspect)} -> {aspect_jsonl_alias}")
     print(f"sentiment_rows={len(sentiment)} -> {sent_jsonl}")
 
 

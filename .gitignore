@@ -9,12 +9,18 @@ venv/
 
 # Models & training artifacts (too large for git)
 models/
+checkpoints/
 logs/
+exports/
+*.tar
+*.tar.gz
+*.bak_*
 
 # Datasets — keep only seeds, taxonomy, and SentencePiece vocab
 data/amazon/
 data/space/
 data/hasos/hasos_summ.json
+data/hasos/hasos_summ.source.json
 
 # SentencePiece model binary is large; keep .vocab only
 data/sentencepiece/*.model
