@@ -15,7 +15,9 @@ metrics: reference-free metrics + BERTScore
 
 ## Status
 
-The scoring run is complete.
+The reference-free scoring run is complete. The original SemAE ROUGE evaluation
+is not available for this HASOS run yet because the current HASOS source has
+reviews but no human gold/reference summaries.
 
 Validation shape:
 
@@ -46,6 +48,7 @@ run artifacts. The repo tracks the code and a compact presentation report.
 Tracked report deck:
 
 - [reports/space_hasos_full_e20_report.pptx](reports/space_hasos_full_e20_report.pptx)
+- [reports/space_hasos_stage_io.pptx](reports/space_hasos_stage_io.pptx)
 
 Local generated artifacts after running the pipeline:
 
@@ -66,7 +69,33 @@ logs/space_hasos_full_e20_inference.log
 logs/space_hasos_full_e20_score_outputs.log
 ```
 
-## Macro Metrics
+## Original SemAE ROUGE Compatibility
+
+The upstream SemAE repository evaluates generated summaries with `pyrouge`.
+For aspect summarization, `src/aspect_inference.py` expects:
+
+```text
+system summaries: outputs/<run_id>/<aspect>/<dev|test>_<entity_id>
+gold summaries:   data/<dataset>/gold/<aspect>/#ID#_[012].txt
+output:           outputs/eval_<run_id>.txt
+                  outputs/eval_<run_id>.json
+```
+
+That is the official SemAE comparison path. It cannot be computed on the
+current HASOS file because `data/hasos/` contains taxonomy and review JSON only,
+not gold summaries:
+
+```text
+data/hasos/hasos_summ.json
+data/hasos/aspect_taxonomy.tsv
+data/hasos/aspect_taxonomy.json
+```
+
+To compare exactly like the original repo, add HASOS gold summaries in pyrouge
+format under `data/hasos/gold/<aspect>/`, then rerun aspect inference without
+`--no_eval` and point `--gold_data` to `data/hasos/gold`.
+
+## Reference-free Macro Metrics
 
 HASOS does not provide human reference summaries, so ROUGE is not meaningful for
 this run. The scoring uses reference-free extractive-summary metrics plus
@@ -178,4 +207,3 @@ grep -E "bert_f1_aspect|bert_f1_source" outputs/space_hasos_full_e20_metrics.md
   `cwd=src`.
 - `scripts/export_space_hasos_lines.py` writes both detailed names and the
   expected aliases: `*_aspect_lines.*` and `*_lines.*`.
-
