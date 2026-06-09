@@ -50,6 +50,13 @@ Tracked report deck:
 - [reports/space_hasos_full_e20_report.pptx](reports/space_hasos_full_e20_report.pptx)
 - [reports/space_hasos_stage_io.pptx](reports/space_hasos_stage_io.pptx)
 
+GitHub release artifacts:
+
+- [Release `space_hasos_full_e20`](https://github.com/Meanliss/tesing/releases/tag/space_hasos_full_e20)
+- Checkpoint: `space_full_11402x20_stable_resume_e7_20_model.pt`
+- Final result archive: `space_hasos_full_e20_results.tar.gz`
+- Manifest/checksums: [artifacts/space_hasos_full_e20_release.md](artifacts/space_hasos_full_e20_release.md)
+
 Local generated artifacts after running the pipeline:
 
 ```text
