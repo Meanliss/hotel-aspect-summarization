@@ -20,6 +20,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent
 OUTPUTS_DIR = REPO_ROOT / "outputs"
 LOGS_DIR = REPO_ROOT / "logs"
+REPORTS_DIR = REPO_ROOT / "reports"
 EMU_W = 12192000
 EMU_H = 6858000
 SPLIT_RE = re.compile(r"\t+|\r?\n+")
@@ -61,6 +62,41 @@ def split_summary(text: str) -> list[str]:
 
 def truncate(text: str, n: int = 170) -> str:
     return text if len(text) <= n else text[: n - 3] + "..."
+
+
+def rouge_macro_rows(path: Path) -> tuple[list[str], str]:
+    data = read_json(path, {})
+    aspects = ["building", "cleanliness", "food", "location", "rooms", "service"]
+    rows = []
+    for split in ("dev", "test", "all"):
+        split_data = data.get(split, {})
+        vals = []
+        for metric in ("rouge_1_f_score", "rouge_2_f_score", "rouge_l_f_score"):
+            metric_vals = [
+                split_data.get(aspect, {}).get(metric)
+                for aspect in aspects
+                if split_data.get(aspect, {}).get(metric) is not None
+            ]
+            vals.append(sum(metric_vals) / len(metric_vals) if metric_vals else None)
+        if all(v is not None for v in vals):
+            rows.append(
+                f"{split.upper():4s}  R1={vals[0]:.4f}  R2={vals[1]:.4f}  RL={vals[2]:.4f}"
+            )
+    if not rows:
+        return [], "SPACE original ROUGE chưa có hoặc chưa parse được."
+
+    all_split = data.get("all", {})
+    aspect_rows = []
+    for aspect in aspects:
+        vals = all_split.get(aspect, {})
+        if not vals:
+            continue
+        aspect_rows.append(
+            f"{aspect:11s}  {vals.get('rouge_1_f_score', 0):.4f} / "
+            f"{vals.get('rouge_2_f_score', 0):.4f} / "
+            f"{vals.get('rouge_l_f_score', 0):.4f}"
+        )
+    return rows, "\n".join(aspect_rows)
 
 
 def first_sample(run_id: str) -> dict | None:
@@ -233,6 +269,10 @@ def build_slides(run_id: str) -> list[str]:
     aspect_line_rows = jsonl_count(OUTPUTS_DIR / f"{run_id}_lines.jsonl")
     provenance_coverage = (
         provenance_rows / aspect_line_rows if aspect_line_rows else 0.0)
+    old_rouge_path = REPORTS_DIR / "space_old_aspects_e20_official_rouge.json"
+    if not old_rouge_path.exists():
+        old_rouge_path = OUTPUTS_DIR / "eval_space_old_aspects_e20.json"
+    old_macro_rows, old_aspect_rows = rouge_macro_rows(old_rouge_path)
     sample = first_sample(run_id)
     macro = metrics.get("macro", {})
     aspect_count = len(report.get("per_aspect", {})) or 29
@@ -306,6 +346,12 @@ def build_slides(run_id: str) -> list[str]:
             {"text": "score(s, k) = KL(D_z(s) || P_z) - beta * KL(D_z(s) || P_k)", "x": 0.8, "y": 1.45, "w": 11.4, "h": 0.65, "font_size": 1900, "bold": True, "fill": "FFFFFF", "line": "D8DEE9"},
             {"text": "D_z(s): phân phối cluster của câu s.\nP_z: background distribution.\nP_k: prototype distribution của aspect k.\nbeta=0.7 theo recipe hiện tại.", "x": 0.9, "y": 2.5, "w": 5.7, "h": 1.8, "font_size": 1250, "fill": "FFFFFF", "line": "D8DEE9"},
             {"text": "Câu có score thấp hơn được ưu tiên. Output là extractive: chọn và nối câu gốc thay vì paraphrase, nên có thể trace ngược về review/entity.", "x": 7.0, "y": 2.5, "w": 5.4, "h": 1.35, "font_size": 1250, "fill": "ECFDF5", "line": "99F6E4"},
+        ]),
+        slide_xml("SPACE original aspects: official ROUGE", "Old Baseline", [
+            {"text": "Bản cũ dùng đúng SPACE benchmark và 6 aspect gốc: building, cleanliness, food, location, rooms, service. Run này chạy without --no_eval nên điểm dưới đây là pyrouge official, khác với HASOS reference-free metrics.", "x": 0.75, "y": 1.35, "w": 11.35, "h": 0.95, "font_size": 1120, "fill": "FFF7ED", "line": "FDBA74"},
+            {"text": "Macro F1 by split\n" + ("\n".join(old_macro_rows) if old_macro_rows else "missing"), "x": 0.85, "y": 2.65, "w": 4.95, "h": 1.65, "font_size": 1250, "fill": "FFFFFF", "line": "D8DEE9"},
+            {"text": "ALL split by aspect\nR1 / R2 / RL\n" + old_aspect_rows, "x": 6.15, "y": 2.45, "w": 5.95, "h": 2.65, "font_size": 850, "fill": "ECFDF5", "line": "99F6E4"},
+            {"text": "Kết luận so sánh: HASOS 29 aspects là adaptation/inference mới không có gold summary; SPACE original 6 aspects là baseline có gold và có thể so sánh bằng ROUGE.", "x": 0.85, "y": 5.35, "w": 11.15, "h": 0.55, "font_size": 1050, "fill": "EEF6FF", "line": "BFDBFE"},
         ]),
         slide_xml("Ví dụ aspect-only output", "Output 1", [
             {"text": sample_aspect, "x": 0.75, "y": 1.35, "w": 3.2, "h": 0.9, "font_size": 1250, "bold": True, "fill": "FFFFFF", "line": "D8DEE9"},

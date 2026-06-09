@@ -11,7 +11,7 @@ Assets:
 | Asset | Size | SHA256 |
 | --- | ---: | --- |
 | `space_full_11402x20_stable_resume_e7_20_model.pt` | 106,191,291 bytes | `75f995e5e69ecabe57967c7cff6f2ff6b6cd3b50f2d450348fff1ab875156186` |
-| `space_hasos_full_e20_results.tar.gz` | 2,441,033 bytes | `ba33a4d95672c47742c19bc0c42912ba9703511b5e569ce2311f914e472a67c4` |
+| `space_hasos_full_e20_results.tar.gz` | 2,513,494 bytes | `42439690b20fef98daa20450199cadbca80730bc6c5cb0e158b2c9342e6e366b` |
 
 Validation snapshot:
 
@@ -21,6 +21,8 @@ Validation snapshot:
 - Aspect line rows: 3,580.
 - Provenance coverage over non-empty summary sentences: 1.0000.
 - Empty aspect output files retained in tree: 80.
+- SPACE original baseline rerun: `space_old_aspects_e20`.
+- SPACE original all-split macro ROUGE F1: R1 0.30327 / R2 0.08565 / RL 0.21885.
 
 The result archive contains:
 
@@ -40,8 +42,15 @@ outputs/space_hasos_full_e20_metrics.md
 outputs/space_hasos_full_e20_metrics.json
 outputs/space_hasos_full_e20_report.pptx
 outputs/space_hasos_full_e20_pipeline_report.pptx
+outputs/eval_space_old_aspects_e20.json
+outputs/eval_space_old_aspects_e20.txt
+outputs/space_old_aspects_e20/
 reports/space_hasos_full_e20_report.pptx
 reports/space_hasos_stage_io.pptx
+reports/space_old_aspects_e20_official_rouge.json
+reports/space_old_aspects_e20_official_rouge.txt
+reports/space_old_aspects_e20_official_rouge.md
+reports/space_old_aspects_e20_official_rouge.log
 logs/space_hasos_full_e20_pipeline_trace.md
 logs/space_hasos_full_e20_pipeline_trace.jsonl
 logs/space_hasos_full_e20_inference.log

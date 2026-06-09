@@ -34,8 +34,10 @@ Generated outputs:
 | --- | ---: |
 | Aspect summary files | 1,450 |
 | Sentiment-split files | 4,350 |
-| Aspect line rows | 3,660 |
-| Sentiment line rows | 6,110 |
+| Aspect line rows | 3,580 |
+| Sentiment line rows | 3,580 |
+| Sentence provenance rows | 3,580 |
+| Empty aspect files retained | 80 |
 
 The expected 1,450 aspect files are exactly `50 entities x 29 aspects`.
 The sentiment tree contains `pos`, `neg`, and `neu` splits for each aspect/entity.
@@ -50,6 +52,7 @@ Tracked report deck:
 - [reports/space_hasos_full_e20_report.pptx](reports/space_hasos_full_e20_report.pptx)
 - [reports/space_hasos_stage_io.pptx](reports/space_hasos_stage_io.pptx)
 - [reports/space_eval_e20_official_rouge.md](reports/space_eval_e20_official_rouge.md)
+- [reports/space_old_aspects_e20_official_rouge.md](reports/space_old_aspects_e20_official_rouge.md)
 
 GitHub release artifacts:
 
@@ -67,6 +70,7 @@ outputs/space_hasos_full_e20_lines.jsonl
 outputs/space_hasos_full_e20_lines.tsv
 outputs/space_hasos_full_e20_aspect_sentiment_lines.jsonl
 outputs/space_hasos_full_e20_aspect_sentiment_lines.tsv
+outputs/space_hasos_full_e20_provenance.jsonl
 outputs/space_hasos_full_e20_report.md
 outputs/space_hasos_full_e20_report.json
 outputs/space_hasos_full_e20_metrics.md
@@ -103,6 +107,15 @@ To compare exactly like the original repo, add HASOS gold summaries in pyrouge
 format under `data/hasos/gold/<aspect>/`, then rerun aspect inference without
 `--no_eval` and point `--gold_data` to `data/hasos/gold`.
 
+The old/original SPACE baseline was rerun as `space_old_aspects_e20` with the
+six original SPACE aspects and official ROUGE:
+
+| Split | ROUGE-1 | ROUGE-2 | ROUGE-L |
+| --- | ---: | ---: | ---: |
+| Dev macro | 0.30681 | 0.08267 | 0.21949 |
+| Test macro | 0.30022 | 0.08787 | 0.21793 |
+| All macro | 0.30327 | 0.08565 | 0.21885 |
+
 ## Reference-free Macro Metrics
 
 HASOS does not provide human reference summaries, so ROUGE is not meaningful for
@@ -112,6 +125,7 @@ BERTScore.
 | Metric | Value | Interpretation |
 | --- | ---: | --- |
 | `source_fidelity` | 0.6094 | Fraction of summary sentences found verbatim in source reviews. Lower than 1.0 mainly because outputs are truncated by token budget. |
+| `source_fidelity_excl_truncated` | 0.9692 | Same exact-match check, excluding sentences intentionally cut by `max_tokens`. |
 | `aspect_keyword_coverage` | 0.7441 | Fraction of selected sentences containing at least one target-aspect or sentiment keyword. |
 | `aspect_purity` | 0.5517 | Fraction of selected sentences whose strongest keyword match is the target aspect. Multi-aspect hotel sentences reduce this. |
 | `distinct_1` | 0.2846 | Unique unigram ratio across summaries. |
