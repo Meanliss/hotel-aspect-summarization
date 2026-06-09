@@ -49,6 +49,7 @@ Tracked report deck:
 
 - [reports/space_hasos_full_e20_report.pptx](reports/space_hasos_full_e20_report.pptx)
 - [reports/space_hasos_stage_io.pptx](reports/space_hasos_stage_io.pptx)
+- [reports/space_eval_e20_official_rouge.md](reports/space_eval_e20_official_rouge.md)
 
 GitHub release artifacts:
 

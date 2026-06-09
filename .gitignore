@@ -12,6 +12,7 @@ models/
 checkpoints/
 logs/
 exports/
+downloads/
 *.tar
 *.tar.gz
 *.bak_*
