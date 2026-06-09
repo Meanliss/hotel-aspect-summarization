@@ -129,6 +129,8 @@ def build_slides(run_id: str) -> list[str]:
     sentiment_files = file_count(OUTPUTS_DIR / f"{run_id}_sentiment")
     line_rows = line_count(OUTPUTS_DIR / f"{run_id}_lines.jsonl")
     sentiment_rows = line_count(OUTPUTS_DIR / f"{run_id}_aspect_sentiment_lines.jsonl")
+    provenance = read_jsonl(OUTPUTS_DIR / f"{run_id}_provenance.jsonl")
+    provenance_rows = len(provenance)
     macro = metrics.get("macro", {})
 
     sample_rank = "\n".join(
@@ -144,6 +146,19 @@ def build_slides(run_id: str) -> list[str]:
         for s in str(summary.get("summary", "")).split("\t")[:4]
         if s
     )
+    if provenance:
+        first_prov = provenance[0]
+        provenance_sample = (
+            f"entity={first_prov.get('entity_id')} aspect={first_prov.get('aspect')} "
+            f"idx={first_prov.get('summary_sentence_index')}\n"
+            f"review={first_prov.get('source_review_id')} "
+            f"sent_idx={first_prov.get('source_sentence_index')} "
+            f"rank={first_prov.get('rank')} score={first_prov.get('score')}\n"
+            f"seed={first_prov.get('matched_aspect_seed')} "
+            f"sentiment={first_prov.get('sentiment_label')} "
+            f"{first_prov.get('matched_sentiment_keywords')}")
+    else:
+        provenance_sample = "No provenance file found yet."
 
     slides = [
         slide_xml("SPACE -> HASOS SemAE: input/output từng stage", run_id, [
@@ -187,6 +202,11 @@ def build_slides(run_id: str) -> list[str]:
             {"text": f"Output file\n{summary.get('output_path')}\nsentences: {summary.get('sentences')}", "x": 6.05, "y": 1.35, "w": 6.05, "h": 1.05, "font_size": 1050, "fill": "ECFDF5", "line": "99F6E4"},
             {"text": f"Sample summary\n{sample_summary}", "x": 0.75, "y": 3.0, "w": 11.35, "h": 2.1, "font_size": 1000, "fill": "FFFFFF", "line": "D8DEE9"},
         ]),
+        slide_xml("Stage 5b: Sentence provenance", "Audit Artifact", [
+            {"text": "Input\nSelected summary sentences + ranked sentence records + aspect seed hits + sentiment keyword hits.", "x": 0.75, "y": 1.35, "w": 5.0, "h": 1.25, "font_size": 1200, "fill": "FFFFFF", "line": "D8DEE9"},
+            {"text": f"Output\noutputs/{run_id}_provenance.jsonl\nrows: {provenance_rows}\ncoverage target: 1 row per summary sentence", "x": 6.05, "y": 1.35, "w": 6.05, "h": 1.25, "font_size": 1200, "fill": "ECFDF5", "line": "99F6E4"},
+            {"text": f"Sample provenance\n{provenance_sample}", "x": 0.75, "y": 3.05, "w": 11.35, "h": 1.65, "font_size": 950, "fill": "EEF6FF", "line": "BFDBFE"},
+        ]),
         slide_xml("Stage 6: Sentiment split", "Post-rank Buckets", [
             {"text": "Input\nChỉ các sentences đã được chọn cho aspect summary. Sentiment không thay đổi ranking, chỉ tách bucket sau khi đã chọn câu.", "x": 0.75, "y": 1.35, "w": 5.25, "h": 1.35, "font_size": 1200, "fill": "FFFFFF", "line": "D8DEE9"},
             {"text": f"Output FAC_ROOM / entity 100597\npos sentences: {sent_pos.get('sentences')}\nneg sentences: {sent_neg.get('sentences')}\nneu sentences: {sent_neu.get('sentences')}", "x": 6.35, "y": 1.35, "w": 5.65, "h": 1.35, "font_size": 1300, "fill": "ECFDF5", "line": "99F6E4"},
@@ -194,7 +214,7 @@ def build_slides(run_id: str) -> list[str]:
         ]),
         slide_xml("Stage 7: Export + scoring outputs", "Files for Audit", [
             {"text": f"Export input\nFile tree:\noutputs/{run_id}/\noutputs/{run_id}_sentiment/", "x": 0.75, "y": 1.35, "w": 4.85, "h": 1.35, "font_size": 1150, "fill": "FFFFFF", "line": "D8DEE9"},
-            {"text": f"Export output\naspect rows: {line_rows}\nsentiment rows: {sentiment_rows}\nJSONL + TSV line format", "x": 5.95, "y": 1.35, "w": 2.9, "h": 1.35, "font_size": 1200, "fill": "ECFDF5", "line": "99F6E4"},
+            {"text": f"Export output\naspect rows: {line_rows}\nsentiment rows: {sentiment_rows}\nprovenance rows: {provenance_rows}\nJSONL + TSV line format", "x": 5.95, "y": 1.35, "w": 2.9, "h": 1.55, "font_size": 1120, "fill": "ECFDF5", "line": "99F6E4"},
             {"text": f"Reference-free scores\nbert_f1_aspect: {macro.get('bert_f1_aspect'):.4f}\nbert_f1_source: {macro.get('bert_f1_source'):.4f}\naspect_purity: {macro.get('aspect_purity'):.4f}", "x": 9.15, "y": 1.35, "w": 2.95, "h": 1.55, "font_size": 1150, "fill": "FFFFFF", "line": "D8DEE9"},
             {"text": "Original ROUGE lane\nInput thiếu: data/hasos/gold/<aspect>/#ID#_[012].txt\nKhi có gold, rerun aspect_inference.py without --no_eval để sinh eval_<run_id>.json/txt.", "x": 0.75, "y": 3.85, "w": 11.35, "h": 1.05, "font_size": 1150, "fill": "FFF7ED", "line": "FDBA74"},
         ]),

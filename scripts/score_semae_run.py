@@ -35,6 +35,10 @@ def sents(s: str):
     return [p.strip() for p in re.split(r"(?<=[.!?])\s+", s.strip()) if p.strip()]
 
 
+def norm_sentence(s: str) -> str:
+    return " ".join(str(s).split()).lower()
+
+
 def jaccard(a: set, b: set) -> float:
     if not a and not b:
         return 0.0
@@ -123,6 +127,45 @@ def load_source_index(summary_json: Path):
     return idx
 
 
+def load_provenance(outputs_dir: Path, run_id: str):
+    """Load output sentence provenance for truncation-aware metrics."""
+    path = outputs_dir / f"{run_id}_provenance.jsonl"
+    by_index = {}
+    by_sentence = {}
+    if not path.exists():
+        return {"by_index": by_index, "by_sentence": by_sentence}
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        aspect = row.get("aspect")
+        ent_id = str(row.get("entity_id", ""))
+        try:
+            sent_idx = int(row.get("summary_sentence_index"))
+        except (TypeError, ValueError):
+            sent_idx = None
+        if aspect and ent_id and sent_idx:
+            by_index[(aspect, ent_id, sent_idx)] = row
+        if aspect and ent_id:
+            by_sentence.setdefault(
+                (aspect, ent_id, norm_sentence(row.get("sentence", ""))),
+                []).append(row)
+    return {"by_index": by_index, "by_sentence": by_sentence}
+
+
+def provenance_row(provenance, aspect: str, ent_id: str, sent_idx: int,
+                   sentence: str) -> dict:
+    row = provenance["by_index"].get((aspect, ent_id, sent_idx))
+    if row:
+        return row
+    rows = provenance["by_sentence"].get(
+        (aspect, ent_id, norm_sentence(sentence)), [])
+    return rows[0] if rows else {}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--run_id", required=True)
@@ -148,6 +191,7 @@ def main():
     aspect_kw = {a: seeds.get(a, set()) | tax.get(a, set()) for a in set(seeds) | set(tax)}
 
     source = load_source_index(Path(args.summary_json))
+    provenance = load_provenance(Path(args.outputs_dir), args.run_id)
 
     per_aspect = {}
     all_aspects = sorted([d.name for d in run_dir.iterdir() if d.is_dir()])
@@ -164,6 +208,8 @@ def main():
 
         total_sents = 0
         verbatim_sents = 0
+        total_sents_excl_truncated = 0
+        verbatim_sents_excl_truncated = 0
         kw_hit_sents = 0
         pure_sents = 0
         sum_tokens_total = 0
@@ -189,10 +235,16 @@ def main():
                 continue
             s_list = sents(text)
             s_tokens_all = []
-            for s in s_list:
+            for sent_idx, s in enumerate(s_list, 1):
                 total_sents += 1
-                if s in src_sents:
+                is_verbatim = s in src_sents
+                if is_verbatim:
                     verbatim_sents += 1
+                prov = provenance_row(provenance, aspect, ent_id, sent_idx, s)
+                if not prov.get("was_truncated", False):
+                    total_sents_excl_truncated += 1
+                    if is_verbatim:
+                        verbatim_sents_excl_truncated += 1
                 stoks = tok(s)
                 sent_lens.append(len(stoks))
                 s_tokens_all.extend(stoks)
@@ -236,6 +288,9 @@ def main():
             "n_files": len(files),
             "n_sentences": total_sents,
             "source_fidelity": verbatim_sents / total_sents if total_sents else 0.0,
+            "source_fidelity_excl_truncated":
+                verbatim_sents_excl_truncated / total_sents_excl_truncated
+                if total_sents_excl_truncated else 0.0,
             "aspect_keyword_coverage": kw_hit_sents / total_sents if total_sents else 0.0,
             "aspect_purity": pure_sents / total_sents if total_sents else 0.0,
             "distinct_1": (len(unigrams) / n_uni) if n_uni else 0.0,
@@ -299,6 +354,8 @@ def main():
 
     macro = {
         "source_fidelity": mean("source_fidelity"),
+        "source_fidelity_excl_truncated": mean(
+            "source_fidelity_excl_truncated"),
         "aspect_keyword_coverage": mean("aspect_keyword_coverage"),
         "aspect_purity": mean("aspect_purity"),
         "distinct_1": mean("distinct_1"),
@@ -321,6 +378,7 @@ def main():
     lines.append("| Metric | Value | What it measures |")
     lines.append("| --- | ---: | --- |")
     lines.append(f"| source_fidelity        | {macro['source_fidelity']:.4f} | fraction of summary sentences found verbatim in source reviews (extractive check, ideal=1.0) |")
+    lines.append(f"| source_fidelity_excl_truncated | {macro['source_fidelity_excl_truncated']:.4f} | same exact-match check but excludes output sentences intentionally cut by max_tokens |")
     lines.append(f"| aspect_keyword_coverage| {macro['aspect_keyword_coverage']:.4f} | fraction of summary sentences containing ≥1 aspect/sentiment keyword for own aspect (higher=better) |")
     lines.append(f"| aspect_purity          | {macro['aspect_purity']:.4f} | fraction of summary sentences whose top-matching aspect == target aspect (higher=better) |")
     lines.append(f"| distinct_1             | {macro['distinct_1']:.4f} | unique unigrams / total unigrams across aspect's summaries (lexical diversity) |")
@@ -334,15 +392,16 @@ def main():
         lines.append(f"| bert_f1_source         | {macro['bert_f1_source']:.4f} | BERTScore-F1 (raw) between summary and entity source-review pool (higher=better semantic fidelity) |")
     lines.append("")
     lines.append("## Per-aspect breakdown\n")
-    header = "| Aspect | n_files | n_sents | src_fid | kw_cov | purity | distinct1 | distinct2 | self_bleu4 | compr | avg_len |"
-    sep = "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"
+    header = "| Aspect | n_files | n_sents | src_fid | src_fid_no_trunc | kw_cov | purity | distinct1 | distinct2 | self_bleu4 | compr | avg_len |"
+    sep = "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"
     lines.append(header)
     lines.append(sep)
     for a in sorted(per_aspect):
         v = per_aspect[a]
         lines.append(
             f"| {a} | {v['n_files']} | {v['n_sentences']} | "
-            f"{v['source_fidelity']:.3f} | {v['aspect_keyword_coverage']:.3f} | {v['aspect_purity']:.3f} | "
+            f"{v['source_fidelity']:.3f} | {v['source_fidelity_excl_truncated']:.3f} | "
+            f"{v['aspect_keyword_coverage']:.3f} | {v['aspect_purity']:.3f} | "
             f"{v['distinct_1']:.3f} | {v['distinct_2']:.3f} | {v['self_bleu4']:.3f} | "
             f"{v['compression_ratio']:.4f} | {v['avg_sentence_len']:.1f} |"
         )

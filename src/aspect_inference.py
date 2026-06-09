@@ -253,6 +253,7 @@ if __name__ == '__main__':
     assert args.model != '', 'Please give model path'
 
     trace_file = None
+    provenance_file = None
 
     def emit_trace(stage, **payload):
         if trace_file is None:
@@ -268,16 +269,27 @@ if __name__ == '__main__':
         trace_file.write(json.dumps(row, ensure_ascii=False) + '\n')
         trace_file.flush()
 
+    def emit_provenance(**payload):
+        if provenance_file is None:
+            return
+        provenance_file.write(json.dumps(payload, ensure_ascii=False) + '\n')
+        provenance_file.flush()
+
     if args.trace_jsonl:
         os.makedirs(os.path.dirname(os.path.abspath(args.trace_jsonl)),
                   exist_ok=True)
         trace_file = open(args.trace_jsonl, 'w', encoding='utf-8')
+        provenance_path = os.path.join(
+            os.path.dirname(os.path.abspath(args.trace_jsonl)),
+            '{0}.provenance.jsonl'.format(args.run_id))
+        provenance_file = open(provenance_path, 'w', encoding='utf-8')
         emit_trace('start',
                    summary_data=summ_data_path,
                    model=model_path,
                    sentencepiece=spm_path,
                    seedsdir=seeds_path,
                    output_path=output_path,
+                   provenance_path=provenance_path,
                    sentiment_split=bool(args.sentiment_split),
                    max_tokens=args.max_tokens,
                    beta=beta)
@@ -417,19 +429,25 @@ if __name__ == '__main__':
             return seed_tokens[0] in token_set
         return ' '.join(seed_tokens) in normalized_text
 
-    def get_aspects(sent):
+    def get_aspects_with_reason(sent):
         sent_tokens = normalize_tokens(sent)
         sent_token_set = set(sent_tokens)
         normalized_text = ' '.join(sent_tokens)
         results = []
+        reason_map = {}
         for aspect in aspects:
             for x in aspect_seeds[aspect].keys():
                 if seed_matches(x, sent_token_set, normalized_text):
                     results.append(aspect)
+                    reason_map.setdefault(aspect, []).append(x)
                     break
 
         if not results:
-            return ["others"]
+            return ["others"], {}
+        return results, reason_map
+
+    def get_aspects(sent):
+        results, _reason_map = get_aspects_with_reason(sent)
         return results
 
     all_texts = []
@@ -457,18 +475,25 @@ if __name__ == '__main__':
                    taxonomy=args.taxonomy,
                    method='taxonomy_keyword_post_rank')
 
-    def classify_sentiment(sentence, aspect):
+    def classify_sentiment_with_reason(sentence, aspect):
         """Keyword-based sentiment: count keyword hits, return pos/neg/neu."""
         if aspect not in taxonomy_sentiment:
-            return 'neu'
+            return 'neu', []
         sent_lower = sentence.lower()
         scores = {}
+        matches = {}
         for label, keywords in taxonomy_sentiment[aspect].items():
-            scores[label] = sum(1 for kw in keywords if kw in sent_lower)
+            matched = sorted(kw for kw in keywords if kw in sent_lower)
+            matches[label] = matched
+            scores[label] = len(matched)
         best = max(scores, key=scores.get)
         if scores[best] == 0:
-            return 'neu'
-        return best
+            return 'neu', []
+        return best, matches[best]
+
+    def classify_sentiment(sentence, aspect):
+        label, _matches = classify_sentiment_with_reason(sentence, aspect)
+        return label
 
     ranked_entity_sentences = defaultdict(dict)
     ranked_entity_records = defaultdict(dict)
@@ -488,11 +513,13 @@ if __name__ == '__main__':
                     source_entity_id, review_id = full_id.split('__')
                     review_sents = summ_dataset.reviews[source_entity_id][
                         review_id][:args.max_rev_len]
-                    texts.extend(review_sents)
-                    text_sources.extend([{
-                        'entity_id': source_entity_id,
-                        'review_id': review_id
-                    } for _ in review_sents])
+                    for sentence_index, review_sent in enumerate(review_sents):
+                        texts.append(review_sent)
+                        text_sources.append({
+                            'entity_id': source_entity_id,
+                            'review_id': review_id,
+                            'sentence_index': sentence_index,
+                        })
 
                 batch_size, nsent, ntokens = src.size()
 
@@ -500,8 +527,10 @@ if __name__ == '__main__':
                 distances.extend(dist)
 
             aspect_wise_sentences = defaultdict(list)
+            aspect_match_reasons_by_index = {}
             for i, sentence in enumerate(texts):
-                sent_aspects = list(get_aspects(sentence))
+                sent_aspects, sent_reasons = get_aspects_with_reason(sentence)
+                aspect_match_reasons_by_index[i] = sent_reasons
 
                 if len(sent_aspects) == 0:
                     continue
@@ -548,6 +577,12 @@ if __name__ == '__main__':
                         'score': float(dist[idx]),
                         'sentence': texts[idx],
                         'review_id': source.get('review_id'),
+                        'source_entity_id': source.get('entity_id'),
+                        'source_review_id': source.get('review_id'),
+                        'source_sentence_index': source.get('sentence_index'),
+                        'matched_aspect_seed':
+                            aspect_match_reasons_by_index.get(idx, {}).get(
+                                aspect, []),
                     })
                 ranked_entity_records[current_entity_id][aspect] = ranked_records
                 if trace_ranked_samples < args.trace_sample_limit:
@@ -560,6 +595,10 @@ if __name__ == '__main__':
                                    rank=rec['rank'],
                                    score=rec['score'],
                                    review_id=rec.get('review_id'),
+                                   source_sentence_index=rec.get(
+                                       'source_sentence_index'),
+                                   matched_aspect_seed=rec.get(
+                                       'matched_aspect_seed'),
                                    sentence=rec['sentence'])
                         trace_ranked_samples += 1
 
@@ -583,30 +622,85 @@ if __name__ == '__main__':
     else:
         delim = '\t'
 
+    def selected_summary_records(summary_sentences, summary_meta, ranked_records):
+        selected = []
+        used = set()
+        for sent_idx, sentence in enumerate(summary_sentences):
+            meta = summary_meta[sent_idx] if sent_idx < len(summary_meta) else {}
+            match = None
+            for ranked_idx, record in enumerate(ranked_records):
+                if ranked_idx in used:
+                    continue
+                ranked_sentence = record.get('sentence', '')
+                if ranked_sentence == sentence or (
+                        meta.get('truncated')
+                        and ranked_sentence.startswith(sentence)):
+                    match = record
+                    used.add(ranked_idx)
+                    break
+            selected.append((match or {}, meta))
+        return selected
+
     for aspect in tqdm(aspects):
         aspect_output_path = os.path.join(output_path, aspect)
         os.makedirs(aspect_output_path, exist_ok=True)
 
         for entity_id in ranked_entity_sentences:
             if entity_id in summ_dataset.dev_entity_ids:
+                split_name = 'dev'
                 file_path = os.path.join(aspect_output_path,
                                          'dev_' + entity_id)
             else:
+                split_name = 'test'
                 file_path = os.path.join(aspect_output_path,
                                          'test_' + entity_id)
 
             ranked_sentences = ranked_entity_sentences[entity_id].get(aspect, [])
+            ranked_records = ranked_entity_records[entity_id].get(aspect, [])
             if ranked_sentences:
-                summary_sentences = truncate_summary(
+                summary_sentences, summary_meta = truncate_summary(
                     ranked_sentences,
                     max_tokens=args.max_tokens,
                     cut_sents=(not args.no_cut_sents),
                     vectorizer=vectorizer,
                     cosine_threshold=args.cos_thres,
                     early_stop=(not args.no_early_stop),
-                    min_tokens=args.min_tokens)
+                    min_tokens=args.min_tokens,
+                    return_meta=True)
             else:
                 summary_sentences = []
+                summary_meta = []
+
+            selected_records = selected_summary_records(summary_sentences,
+                                                        summary_meta,
+                                                        ranked_records)
+            sentiment_info_by_index = {}
+            for summary_idx, (sent, (record, meta)) in enumerate(
+                    zip(summary_sentences, selected_records), 1):
+                sentiment_label, sentiment_keywords = classify_sentiment_with_reason(
+                    sent, aspect)
+                sentiment_info_by_index[summary_idx] = (
+                    sentiment_label, sentiment_keywords)
+                emit_provenance(
+                    run_id=args.run_id,
+                    entity_id=entity_id,
+                    split=split_name,
+                    aspect=aspect,
+                    summary_sentence_index=summary_idx,
+                    sentence=sent,
+                    rank=record.get('rank'),
+                    score=record.get('score'),
+                    beta=beta,
+                    source_review_id=record.get('source_review_id')
+                    or record.get('review_id'),
+                    source_entity_id=record.get('source_entity_id'),
+                    source_sentence_index=record.get('source_sentence_index'),
+                    matched_aspect_seed=record.get('matched_aspect_seed', []),
+                    sentiment_label=sentiment_label,
+                    matched_sentiment_keywords=sentiment_keywords,
+                    was_truncated=bool(meta.get('truncated')),
+                    selection_reason='lowest KL-divergence rank among {0} candidate sentences'.format(
+                        aspect))
 
             fout = open(file_path, 'w', encoding='utf-8')
             fout.write(delim.join(summary_sentences))
@@ -624,8 +718,9 @@ if __name__ == '__main__':
             if args.sentiment_split:
                 sentiment_root = output_path + '_sentiment'
                 buckets = {'pos': [], 'neg': [], 'neu': []}
-                for sent in summary_sentences:
-                    label = classify_sentiment(sent, aspect)
+                for summary_idx, sent in enumerate(summary_sentences, 1):
+                    label = sentiment_info_by_index.get(summary_idx,
+                                                        ('neu', []))[0]
                     buckets[label].append(sent)
 
                 prefix = 'dev_' if entity_id in summ_dataset.dev_entity_ids else 'test_'
@@ -686,6 +781,8 @@ if __name__ == '__main__':
         emit_trace('complete', no_eval=True)
         if trace_file is not None:
             trace_file.close()
+        if provenance_file is not None:
+            provenance_file.close()
         raise SystemExit(0)
 
     ftxt = open(os.path.join(eval_path, 'eval_{0}.txt'.format(args.run_id)),
@@ -701,3 +798,5 @@ if __name__ == '__main__':
     emit_trace('complete', no_eval=False)
     if trace_file is not None:
         trace_file.close()
+    if provenance_file is not None:
+        provenance_file.close()

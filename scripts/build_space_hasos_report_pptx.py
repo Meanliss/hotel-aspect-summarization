@@ -48,6 +48,13 @@ def read_jsonl(path: Path, limit: int = 200) -> list[dict]:
     return rows
 
 
+def jsonl_count(path: Path) -> int:
+    if not path.exists():
+        return 0
+    return sum(1 for line in path.open("r", encoding="utf-8",
+                                       errors="replace") if line.strip())
+
+
 def split_summary(text: str) -> list[str]:
     return [s.strip() for s in SPLIT_RE.split(text) if s.strip()]
 
@@ -220,6 +227,12 @@ def build_slides(run_id: str) -> list[str]:
     metrics = read_json(OUTPUTS_DIR / f"{run_id}_metrics.json", {})
     metadata = read_json(OUTPUTS_DIR / f"{run_id}_metadata.json", {})
     trace = read_jsonl(LOGS_DIR / f"{run_id}_pipeline_trace.jsonl")
+    provenance_path = OUTPUTS_DIR / f"{run_id}_provenance.jsonl"
+    provenance_sample = read_jsonl(provenance_path, limit=1)
+    provenance_rows = jsonl_count(provenance_path)
+    aspect_line_rows = jsonl_count(OUTPUTS_DIR / f"{run_id}_lines.jsonl")
+    provenance_coverage = (
+        provenance_rows / aspect_line_rows if aspect_line_rows else 0.0)
     sample = first_sample(run_id)
     macro = metrics.get("macro", {})
     aspect_count = len(report.get("per_aspect", {})) or 29
@@ -248,6 +261,17 @@ def build_slides(run_id: str) -> list[str]:
             f"{label.upper()}\n" + ("\n".join(f"- {truncate(s, 135)}" for s in sample["sentiment"].get(label, [])[:3]) or "(empty)")
             for label in ("pos", "neg", "neu")
         )
+    if provenance_sample:
+        prov = provenance_sample[0]
+        provenance_example = (
+            f"entity={prov.get('entity_id')} | aspect={prov.get('aspect')} | "
+            f"rank={prov.get('rank')} | review={prov.get('source_review_id')}\n"
+            f"seed={prov.get('matched_aspect_seed')} | "
+            f"sentiment={prov.get('sentiment_label')} "
+            f"{prov.get('matched_sentiment_keywords')}\n"
+            f"sentence: {truncate(prov.get('sentence', ''), 230)}")
+    else:
+        provenance_example = "Chưa có provenance sample. Rerun inference với trace_jsonl để sinh outputs/<run_id>_provenance.jsonl."
 
     slides = []
     if failure:
@@ -291,7 +315,7 @@ def build_slides(run_id: str) -> list[str]:
             {"text": sample_split, "x": 0.75, "y": 1.35, "w": 11.5, "h": 5.0, "font_size": 1050, "fill": "FFFFFF", "line": "D8DEE9"},
         ]),
         slide_xml("Metrics và health checks", "Quality", [
-            {"text": f"source_fidelity: {macro.get('source_fidelity', 'n/a')}\naspect_purity: {macro.get('aspect_purity', 'n/a')}\ndistinct_2: {macro.get('distinct_2', 'n/a')}\nself_bleu4: {macro.get('self_bleu4', 'n/a')}", "x": 0.85, "y": 1.45, "w": 4.9, "h": 2.0, "font_size": 1450, "fill": "FFFFFF", "line": "D8DEE9"},
+            {"text": f"source_fidelity: {macro.get('source_fidelity', 'n/a')}\nsource_fidelity_excl_truncated: {macro.get('source_fidelity_excl_truncated', 'n/a')}\naspect_purity: {macro.get('aspect_purity', 'n/a')}\ndistinct_2: {macro.get('distinct_2', 'n/a')}\nself_bleu4: {macro.get('self_bleu4', 'n/a')}", "x": 0.85, "y": 1.45, "w": 5.15, "h": 2.25, "font_size": 1250, "fill": "FFFFFF", "line": "D8DEE9"},
             {"text": "HASOS không có gold summary nên dùng reference-free metrics: fidelity, purity, diversity, compression. BERTScore có thể chạy thêm nếu dependency/model tải được.", "x": 6.1, "y": 1.45, "w": 6.0, "h": 1.25, "font_size": 1250, "fill": "FFFFFF", "line": "D8DEE9"},
         ]),
         slide_xml("Limitations và quyết định kỹ thuật", "Caveats", [
@@ -299,6 +323,12 @@ def build_slides(run_id: str) -> list[str]:
             {"text": f"Final deck path: outputs/{run_id}_pipeline_report.pptx", "x": 0.85, "y": 4.55, "w": 11.3, "h": 0.65, "font_size": 1300, "bold": True, "fill": "ECFDF5", "line": "99F6E4"},
         ]),
     ])
+    provenance_slide = slide_xml("Provenance cho từng câu output", "Traceability", [
+        {"text": f"Aspect summary rows: {aspect_line_rows}\nProvenance rows: {provenance_rows}\nCoverage: {provenance_coverage:.4f}\nFile: outputs/{run_id}_provenance.jsonl", "x": 0.75, "y": 1.35, "w": 4.8, "h": 1.7, "font_size": 1250, "fill": "ECFDF5", "line": "99F6E4"},
+        {"text": provenance_example, "x": 5.9, "y": 1.35, "w": 6.25, "h": 2.05, "font_size": 1000, "fill": "FFFFFF", "line": "D8DEE9"},
+        {"text": "Mỗi câu summary ghi: entity/split/aspect, summary_sentence_index, rank/score/beta, source_review_id, source_sentence_index, matched_aspect_seed, sentiment_label, matched_sentiment_keywords, was_truncated. Metric mới source_fidelity_excl_truncated loại câu bị cắt khỏi exact-match denominator.", "x": 0.75, "y": 4.05, "w": 11.4, "h": 1.0, "font_size": 1100, "fill": "EEF6FF", "line": "BFDBFE"},
+    ])
+    slides.insert(4 if failure else 3, provenance_slide)
     return slides
 
 

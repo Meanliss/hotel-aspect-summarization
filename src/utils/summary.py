@@ -20,12 +20,14 @@ def truncate_summary(ranked_sentences,
                      early_stop=True,
                      remove_non_alpha=True,
                      vectorizer=None,
-                     cosine_threshold=None):
+                     cosine_threshold=None,
+                     return_meta=False):
     '''Truncates a summary by iteratively adding sentences
        until the max_tokens limit is passed. 
     '''
     count = 0
     summary = []
+    summary_meta = []
     summary_sentence_ids = []
 
     if vectorizer is not None:
@@ -48,6 +50,7 @@ def truncate_summary(ranked_sentences,
                 continue
 
         summary.append(sentence)
+        summary_meta.append({"truncated": False})
         summary_sentence_ids.append(i)
 
         count += len(sentence.split())
@@ -57,17 +60,23 @@ def truncate_summary(ranked_sentences,
                 last_sent = last_sent[:len(last_sent) - count + max_tokens]
                 if len(last_sent) > 0:
                     summary[-1] = ' '.join(last_sent)
+                    summary_meta[-1]["truncated"] = True
                 else:
                     summary = summary[:-1]
+                    summary_meta = summary_meta[:-1]
+                    summary_sentence_ids = summary_sentence_ids[:-1]
                 break
             else:
                 summary = summary[:-1]
+                summary_meta = summary_meta[:-1]
                 if early_stop:
                     break
                 else:
                     count -= len(sentence.split())
                     summary_sentence_ids = summary_sentence_ids[:-1]
 
+    if return_meta:
+        return summary, summary_meta
     return summary
 
 

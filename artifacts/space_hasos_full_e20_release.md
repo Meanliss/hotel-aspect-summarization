@@ -11,7 +11,16 @@ Assets:
 | Asset | Size | SHA256 |
 | --- | ---: | --- |
 | `space_full_11402x20_stable_resume_e7_20_model.pt` | 106,191,291 bytes | `75f995e5e69ecabe57967c7cff6f2ff6b6cd3b50f2d450348fff1ab875156186` |
-| `space_hasos_full_e20_results.tar.gz` | 1,376,466 bytes | `b5d20cde12593fa021d6c22ca61b08513f979712ba28018b0461bdbf35abd463` |
+| `space_hasos_full_e20_results.tar.gz` | 2,441,033 bytes | `ba33a4d95672c47742c19bc0c42912ba9703511b5e569ce2311f914e472a67c4` |
+
+Validation snapshot:
+
+- Aspect output files: 1,450 = 50 entities x 29 aspects.
+- Sentiment output files: 4,350 = 1,450 x 3 buckets.
+- Sentence provenance rows: 3,580.
+- Aspect line rows: 3,580.
+- Provenance coverage over non-empty summary sentences: 1.0000.
+- Empty aspect output files retained in tree: 80.
 
 The result archive contains:
 
@@ -24,6 +33,7 @@ outputs/space_hasos_full_e20_aspect_lines.jsonl
 outputs/space_hasos_full_e20_aspect_lines.tsv
 outputs/space_hasos_full_e20_aspect_sentiment_lines.jsonl
 outputs/space_hasos_full_e20_aspect_sentiment_lines.tsv
+outputs/space_hasos_full_e20_provenance.jsonl
 outputs/space_hasos_full_e20_report.md
 outputs/space_hasos_full_e20_report.json
 outputs/space_hasos_full_e20_metrics.md
@@ -46,4 +56,3 @@ sha256sum space_full_11402x20_stable_resume_e7_20_model.pt
 sha256sum space_hasos_full_e20_results.tar.gz
 tar -tzf space_hasos_full_e20_results.tar.gz | head
 ```
-

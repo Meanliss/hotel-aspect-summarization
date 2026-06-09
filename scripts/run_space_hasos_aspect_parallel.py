@@ -20,6 +20,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -107,6 +108,32 @@ def merge_shards(shard_run_ids, final_run_id, sentiment_split=False):
     return OUTPUTS_DIR / final_run_id
 
 
+def merge_provenance(shard_run_ids, final_run_id):
+    """Merge per-shard sentence provenance into a final run-level JSONL."""
+    final_path = OUTPUTS_DIR / f"{final_run_id}_provenance.jsonl"
+    final_path.parent.mkdir(exist_ok=True)
+    merged = 0
+    with final_path.open("w", encoding="utf-8") as fout:
+        for shard_run_id in shard_run_ids:
+            shard_path = LOGS_DIR / f"{shard_run_id}.provenance.jsonl"
+            if not shard_path.exists():
+                continue
+            for line in shard_path.read_text(
+                    encoding="utf-8", errors="replace").splitlines():
+                if not line.strip():
+                    continue
+                try:
+                    row = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                row["run_id"] = final_run_id
+                row["shard_run_id"] = shard_run_id
+                fout.write(json.dumps(row, ensure_ascii=False) + "\n")
+                merged += 1
+    print(f"[merge] copied {merged} provenance rows into {final_path}")
+    return final_path
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Parallel aspect inference for SPACE-trained SemAE on HASOS data")
@@ -178,6 +205,7 @@ def main():
 
     final_dir = merge_shards(shard_run_ids, args.run_id,
                              sentiment_split=args.sentiment_split)
+    merge_provenance(shard_run_ids, args.run_id)
 
     if not args.keep_shards:
         for shard_run_id in shard_run_ids:
