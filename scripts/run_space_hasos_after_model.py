@@ -5,8 +5,10 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -105,6 +107,40 @@ def check_file(trace: Trace, label: str, path: Path, *, required: bool = True) -
     return exists
 
 
+def missing_abstractive_deps() -> list[str]:
+    required = ["transformers", "sentencepiece", "accelerate"]
+    return [
+        name for name in required
+        if importlib.util.find_spec(name) is None
+    ]
+
+
+def uv_command(trace: Trace) -> list[str]:
+    uv_path = shutil.which("uv")
+    if uv_path:
+        return [uv_path]
+    run_cmd(trace, "install_uv", [
+        sys.executable, "-m", "pip", "install", "uv",
+    ])
+    return [sys.executable, "-m", "uv"]
+
+
+def ensure_abstractive_requirements(trace: Trace) -> None:
+    missing = missing_abstractive_deps()
+    if not missing:
+        trace.emit("abstractive_dependencies", "ok", missing="")
+        return
+    trace.emit("abstractive_dependencies", "warn",
+               missing=",".join(missing))
+    run_cmd(trace, "install_abstractive_requirements", [
+        *uv_command(trace),
+        "pip",
+        "install",
+        "-r",
+        str(REPO_ROOT / "requirements_abstractive.txt"),
+    ])
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--run_id", default="space_hasos_2k_e10")
@@ -122,8 +158,31 @@ def main() -> None:
     )
     parser.add_argument("--gpu", type=int, default=0)
     parser.add_argument("--num_shards", type=int, default=4)
-    parser.add_argument("--max_tokens", type=int, default=40)
+    parser.add_argument("--max_tokens", type=int, default=120)
+    parser.add_argument("--no_cut_sents", action="store_true",
+                        default=True,
+                        help="do not hard-cut the final extractive sentence")
+    parser.add_argument("--cut_sents", dest="no_cut_sents",
+                        action="store_false",
+                        help="allow legacy hard-cut summary truncation")
+    parser.add_argument("--no_early_stop", action="store_true",
+                        help="continue selecting after an over-budget sentence")
+    parser.add_argument("--evidence_top_k", type=int, default=5,
+                        help="top full ranked evidence rows to emit per entity/aspect")
     parser.add_argument("--skip_bert_score", action="store_true")
+    parser.add_argument("--abstractive", action="store_true",
+                        help="run abstractive synthesis after extractive summarization")
+    parser.add_argument("--abstractive_model", default="google/flan-t5-base")
+    parser.add_argument("--abstractive_limit", type=int, default=None,
+                        help="optional smoke-test limit for abstractive synthesis")
+    parser.add_argument("--abstractive_max_input_sentences", type=int, default=5)
+    parser.add_argument("--abstractive_max_new_tokens", type=int, default=192)
+    parser.add_argument("--abstractive_backend",
+                        choices=["vllm", "transformers"],
+                        default="transformers")
+    parser.add_argument("--abstractive_concurrency", type=int, default=16)
+    parser.add_argument("--vllm_base_url", default="http://127.0.0.1:8000/v1")
+    parser.add_argument("--vllm_api_key", default="EMPTY")
     args = parser.parse_args()
 
     trace = Trace(args.run_id)
@@ -178,15 +237,21 @@ def main() -> None:
         ], allow_fail=True)
         raise SystemExit(3)
 
-    run_cmd(trace, "inference", [
+    inference_cmd = [
         sys.executable, str(SCRIPT_DIR / "run_space_hasos_aspect_parallel.py"),
         "--model", str(model),
         "--run_id", args.run_id,
         "--num_shards", str(args.num_shards),
         "--gpu", str(args.gpu),
         "--max_tokens", str(args.max_tokens),
+        "--evidence_top_k", str(args.evidence_top_k),
         "--sentiment_split",
-    ])
+    ]
+    if args.no_cut_sents:
+        inference_cmd.append("--no_cut_sents")
+    if args.no_early_stop:
+        inference_cmd.append("--no_early_stop")
+    run_cmd(trace, "inference", inference_cmd)
     run_cmd(trace, "export_lines", [
         sys.executable, str(SCRIPT_DIR / "export_space_hasos_lines.py"),
         "--run_id", args.run_id,
@@ -195,6 +260,41 @@ def main() -> None:
         sys.executable, str(SCRIPT_DIR / "summarize_aspect_outputs.py"),
         "--run_id", args.run_id,
     ])
+
+    abstractive_run_id = f"{args.run_id}_abstractive_ranked"
+    if args.abstractive:
+        ensure_abstractive_requirements(trace)
+        synthesis_cmd = [
+            sys.executable, str(SCRIPT_DIR / "synthesize_aspect_summaries.py"),
+            "--run_id", args.run_id,
+            "--output_run_id", abstractive_run_id,
+            "--source_mode", "ranked_evidence",
+            "--evidence_jsonl",
+            str(OUTPUTS_DIR / f"{args.run_id}_ranked_evidence.jsonl"),
+            "--evidence_top_k", str(args.evidence_top_k),
+            "--backend", args.abstractive_backend,
+            "--model_name", args.abstractive_model,
+            "--max_input_sentences",
+            str(args.abstractive_max_input_sentences),
+            "--max_new_tokens", str(args.abstractive_max_new_tokens),
+            "--concurrency", str(args.abstractive_concurrency),
+        ]
+        if args.abstractive_backend == "vllm":
+            synthesis_cmd.extend([
+                "--vllm_base_url", args.vllm_base_url,
+                "--vllm_api_key", args.vllm_api_key,
+            ])
+        if args.abstractive_limit is not None:
+            synthesis_cmd.extend(["--limit", str(args.abstractive_limit)])
+        run_cmd(trace, "synthesize_abstractive", synthesis_cmd)
+        run_cmd(trace, "export_abstractive_lines", [
+            sys.executable, str(SCRIPT_DIR / "export_space_hasos_lines.py"),
+            "--run_id", abstractive_run_id,
+        ])
+        run_cmd(trace, "summarize_abstractive_outputs", [
+            sys.executable, str(SCRIPT_DIR / "summarize_aspect_outputs.py"),
+            "--run_id", abstractive_run_id,
+        ])
 
     score_cmd = [
         sys.executable, str(SCRIPT_DIR / "score_semae_run.py"),

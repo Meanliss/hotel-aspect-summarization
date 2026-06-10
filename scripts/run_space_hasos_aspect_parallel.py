@@ -1,4 +1,4 @@
-"""Run aspect_inference.py in parallel across entity shards for SPACE-trained
+r"""Run aspect_inference.py in parallel across entity shards for SPACE-trained
 SemAE on HASOS hotel data, with optional sentiment split.
 
 Based on run_aspect_inference_parallel.py with these changes:
@@ -47,6 +47,7 @@ def build_cmd(args, shard_idx, shard_run_id):
         "--run_id", shard_run_id,
         "--gpu", str(args.gpu),
         "--max_tokens", str(args.max_tokens),
+        "--evidence_top_k", str(args.evidence_top_k),
         "--shard_idx", str(shard_idx),
         "--num_shards", str(args.num_shards),
         "--sample_sentences",
@@ -54,6 +55,10 @@ def build_cmd(args, shard_idx, shard_run_id):
         "--trace_jsonl", str(LOGS_DIR / f"{shard_run_id}.trace.jsonl"),
         "--trace_sample_limit", str(args.trace_sample_limit),
     ]
+    if args.no_cut_sents:
+        cmd.append("--no_cut_sents")
+    if args.no_early_stop:
+        cmd.append("--no_early_stop")
     if args.sentiment_split:
         cmd.append("--sentiment_split")
         cmd.extend(["--taxonomy", str(DATA_DIR / "hasos" / "aspect_taxonomy.json")])
@@ -134,6 +139,32 @@ def merge_provenance(shard_run_ids, final_run_id):
     return final_path
 
 
+def merge_ranked_evidence(shard_run_ids, final_run_id):
+    """Merge per-shard top-ranked full evidence rows into a final JSONL."""
+    final_path = OUTPUTS_DIR / f"{final_run_id}_ranked_evidence.jsonl"
+    final_path.parent.mkdir(exist_ok=True)
+    merged = 0
+    with final_path.open("w", encoding="utf-8") as fout:
+        for shard_run_id in shard_run_ids:
+            shard_path = LOGS_DIR / f"{shard_run_id}.ranked_evidence.jsonl"
+            if not shard_path.exists():
+                continue
+            for line in shard_path.read_text(
+                    encoding="utf-8", errors="replace").splitlines():
+                if not line.strip():
+                    continue
+                try:
+                    row = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                row["run_id"] = final_run_id
+                row["shard_run_id"] = shard_run_id
+                fout.write(json.dumps(row, ensure_ascii=False) + "\n")
+                merged += 1
+    print(f"[merge] copied {merged} ranked evidence rows into {final_path}")
+    return final_path
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Parallel aspect inference for SPACE-trained SemAE on HASOS data")
@@ -142,7 +173,13 @@ def main():
     parser.add_argument("--run_id", default="space_hasos_run1")
     parser.add_argument("--num_shards", type=int, default=4)
     parser.add_argument("--gpu", type=int, default=0)
-    parser.add_argument("--max_tokens", type=int, default=40)
+    parser.add_argument("--max_tokens", type=int, default=120)
+    parser.add_argument("--no_cut_sents", action="store_true",
+                        help="do not hard-cut the final extractive sentence")
+    parser.add_argument("--no_early_stop", action="store_true",
+                        help="continue selecting after an over-budget sentence")
+    parser.add_argument("--evidence_top_k", type=int, default=5,
+                        help="top full ranked evidence rows to emit per entity/aspect")
     parser.add_argument("--gold_aspects", default=None,
                         help="comma-separated aspect codes; default: taxonomy")
     parser.add_argument("--sentiment_split", action="store_true",
@@ -170,6 +207,7 @@ def main():
     log_files = []
     print(f"[main] launching {args.num_shards} shards on GPU {args.gpu}")
     print(f"[main] trace_sample_limit={args.trace_sample_limit}")
+    print(f"[main] max_tokens={args.max_tokens} no_cut_sents={args.no_cut_sents} evidence_top_k={args.evidence_top_k}")
     if args.sentiment_split:
         print("[main] sentiment_split ENABLED — will write <run_id>_sentiment/ tree")
     start = time.time()
@@ -206,6 +244,7 @@ def main():
     final_dir = merge_shards(shard_run_ids, args.run_id,
                              sentiment_split=args.sentiment_split)
     merge_provenance(shard_run_ids, args.run_id)
+    merge_ranked_evidence(shard_run_ids, args.run_id)
 
     if not args.keep_shards:
         for shard_run_id in shard_run_ids:

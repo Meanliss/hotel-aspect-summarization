@@ -193,6 +193,11 @@ if __name__ == '__main__':
         help='max ranked/write sample rows to emit into trace_jsonl',
         type=int,
         default=30)
+    out_arg_group.add_argument(
+        '--evidence_top_k',
+        help='write top-k full ranked evidence sentences before summary truncation',
+        type=int,
+        default=0)
 
     other_arg_group = argparser.add_argument_group('Other arguments')
     other_arg_group.add_argument('--run_id',
@@ -254,6 +259,7 @@ if __name__ == '__main__':
 
     trace_file = None
     provenance_file = None
+    ranked_evidence_file = None
 
     def emit_trace(stage, **payload):
         if trace_file is None:
@@ -275,6 +281,12 @@ if __name__ == '__main__':
         provenance_file.write(json.dumps(payload, ensure_ascii=False) + '\n')
         provenance_file.flush()
 
+    def emit_ranked_evidence(**payload):
+        if ranked_evidence_file is None:
+            return
+        ranked_evidence_file.write(json.dumps(payload, ensure_ascii=False) + '\n')
+        ranked_evidence_file.flush()
+
     if args.trace_jsonl:
         os.makedirs(os.path.dirname(os.path.abspath(args.trace_jsonl)),
                   exist_ok=True)
@@ -283,6 +295,14 @@ if __name__ == '__main__':
             os.path.dirname(os.path.abspath(args.trace_jsonl)),
             '{0}.provenance.jsonl'.format(args.run_id))
         provenance_file = open(provenance_path, 'w', encoding='utf-8')
+        ranked_evidence_path = os.path.join(
+            os.path.dirname(os.path.abspath(args.trace_jsonl)),
+            '{0}.ranked_evidence.jsonl'.format(args.run_id))
+        if args.evidence_top_k > 0:
+            ranked_evidence_file = open(ranked_evidence_path, 'w',
+                                        encoding='utf-8')
+        else:
+            ranked_evidence_path = ''
         emit_trace('start',
                    summary_data=summ_data_path,
                    model=model_path,
@@ -290,8 +310,12 @@ if __name__ == '__main__':
                    seedsdir=seeds_path,
                    output_path=output_path,
                    provenance_path=provenance_path,
+                   ranked_evidence_path=ranked_evidence_path,
                    sentiment_split=bool(args.sentiment_split),
                    max_tokens=args.max_tokens,
+                   no_cut_sents=bool(args.no_cut_sents),
+                   no_early_stop=bool(args.no_early_stop),
+                   evidence_top_k=args.evidence_top_k,
                    beta=beta)
 
     # read aspect seed words
@@ -657,6 +681,31 @@ if __name__ == '__main__':
 
             ranked_sentences = ranked_entity_sentences[entity_id].get(aspect, [])
             ranked_records = ranked_entity_records[entity_id].get(aspect, [])
+            if args.evidence_top_k > 0:
+                for rec in ranked_records[:args.evidence_top_k]:
+                    sentiment_label, sentiment_keywords = classify_sentiment_with_reason(
+                        rec.get('sentence', ''), aspect)
+                    emit_ranked_evidence(
+                        run_id=args.run_id,
+                        entity_id=entity_id,
+                        split=split_name,
+                        aspect=aspect,
+                        rank=rec.get('rank'),
+                        score=rec.get('score'),
+                        beta=beta,
+                        sentence=rec.get('sentence', ''),
+                        source_review_id=rec.get('source_review_id')
+                        or rec.get('review_id'),
+                        source_entity_id=rec.get('source_entity_id'),
+                        source_sentence_index=rec.get(
+                            'source_sentence_index'),
+                        matched_aspect_seed=rec.get(
+                            'matched_aspect_seed', []),
+                        sentiment_label=sentiment_label,
+                        matched_sentiment_keywords=sentiment_keywords,
+                        was_truncated=False,
+                        selection_reason='top {0} ranked full evidence before summary truncation'.format(
+                            args.evidence_top_k))
             if ranked_sentences:
                 summary_sentences, summary_meta = truncate_summary(
                     ranked_sentences,
@@ -783,6 +832,8 @@ if __name__ == '__main__':
             trace_file.close()
         if provenance_file is not None:
             provenance_file.close()
+        if ranked_evidence_file is not None:
+            ranked_evidence_file.close()
         raise SystemExit(0)
 
     ftxt = open(os.path.join(eval_path, 'eval_{0}.txt'.format(args.run_id)),
@@ -800,3 +851,5 @@ if __name__ == '__main__':
         trace_file.close()
     if provenance_file is not None:
         provenance_file.close()
+    if ranked_evidence_file is not None:
+        ranked_evidence_file.close()

@@ -125,6 +125,16 @@ def first_sample(run_id: str) -> dict | None:
     return None
 
 
+def first_synthesis_sample(run_id: str) -> dict | None:
+    path = OUTPUTS_DIR / f"{run_id}_abstractive_ranked_synthesis_lines.jsonl"
+    if not path.exists():
+        return None
+    for row in read_jsonl(path, limit=500):
+        if row.get("summary"):
+            return row
+    return None
+
+
 def tx(x: float) -> int:
     return int(x * 914400)
 
@@ -274,6 +284,11 @@ def build_slides(run_id: str) -> list[str]:
         old_rouge_path = OUTPUTS_DIR / "eval_space_old_aspects_e20.json"
     old_macro_rows, old_aspect_rows = rouge_macro_rows(old_rouge_path)
     sample = first_sample(run_id)
+    synthesis_sample = first_synthesis_sample(run_id)
+    synthesis_rows = jsonl_count(
+        OUTPUTS_DIR / f"{run_id}_abstractive_ranked_synthesis_lines.jsonl")
+    ranked_evidence_rows = jsonl_count(
+        OUTPUTS_DIR / f"{run_id}_ranked_evidence.jsonl")
     macro = metrics.get("macro", {})
     aspect_count = len(report.get("per_aspect", {})) or 29
     model_label = metadata.get("model_label") or "SemAE checkpoint"
@@ -294,6 +309,8 @@ def build_slides(run_id: str) -> list[str]:
     sample_aspect = "Chưa có output sample. Chạy inference trước khi build deck cuối."
     sample_sent = "(missing)"
     sample_split = "Chưa có sentiment output sample."
+    sample_output_1_title = "Ví dụ aspect-only output"
+    sample_output_2_title = "Ví dụ aspect + sentiment split"
     if sample:
         sample_aspect = f"Entity: {sample['entity_id']}\nAspect: {sample['aspect']}"
         sample_sent = "\n\n".join(f"{i + 1}. {truncate(s, 210)}" for i, s in enumerate(sample["sentences"][:4]))
@@ -301,6 +318,20 @@ def build_slides(run_id: str) -> list[str]:
             f"{label.upper()}\n" + ("\n".join(f"- {truncate(s, 135)}" for s in sample["sentiment"].get(label, [])[:3]) or "(empty)")
             for label in ("pos", "neg", "neu")
         )
+    if synthesis_sample:
+        sample_output_1_title = "Top-5 ranked evidence dùng cho synthesis"
+        sample_output_2_title = "FLAN/T5 abstractive summary từ ranked evidence"
+        sample_aspect = (
+            f"Entity: {synthesis_sample.get('entity_id')}\n"
+            f"Aspect: {synthesis_sample.get('aspect')}\n"
+            f"Model: {synthesis_sample.get('model_name')}")
+        evidence = synthesis_sample.get("evidence", [])
+        sample_sent = "\n\n".join(
+            f"{i}. rank={ev.get('rank')} score={ev.get('score')}\n"
+            f"{truncate(ev.get('sentence', ''), 210)}"
+            for i, ev in enumerate(evidence[:5], 1)
+        ) or "(missing evidence)"
+        sample_split = truncate(synthesis_sample.get("summary", ""), 900)
     if provenance_sample:
         prov = provenance_sample[0]
         provenance_example = (
@@ -325,17 +356,17 @@ def build_slides(run_id: str) -> list[str]:
 
     slides.extend([
         slide_xml("SPACE-trained SemAE cho HASOS aspect/sentiment summary", run_id, [
-            {"text": f"Deck này ghi lại pipeline sau training: {model_label} được dùng để chọn câu theo {aspect_count} HASOS aspects, sau đó tách sentiment trên chính các câu đã chọn.", "x": 0.75, "y": 1.45, "w": 6.2, "h": 1.1, "font_size": 1550},
-            {"text": f"Training: {train_label}\nOutput modes: 2\nHASOS aspects: {aspect_count}\nTrace rows: {len(trace)}", "x": 7.25, "y": 1.45, "w": 4.9, "h": 1.65, "font_size": 1350, "fill": "FFFFFF", "line": "D8DEE9"},
-            {"text": "Output 1: Aspect-only summary giữ lẫn positive/negative/neutral.\nOutput 2: Aspect + sentiment tách pos/neg/neu từ cùng câu đã được chọn.", "x": 0.75, "y": 3.45, "w": 11.4, "h": 1.2, "font_size": 1300, "fill": "FFFFFF", "line": "D8DEE9"},
+            {"text": f"Deck này ghi lại pipeline sau training: {model_label} được dùng để rank câu theo {aspect_count} HASOS aspects. Bản sửa mới lấy top-5 ranked evidence đầy đủ trước khi truncate rồi synthesize bằng FLAN/T5 summarization model.", "x": 0.75, "y": 1.45, "w": 6.2, "h": 1.1, "font_size": 1550},
+            {"text": f"Training: {train_label}\nOutput modes: extractive + abstractive_ranked\nHASOS aspects: {aspect_count}\nTrace rows: {len(trace)}\nRanked evidence rows: {ranked_evidence_rows}\nSynthesis rows: {synthesis_rows}", "x": 7.25, "y": 1.45, "w": 4.9, "h": 1.9, "font_size": 1200, "fill": "FFFFFF", "line": "D8DEE9"},
+            {"text": "Corrected flow: SemAE scoring -> top-5 full ranked evidence -> FLAN/T5 abstractive summary. Extractive/sentiment outputs vẫn giữ để audit, nhưng không còn là input cho abstractive synthesis.", "x": 0.75, "y": 3.65, "w": 11.4, "h": 1.0, "font_size": 1300, "fill": "FFFFFF", "line": "D8DEE9"},
         ]),
         slide_xml("Pipeline từ input tới output", "Mechanism", [
             {"text": "1 Input\nhasos_summ.json\nreviews grouped by entity", "x": 0.65, "y": 1.45, "w": 2.2, "h": 1.15, "font_size": 1050, "fill": "FFFFFF", "line": "D8DEE9"},
             {"text": "2 Tokenize\nSPACE SentencePiece\nsame tokenizer as checkpoint", "x": 3.0, "y": 1.45, "w": 2.2, "h": 1.15, "font_size": 1050, "fill": "FFFFFF", "line": "D8DEE9"},
             {"text": "3 Encode\nSemAE cluster distribution\nD_z(s) per sentence", "x": 5.35, "y": 1.45, "w": 2.2, "h": 1.15, "font_size": 1050, "fill": "FFFFFF", "line": "D8DEE9"},
             {"text": "4 Aspect rank\nKL(D_z||P_z) - beta*KL(D_z||P_k)", "x": 7.7, "y": 1.45, "w": 2.2, "h": 1.15, "font_size": 1050, "fill": "FFFFFF", "line": "D8DEE9"},
-            {"text": "5 Output\ntruncate top sentences\nthen sentiment split", "x": 10.05, "y": 1.45, "w": 2.2, "h": 1.15, "font_size": 1050, "fill": "FFFFFF", "line": "D8DEE9"},
-            {"text": "Biến thể so với SemAE gốc: taxonomy/seeds đổi sang HASOS 29 aspects; sentiment không tham gia ranking mà chỉ là post-processing.", "x": 0.75, "y": 3.75, "w": 11.4, "h": 0.85, "font_size": 1200, "fill": "EEF6FF", "line": "BFDBFE"},
+            {"text": "5 Synthesize\ntop-5 full evidence\nFLAN/T5 summary", "x": 10.05, "y": 1.45, "w": 2.2, "h": 1.15, "font_size": 1050, "fill": "FFFFFF", "line": "D8DEE9"},
+            {"text": "Biến thể so với SemAE gốc: taxonomy/seeds đổi sang HASOS 29 aspects. Abstractive stage dùng ranked evidence trước truncate; sentiment split chỉ là audit post-processing.", "x": 0.75, "y": 3.75, "w": 11.4, "h": 0.85, "font_size": 1200, "fill": "EEF6FF", "line": "BFDBFE"},
         ]),
         slide_xml("Artifact gate và dữ liệu chuẩn bị", "Readiness", [
             {"text": trace_tail, "x": 0.75, "y": 1.35, "w": 5.9, "h": 4.8, "font_size": 1000, "fill": "FFFFFF", "line": "D8DEE9"},
@@ -345,7 +376,7 @@ def build_slides(run_id: str) -> list[str]:
         slide_xml("SemAE scoring theo aspect", "Formula", [
             {"text": "score(s, k) = KL(D_z(s) || P_z) - beta * KL(D_z(s) || P_k)", "x": 0.8, "y": 1.45, "w": 11.4, "h": 0.65, "font_size": 1900, "bold": True, "fill": "FFFFFF", "line": "D8DEE9"},
             {"text": "D_z(s): phân phối cluster của câu s.\nP_z: background distribution.\nP_k: prototype distribution của aspect k.\nbeta=0.7 theo recipe hiện tại.", "x": 0.9, "y": 2.5, "w": 5.7, "h": 1.8, "font_size": 1250, "fill": "FFFFFF", "line": "D8DEE9"},
-            {"text": "Câu có score thấp hơn được ưu tiên. Output là extractive: chọn và nối câu gốc thay vì paraphrase, nên có thể trace ngược về review/entity.", "x": 7.0, "y": 2.5, "w": 5.4, "h": 1.35, "font_size": 1250, "fill": "ECFDF5", "line": "99F6E4"},
+            {"text": "Câu có score thấp hơn được ưu tiên. Bản abstractive mới không đọc summary đã truncate; nó đọc top-5 ranked evidence full sentence rồi sinh summary ngắn.", "x": 7.0, "y": 2.5, "w": 5.4, "h": 1.35, "font_size": 1250, "fill": "ECFDF5", "line": "99F6E4"},
         ]),
         slide_xml("SPACE original aspects: official ROUGE", "Old Baseline", [
             {"text": "Bản cũ dùng đúng SPACE benchmark và 6 aspect gốc: building, cleanliness, food, location, rooms, service. Run này chạy without --no_eval nên điểm dưới đây là pyrouge official, khác với HASOS reference-free metrics.", "x": 0.75, "y": 1.35, "w": 11.35, "h": 0.95, "font_size": 1120, "fill": "FFF7ED", "line": "FDBA74"},
@@ -353,11 +384,11 @@ def build_slides(run_id: str) -> list[str]:
             {"text": "ALL split by aspect\nR1 / R2 / RL\n" + old_aspect_rows, "x": 6.15, "y": 2.45, "w": 5.95, "h": 2.65, "font_size": 850, "fill": "ECFDF5", "line": "99F6E4"},
             {"text": "Kết luận so sánh: HASOS 29 aspects là adaptation/inference mới không có gold summary; SPACE original 6 aspects là baseline có gold và có thể so sánh bằng ROUGE.", "x": 0.85, "y": 5.35, "w": 11.15, "h": 0.55, "font_size": 1050, "fill": "EEF6FF", "line": "BFDBFE"},
         ]),
-        slide_xml("Ví dụ aspect-only output", "Output 1", [
+        slide_xml(sample_output_1_title, "Output 1", [
             {"text": sample_aspect, "x": 0.75, "y": 1.35, "w": 3.2, "h": 0.9, "font_size": 1250, "bold": True, "fill": "FFFFFF", "line": "D8DEE9"},
             {"text": sample_sent, "x": 4.15, "y": 1.35, "w": 8.0, "h": 4.8, "font_size": 1050, "fill": "FFFFFF", "line": "D8DEE9"},
         ]),
-        slide_xml("Ví dụ aspect + sentiment split", "Output 2", [
+        slide_xml(sample_output_2_title, "Output 2", [
             {"text": sample_split, "x": 0.75, "y": 1.35, "w": 11.5, "h": 5.0, "font_size": 1050, "fill": "FFFFFF", "line": "D8DEE9"},
         ]),
         slide_xml("Metrics và health checks", "Quality", [
@@ -365,8 +396,8 @@ def build_slides(run_id: str) -> list[str]:
             {"text": "HASOS không có gold summary nên dùng reference-free metrics: fidelity, purity, diversity, compression. BERTScore có thể chạy thêm nếu dependency/model tải được.", "x": 6.1, "y": 1.45, "w": 6.0, "h": 1.25, "font_size": 1250, "fill": "FFFFFF", "line": "D8DEE9"},
         ]),
         slide_xml("Limitations và quyết định kỹ thuật", "Caveats", [
-            {"text": "1. Sentiment là keyword post-processing, không phải sentiment-aware ranking.\n2. Output extractive nên traceable nhưng có thể dài hoặc multi-aspect.\n3. Tokenizer là artifact bắt buộc và phải sync cùng checkpoint.\n4. Run này ưu tiên có output đúng pipeline trước deadline; xem trace/log để đánh giá độ sạch numerical.", "x": 0.85, "y": 1.45, "w": 11.3, "h": 2.4, "font_size": 1250, "fill": "FFFFFF", "line": "D8DEE9"},
-            {"text": f"Final deck path: outputs/{run_id}_pipeline_report.pptx", "x": 0.85, "y": 4.55, "w": 11.3, "h": 0.65, "font_size": 1300, "bold": True, "fill": "ECFDF5", "line": "99F6E4"},
+            {"text": "1. Sentiment là keyword post-processing, không phải sentiment-aware ranking.\n2. Abstractive summary không còn verbatim traceable như extractive output, nhưng mỗi row giữ top-5 evidence provenance.\n3. Tokenizer là artifact bắt buộc và phải sync cùng checkpoint.\n4. Không dùng output đã truncate làm input synthesis.", "x": 0.85, "y": 1.45, "w": 11.3, "h": 2.4, "font_size": 1250, "fill": "FFFFFF", "line": "D8DEE9"},
+            {"text": f"Final deck path: outputs/{run_id}_report.pptx", "x": 0.85, "y": 4.55, "w": 11.3, "h": 0.65, "font_size": 1300, "bold": True, "fill": "ECFDF5", "line": "99F6E4"},
         ]),
     ])
     provenance_slide = slide_xml("Provenance cho từng câu output", "Traceability", [
@@ -407,14 +438,9 @@ def main() -> None:
     parser.add_argument("--run_id", default="space_hasos_2k_e10")
     parser.add_argument("--output", default=None)
     args = parser.parse_args()
-    out = Path(args.output) if args.output else OUTPUTS_DIR / f"{args.run_id}_pipeline_report.pptx"
+    out = Path(args.output) if args.output else OUTPUTS_DIR / f"{args.run_id}_report.pptx"
     write_pptx(args.run_id, out)
     print(f"wrote {out}")
-    if args.output is None:
-        alias = OUTPUTS_DIR / f"{args.run_id}_report.pptx"
-        if alias != out:
-            write_pptx(args.run_id, alias)
-            print(f"wrote {alias}")
 
 
 if __name__ == "__main__":
