@@ -1,2 +1,4 @@
 *
 !.gitignore
+!space_unigram_32k.model
+!space_unigram_32k.vocab

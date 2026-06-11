@@ -7,14 +7,17 @@ __pycache__/
 venv/
 .env
 
-# Models & training artifacts (too large for git)
+# Models & training artifacts
 models/
-checkpoints/
+checkpoints/*
+!checkpoints/space_full_11402x20_stable_resume_e7/
+!checkpoints/space_full_11402x20_stable_resume_e7/space_full_11402x20_stable_resume_e7_20_model.pt
 logs/
 exports/
 downloads/
 *.tar
 *.tar.gz
+!artifacts/space_hasos_full_e20_results.tar.gz
 *.bak_*
 
 # Datasets — keep only seeds, taxonomy, and SentencePiece vocab
@@ -23,13 +26,16 @@ data/space/
 data/hasos/hasos_summ.json
 data/hasos/hasos_summ.source.json
 
-# SentencePiece model binary is large; keep .vocab only
-data/sentencepiece/*.model
+# SentencePiece tokenizer required for SPACE checkpoint inference
+data/sentencepiece/*
+!data/sentencepiece/.gitignore
+!data/sentencepiece/space_unigram_32k.model
+!data/sentencepiece/space_unigram_32k.vocab
 
 # Raw CSVs at any level
 *.csv
 
-# Outputs: ignore everything except the hasos_english_only run and hasos_aspects_run1
+# Outputs: ignore everything except curated HASOS/SPACE result runs
 outputs/**
 !outputs/hasos_english_only/
 !outputs/hasos_english_only/**
@@ -39,6 +45,9 @@ outputs/**
 !outputs/hasos_aspects_run1_report.json
 !outputs/hasos_aspects_run1_metrics.md
 !outputs/hasos_aspects_run1_metrics.json
+!outputs/space_hasos_full_e20*/
+!outputs/space_hasos_full_e20*/**
+!outputs/space_hasos_full_e20*
 
 # OS / editor cruft
 .DS_Store
