@@ -11,6 +11,7 @@ venv/
 models/
 checkpoints/*
 !checkpoints/space_full_11402x20_stable_resume_e7/
+checkpoints/space_full_11402x20_stable_resume_e7/*
 !checkpoints/space_full_11402x20_stable_resume_e7/space_full_11402x20_stable_resume_e7_20_model.pt
 logs/
 exports/
