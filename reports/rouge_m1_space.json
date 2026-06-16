@@ -1,0 +1,135 @@
+{
+  "method": "m1_extractive",
+  "by_split": {
+    "dev": {
+      "building": {
+        "rouge1": 0.2846,
+        "rouge2": 0.06424,
+        "rougeL": 0.20819,
+        "n": 25
+      },
+      "cleanliness": {
+        "rouge1": 0.26872,
+        "rouge2": 0.0833,
+        "rougeL": 0.22313,
+        "n": 25
+      },
+      "food": {
+        "rouge1": 0.29698,
+        "rouge2": 0.06661,
+        "rougeL": 0.20299,
+        "n": 25
+      },
+      "location": {
+        "rouge1": 0.35044,
+        "rouge2": 0.10365,
+        "rougeL": 0.235,
+        "n": 25
+      },
+      "rooms": {
+        "rouge1": 0.34106,
+        "rouge2": 0.0919,
+        "rougeL": 0.23842,
+        "n": 25
+      },
+      "service": {
+        "rouge1": 0.30209,
+        "rouge2": 0.09423,
+        "rougeL": 0.23182,
+        "n": 25
+      },
+      "MACRO": {
+        "rouge1": 0.307315,
+        "rouge2": 0.08398833333333333,
+        "rougeL": 0.2232583333333333
+      }
+    },
+    "test": {
+      "building": {
+        "rouge1": 0.25328,
+        "rouge2": 0.05444,
+        "rougeL": 0.1819,
+        "n": 25
+      },
+      "cleanliness": {
+        "rouge1": 0.25941,
+        "rouge2": 0.07646,
+        "rougeL": 0.20913,
+        "n": 25
+      },
+      "food": {
+        "rouge1": 0.31845,
+        "rouge2": 0.11853,
+        "rougeL": 0.24007,
+        "n": 25
+      },
+      "location": {
+        "rouge1": 0.33502,
+        "rouge2": 0.11077,
+        "rougeL": 0.24153,
+        "n": 25
+      },
+      "rooms": {
+        "rouge1": 0.34545,
+        "rouge2": 0.0845,
+        "rougeL": 0.23528,
+        "n": 25
+      },
+      "service": {
+        "rouge1": 0.29897,
+        "rouge2": 0.09156,
+        "rougeL": 0.21382,
+        "n": 25
+      },
+      "MACRO": {
+        "rouge1": 0.30176333333333333,
+        "rouge2": 0.08937666666666667,
+        "rougeL": 0.22028833333333334
+      }
+    },
+    "all": {
+      "building": {
+        "rouge1": 0.26714,
+        "rouge2": 0.05831,
+        "rougeL": 0.19381,
+        "n": 50
+      },
+      "cleanliness": {
+        "rouge1": 0.26347,
+        "rouge2": 0.07996,
+        "rougeL": 0.21623,
+        "n": 50
+      },
+      "food": {
+        "rouge1": 0.30677,
+        "rouge2": 0.09264,
+        "rougeL": 0.22136,
+        "n": 50
+      },
+      "location": {
+        "rouge1": 0.3434,
+        "rouge2": 0.10784,
+        "rougeL": 0.23847,
+        "n": 50
+      },
+      "rooms": {
+        "rouge1": 0.34288,
+        "rouge2": 0.08865,
+        "rougeL": 0.23708,
+        "n": 50
+      },
+      "service": {
+        "rouge1": 0.30104,
+        "rouge2": 0.09365,
+        "rougeL": 0.2238,
+        "n": 50
+      },
+      "MACRO": {
+        "rouge1": 0.30411666666666665,
+        "rouge2": 0.08684166666666666,
+        "rougeL": 0.22179166666666664
+      }
+    }
+  },
+  "coverage": {}
+}

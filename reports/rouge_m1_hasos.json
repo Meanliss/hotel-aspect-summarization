@@ -1,0 +1,99 @@
+{
+  "method": "m1_extractive",
+  "by_split": {
+    "dev": {
+      "facility": {
+        "rouge1": 0.18407,
+        "rouge2": 0.07833,
+        "rougeL": 0.10685,
+        "n": 24
+      },
+      "amenity": {
+        "rouge1": 0.10316,
+        "rouge2": 0.03756,
+        "rougeL": 0.06583,
+        "n": 24
+      },
+      "service": {
+        "rouge1": 0.10808,
+        "rouge2": 0.03869,
+        "rougeL": 0.07844,
+        "n": 24
+      },
+      "experience": {
+        "rouge1": 0.03177,
+        "rouge2": 0.00877,
+        "rougeL": 0.02775,
+        "n": 17
+      },
+      "MACRO": {
+        "rouge1": 0.10677,
+        "rouge2": 0.0408375,
+        "rougeL": 0.0697175
+      }
+    },
+    "test": {
+      "facility": {
+        "rouge1": 0.18121,
+        "rouge2": 0.07961,
+        "rougeL": 0.10644,
+        "n": 26
+      },
+      "amenity": {
+        "rouge1": 0.08658,
+        "rouge2": 0.03166,
+        "rougeL": 0.05827,
+        "n": 26
+      },
+      "service": {
+        "rouge1": 0.09511,
+        "rouge2": 0.0397,
+        "rougeL": 0.07332,
+        "n": 26
+      },
+      "experience": {
+        "rouge1": 0.03731,
+        "rouge2": 0.00933,
+        "rougeL": 0.02847,
+        "n": 15
+      },
+      "MACRO": {
+        "rouge1": 0.1000525,
+        "rouge2": 0.040075,
+        "rougeL": 0.066625
+      }
+    },
+    "all": {
+      "facility": {
+        "rouge1": 0.18248,
+        "rouge2": 0.07907,
+        "rougeL": 0.10672,
+        "n": 50
+      },
+      "amenity": {
+        "rouge1": 0.09418,
+        "rouge2": 0.0343,
+        "rougeL": 0.0617,
+        "n": 50
+      },
+      "service": {
+        "rouge1": 0.10125,
+        "rouge2": 0.03887,
+        "rougeL": 0.07561,
+        "n": 50
+      },
+      "experience": {
+        "rouge1": 0.03438,
+        "rouge2": 0.00906,
+        "rougeL": 0.02808,
+        "n": 32
+      },
+      "MACRO": {
+        "rouge1": 0.10307250000000001,
+        "rouge2": 0.040325,
+        "rougeL": 0.06802749999999999
+      }
+    }
+  },
+  "coverage": {}
+}

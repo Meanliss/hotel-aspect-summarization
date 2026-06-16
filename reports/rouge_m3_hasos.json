@@ -1,0 +1,99 @@
+{
+  "method": "m3_kw",
+  "by_split": {
+    "dev": {
+      "facility": {
+        "rouge1": 0.23066,
+        "rouge2": 0.05413,
+        "rougeL": 0.14749,
+        "n": 22
+      },
+      "amenity": {
+        "rouge1": 0.19217,
+        "rouge2": 0.0292,
+        "rougeL": 0.13419,
+        "n": 11
+      },
+      "service": {
+        "rouge1": 0.38586,
+        "rouge2": 0.13398,
+        "rougeL": 0.30905,
+        "n": 9
+      },
+      "experience": {
+        "rouge1": 0.10778,
+        "rouge2": 0.01343,
+        "rougeL": 0.09012,
+        "n": 16
+      },
+      "MACRO": {
+        "rouge1": 0.2291175,
+        "rouge2": 0.057685,
+        "rougeL": 0.1702125
+      }
+    },
+    "test": {
+      "facility": {
+        "rouge1": 0.24923,
+        "rouge2": 0.06463,
+        "rougeL": 0.15889,
+        "n": 25
+      },
+      "amenity": {
+        "rouge1": 0.22219,
+        "rouge2": 0.03057,
+        "rougeL": 0.15338,
+        "n": 14
+      },
+      "service": {
+        "rouge1": 0.29404,
+        "rouge2": 0.08883,
+        "rougeL": 0.22628,
+        "n": 18
+      },
+      "experience": {
+        "rouge1": 0.1395,
+        "rouge2": 0.01237,
+        "rougeL": 0.11103,
+        "n": 14
+      },
+      "MACRO": {
+        "rouge1": 0.22624,
+        "rouge2": 0.049100000000000005,
+        "rougeL": 0.16239499999999998
+      }
+    },
+    "all": {
+      "facility": {
+        "rouge1": 0.23998,
+        "rouge2": 0.05957,
+        "rougeL": 0.15315,
+        "n": 47
+      },
+      "amenity": {
+        "rouge1": 0.21163,
+        "rouge2": 0.03028,
+        "rougeL": 0.14636,
+        "n": 25
+      },
+      "service": {
+        "rouge1": 0.32622,
+        "rouge2": 0.10529,
+        "rougeL": 0.25507,
+        "n": 27
+      },
+      "experience": {
+        "rouge1": 0.12344,
+        "rouge2": 0.01304,
+        "rougeL": 0.10015,
+        "n": 30
+      },
+      "MACRO": {
+        "rouge1": 0.2253175,
+        "rouge2": 0.052044999999999994,
+        "rougeL": 0.1636825
+      }
+    }
+  },
+  "coverage": {}
+}

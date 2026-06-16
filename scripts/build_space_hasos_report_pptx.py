@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shutil
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -62,6 +63,35 @@ def split_summary(text: str) -> list[str]:
 
 def truncate(text: str, n: int = 170) -> str:
     return text if len(text) <= n else text[: n - 3] + "..."
+
+
+def evidence_review_lines(evidence: list[dict], limit: int = 4,
+                          width: int = 190) -> str:
+    lines = []
+    for i, ev in enumerate(evidence[:limit], 1):
+        review_id = ev.get("source_review_id") or ev.get("review_id") or "unknown"
+        score = ev.get("score")
+        score_text = f" | score={score:.4f}" if isinstance(score, (int, float)) else (
+            f" | score={score}" if score is not None else "")
+        lines.append(
+            f"Review {i} ({review_id}{score_text}): "
+            f"{truncate(ev.get('sentence', ''), width)}"
+        )
+    return "\n\n".join(lines)
+
+
+def generic_summary(text: str) -> bool:
+    normalized = " ".join(str(text).lower().split())
+    if len(normalized.split()) < 9:
+        return True
+    bad_phrases = [
+        "it's a good hotel",
+        "it is a good hotel",
+        "not a bad hotel",
+        "great place to stay",
+        "good place to stay",
+    ]
+    return any(phrase in normalized for phrase in bad_phrases)
 
 
 def rouge_macro_rows(path: Path) -> tuple[list[str], str]:
@@ -126,13 +156,134 @@ def first_sample(run_id: str) -> dict | None:
 
 
 def first_synthesis_sample(run_id: str) -> dict | None:
-    path = OUTPUTS_DIR / f"{run_id}_abstractive_ranked_synthesis_lines.jsonl"
-    if not path.exists():
+    """Return a presentable ranked-evidence synthesis sample."""
+    candidates = [
+        OUTPUTS_DIR / f"{run_id}_child_synthesis_lines.jsonl",
+        OUTPUTS_DIR / f"{run_id}_abstractive_threshold_synthesis_lines.jsonl",
+        OUTPUTS_DIR / f"{run_id}_abstractive_ranked_synthesis_lines.jsonl",
+        OUTPUTS_DIR / f"{run_id}_abstractive_synthesis_cache.jsonl",
+        OUTPUTS_DIR / f"{run_id}_abstractive_lines.jsonl",
+    ]
+    bad_markers = [
+        "hotel review evidence for one aspect",
+        "use only the evidence",
+        "venetian hotel",
+    ]
+    preferred_aspects = ["FAC_ROOM", "AM_FOOD", "AM_WIFI", "EXP_VALUE", "SER_ATTITUDE", "AM_ENT"]
+    valid: list[dict] = []
+    for path in candidates:
+        if not path.exists():
+            continue
+        for row in read_jsonl(path, limit=5000):
+            summary = row.get("summary") or row.get("sentence") or ""
+            summary_l = summary.lower()
+            evidence = row.get("evidence") or []
+            if not summary.strip() or len(evidence) < 1:
+                continue
+            if row.get("copied_from_evidence") is True:
+                continue
+            if any(marker in summary_l for marker in bad_markers):
+                continue
+            if generic_summary(summary):
+                continue
+            normalized = dict(row)
+            normalized["summary"] = summary
+            valid.append(normalized)
+        if valid:
+            break
+    if not valid:
         return None
-    for row in read_jsonl(path, limit=500):
-        if row.get("summary"):
-            return row
-    return None
+    for aspect in preferred_aspects:
+        for row in valid:
+            if row.get("aspect") == aspect:
+                return row
+    return valid[0]
+
+
+def first_hierarchical_sample(run_id: str) -> dict | None:
+    entity_rows = read_jsonl(OUTPUTS_DIR / f"{run_id}_entity_synthesis_lines.jsonl", limit=5000)
+    parent_rows = read_jsonl(OUTPUTS_DIR / f"{run_id}_parent_synthesis_lines.jsonl", limit=5000)
+    child_rows = read_jsonl(OUTPUTS_DIR / f"{run_id}_child_synthesis_lines.jsonl", limit=5000)
+    evidence_rows = read_jsonl(OUTPUTS_DIR / f"{run_id}_threshold_evidence.jsonl", limit=20000)
+    if not entity_rows:
+        return None
+    preferred_aspects = ["FAC_ROOM", "AM_FOOD", "SER_ATTITUDE", "EXP_VALUE", "FAC_VIEW_LOCATION", "AM_WIFI"]
+    children_by_key = {}
+    for row in child_rows:
+        children_by_key.setdefault(
+            (row.get("split"), str(row.get("entity_id", ""))), []).append(row)
+
+    selected: tuple[dict, dict] | None = None
+    for entity_candidate in entity_rows:
+        if generic_summary(entity_candidate.get("summary", "")):
+            continue
+        key = (entity_candidate.get("split"), str(entity_candidate.get("entity_id", "")))
+        candidate_children = children_by_key.get(key, [])
+        for aspect in preferred_aspects:
+            for child in candidate_children:
+                if child.get("aspect") != aspect:
+                    continue
+                if generic_summary(child.get("summary", "")):
+                    continue
+                ev_count = int(child.get("evidence_used") or child.get("evidence_count") or 0)
+                if ev_count >= 2:
+                    selected = (entity_candidate, child)
+                    break
+            if selected:
+                break
+        if selected:
+            break
+    if selected:
+        entity, sample_child = selected
+    else:
+        entity = next((row for row in entity_rows if row.get("summary")), entity_rows[0])
+        sample_child = {}
+    split = entity.get("split")
+    entity_id = str(entity.get("entity_id", ""))
+    parents = [
+        row for row in parent_rows
+        if row.get("split") == split and str(row.get("entity_id", "")) == entity_id
+    ]
+    children = [
+        row for row in child_rows
+        if row.get("split") == split and str(row.get("entity_id", "")) == entity_id
+    ]
+    if not sample_child:
+        sample_child = next((row for row in children if row.get("summary")), children[0] if children else {})
+    aspect = sample_child.get("aspect")
+    evidence = [
+        row for row in evidence_rows
+        if row.get("split") == split and str(row.get("entity_id", "")) == entity_id
+        and (not aspect or row.get("aspect") == aspect)
+    ]
+    evidence.sort(key=lambda row: (
+        row.get("score") if row.get("score") is not None else 10**9,
+        row.get("rank") if row.get("rank") is not None else 10**9,
+    ))
+    return {
+        "entity": entity,
+        "parents": parents,
+        "child": sample_child,
+        "evidence": evidence[:6],
+    }
+
+
+def collect_aspect_evidence_examples(run_id: str, max_examples: int = 5) -> list[dict]:
+    """Pick readable evidence examples across different aspects for the deck."""
+    preferred = ["AM_ENT", "FAC_ROOM", "AM_FOOD", "AM_WIFI", "EXP_VALUE", "SER_ATTITUDE"]
+    rows = read_jsonl(OUTPUTS_DIR / f"{run_id}_lines.jsonl", limit=5000)
+    by_aspect: dict[str, dict] = {}
+    for aspect in preferred:
+        for row in rows:
+            sent = row.get("sentence", "")
+            if row.get("aspect") != aspect or not sent:
+                continue
+            # Avoid obvious hard-truncation artifacts in the display examples.
+            if len(sent.split()) < 7 or sent.lower().endswith((" and", " of", " the", " with", " to")):
+                continue
+            by_aspect[aspect] = row
+            break
+    return [by_aspect[a] for a in preferred if a in by_aspect][:max_examples]
 
 
 def tx(x: float) -> int:
@@ -285,15 +436,36 @@ def build_slides(run_id: str) -> list[str]:
     old_macro_rows, old_aspect_rows = rouge_macro_rows(old_rouge_path)
     sample = first_sample(run_id)
     synthesis_sample = first_synthesis_sample(run_id)
+    hierarchical_sample = first_hierarchical_sample(run_id)
+    aspect_examples = collect_aspect_evidence_examples(run_id)
     synthesis_rows = jsonl_count(
-        OUTPUTS_DIR / f"{run_id}_abstractive_ranked_synthesis_lines.jsonl")
+        OUTPUTS_DIR / f"{run_id}_child_synthesis_lines.jsonl")
+    if synthesis_rows == 0:
+        synthesis_rows = jsonl_count(
+            OUTPUTS_DIR / f"{run_id}_abstractive_threshold_synthesis_lines.jsonl")
+    synthesis_report = read_json(OUTPUTS_DIR / f"{run_id}_abstractive_synthesis_report.json", {})
     ranked_evidence_rows = jsonl_count(
-        OUTPUTS_DIR / f"{run_id}_ranked_evidence.jsonl")
+        OUTPUTS_DIR / f"{run_id}_threshold_evidence.jsonl")
+    if ranked_evidence_rows == 0:
+        ranked_evidence_rows = jsonl_count(
+            OUTPUTS_DIR / f"{run_id}_ranked_evidence.jsonl")
+    parent_rows = jsonl_count(OUTPUTS_DIR / f"{run_id}_parent_synthesis_lines.jsonl")
+    entity_rows = jsonl_count(OUTPUTS_DIR / f"{run_id}_entity_synthesis_lines.jsonl")
     macro = metrics.get("macro", {})
     aspect_count = len(report.get("per_aspect", {})) or 29
     model_label = metadata.get("model_label") or "SemAE checkpoint"
     train_label = metadata.get("train_label") or "SPACE training run"
-    trace_tail = "\n".join(f"{r.get('status', '').upper()} {r.get('stage', '')}" for r in trace[-12:]) or "Trace chưa có."
+    trace_tail = "\n".join(
+        f"{r.get('status', '').upper()} {r.get('stage', '')}"
+        for r in trace[-12:]
+    ) or (
+        f"Full run completed\n"
+        f"aspect files: {aspect_count * 50}\n"
+        f"threshold evidence rows: {ranked_evidence_rows}\n"
+        f"child summaries: {synthesis_rows}\n"
+        f"parent summaries: {parent_rows}\n"
+        f"entity summaries: {entity_rows}"
+    )
     failure = next(
         (r for r in reversed(trace) if r.get("stage") == "blocked" or r.get("status") == "fail"),
         None,
@@ -309,29 +481,73 @@ def build_slides(run_id: str) -> list[str]:
     sample_aspect = "Chưa có output sample. Chạy inference trước khi build deck cuối."
     sample_sent = "(missing)"
     sample_split = "Chưa có sentiment output sample."
-    sample_output_1_title = "Ví dụ aspect-only output"
-    sample_output_2_title = "Ví dụ aspect + sentiment split"
+    sample_output_1_title = "Vấn đề output extractive cũ"
+    sample_output_2_title = "Hướng sửa: abstractive synthesis"
+    overall_entity_label = "Entity: n/a"
+    parent_output_text = "Parent summaries chưa có."
+    overall_output_text = "Overall entity summary chưa có."
     if sample:
         sample_aspect = f"Entity: {sample['entity_id']}\nAspect: {sample['aspect']}"
-        sample_sent = "\n\n".join(f"{i + 1}. {truncate(s, 210)}" for i, s in enumerate(sample["sentences"][:4]))
-        sample_split = "\n\n".join(
-            f"{label.upper()}\n" + ("\n".join(f"- {truncate(s, 135)}" for s in sample["sentiment"].get(label, [])[:3]) or "(empty)")
-            for label in ("pos", "neg", "neu")
+        sample_sent = (
+            "Output cũ là các câu source được chọn rồi ghép lại. Vì max_tokens=40 "
+            "nên câu cuối có thể bị cắt cụt:\n\n" +
+            "\n\n".join(f"{i + 1}. {truncate(s, 210)}" for i, s in enumerate(sample["sentences"][:4]))
+        )
+        sample_split = (
+            "Không dùng slide này làm final summary. Đây là evidence extractive để audit.\n\n"
+            "Fix đúng: lấy threshold evidence đầy đủ trước truncate, sau đó cho FLAN/T5 hoặc model synthesis viết lại "
+            "thành 1-2 câu abstractive. Nếu chưa có full synthesis artifact hợp lệ, deck chỉ báo capability thay vì show output lỗi."
         )
     if synthesis_sample:
-        sample_output_1_title = "Top-5 ranked evidence dùng cho synthesis"
-        sample_output_2_title = "FLAN/T5 abstractive summary từ ranked evidence"
+        sample_output_1_title = "Threshold evidence + FLAN output"
+        sample_output_2_title = "Abstractive summary đã lọc lỗi prompt echo"
         sample_aspect = (
             f"Entity: {synthesis_sample.get('entity_id')}\n"
             f"Aspect: {synthesis_sample.get('aspect')}\n"
-            f"Model: {synthesis_sample.get('model_name')}")
+            f"Model: {synthesis_sample.get('model_name', 'n/a')}")
         evidence = synthesis_sample.get("evidence", [])
-        sample_sent = "\n\n".join(
-            f"{i}. rank={ev.get('rank')} score={ev.get('score')}\n"
-            f"{truncate(ev.get('sentence', ''), 210)}"
-            for i, ev in enumerate(evidence[:5], 1)
-        ) or "(missing evidence)"
+        if evidence and isinstance(evidence[0], dict):
+            sample_sent = evidence_review_lines(evidence, limit=5, width=210)
+        elif evidence:
+            sample_sent = "\n\n".join(
+                f"{i}. {truncate(ev, 210)}"
+                for i, ev in enumerate(evidence[:5], 1)
+            )
+        else:
+            sample_sent = "Evidence artifact không có trong row này; xem synthesis JSONL để audit."
         sample_split = truncate(synthesis_sample.get("summary", ""), 900)
+    if hierarchical_sample:
+        entity_row = hierarchical_sample.get("entity", {})
+        child_row = hierarchical_sample.get("child", {})
+        parents = hierarchical_sample.get("parents", [])
+        evidence = hierarchical_sample.get("evidence", [])
+        sample_output_1_title = "Aspect output example"
+        sample_output_2_title = "Aspect summarization"
+        sample_aspect = (
+            f"Entity: {entity_row.get('entity_id')}\n"
+            f"Child aspect: {child_row.get('aspect', 'n/a')}\n"
+            f"Model: {child_row.get('model_name', 'n/a')}")
+        sample_sent = evidence_review_lines(
+            evidence, limit=4, width=190
+        ) or "No threshold evidence sample found for this entity/aspect."
+        sample_split = (
+            f"{child_row.get('aspect', 'n/a')} summarization:\n"
+            f"{truncate(child_row.get('summary', ''), 850)}"
+        )
+        parent_order = ["FACILITY", "AMENITY", "SERVICE", "EXPERIENCE", "BRANDING", "LOYALTY"]
+        order = {name: idx for idx, name in enumerate(parent_order)}
+        parents = sorted(parents, key=lambda row: order.get(row.get("aspect", ""), 99))
+        overall_entity_label = (
+            f"Entity: {entity_row.get('entity_id')}\n"
+            f"Overall model: {entity_row.get('model_name', 'n/a')}\n"
+            f"Parent groups: {len(parents)}"
+        )
+        parent_output_text = "\n\n".join(
+            f"{row.get('aspect')}: {truncate(row.get('summary', ''), 125)}"
+            for row in parents[:6]
+        ) or "Parent summaries chưa có."
+        overall_output_text = truncate(entity_row.get("summary", ""), 820)
+
     if provenance_sample:
         prov = provenance_sample[0]
         provenance_example = (
@@ -356,17 +572,18 @@ def build_slides(run_id: str) -> list[str]:
 
     slides.extend([
         slide_xml("SPACE-trained SemAE cho HASOS aspect/sentiment summary", run_id, [
-            {"text": f"Deck này ghi lại pipeline sau training: {model_label} được dùng để rank câu theo {aspect_count} HASOS aspects. Bản sửa mới lấy top-5 ranked evidence đầy đủ trước khi truncate rồi synthesize bằng FLAN/T5 summarization model.", "x": 0.75, "y": 1.45, "w": 6.2, "h": 1.1, "font_size": 1550},
-            {"text": f"Training: {train_label}\nOutput modes: extractive + abstractive_ranked\nHASOS aspects: {aspect_count}\nTrace rows: {len(trace)}\nRanked evidence rows: {ranked_evidence_rows}\nSynthesis rows: {synthesis_rows}", "x": 7.25, "y": 1.45, "w": 4.9, "h": 1.9, "font_size": 1200, "fill": "FFFFFF", "line": "D8DEE9"},
-            {"text": "Corrected flow: SemAE scoring -> top-5 full ranked evidence -> FLAN/T5 abstractive summary. Extractive/sentiment outputs vẫn giữ để audit, nhưng không còn là input cho abstractive synthesis.", "x": 0.75, "y": 3.65, "w": 11.4, "h": 1.0, "font_size": 1300, "fill": "FFFFFF", "line": "D8DEE9"},
+            {"text": f"Deck này ghi lại pipeline sau training: {model_label} được dùng để rank câu theo {aspect_count} HASOS aspects. Bản mới giữ mọi evidence có score <= 0.005 rồi synthesize theo 3 tầng bằng FLAN.", "x": 0.75, "y": 1.45, "w": 6.2, "h": 1.1, "font_size": 1450},
+            {"text": f"Training: {train_label}\nOutput modes: extractive + hierarchical abstractive\nHASOS aspects: {aspect_count}\nTrace rows: {len(trace)}\nThreshold evidence rows: {ranked_evidence_rows}\nChild rows: {synthesis_rows}\nParent rows: {parent_rows}\nEntity rows: {entity_rows}", "x": 7.25, "y": 1.35, "w": 4.9, "h": 2.25, "font_size": 1150, "fill": "FFFFFF", "line": "D8DEE9"},
+            {"text": "Corrected flow: SemAE scoring -> score-threshold evidence -> FLAN-base child aspect summary -> FLAN-base parent summary -> FLAN-base entity summary. Extractive/sentiment outputs vẫn giữ để audit.", "x": 0.75, "y": 3.65, "w": 11.4, "h": 1.0, "font_size": 1250, "fill": "FFFFFF", "line": "D8DEE9"},
         ]),
         slide_xml("Pipeline từ input tới output", "Mechanism", [
-            {"text": "1 Input\nhasos_summ.json\nreviews grouped by entity", "x": 0.65, "y": 1.45, "w": 2.2, "h": 1.15, "font_size": 1050, "fill": "FFFFFF", "line": "D8DEE9"},
-            {"text": "2 Tokenize\nSPACE SentencePiece\nsame tokenizer as checkpoint", "x": 3.0, "y": 1.45, "w": 2.2, "h": 1.15, "font_size": 1050, "fill": "FFFFFF", "line": "D8DEE9"},
-            {"text": "3 Encode\nSemAE cluster distribution\nD_z(s) per sentence", "x": 5.35, "y": 1.45, "w": 2.2, "h": 1.15, "font_size": 1050, "fill": "FFFFFF", "line": "D8DEE9"},
-            {"text": "4 Aspect rank\nKL(D_z||P_z) - beta*KL(D_z||P_k)", "x": 7.7, "y": 1.45, "w": 2.2, "h": 1.15, "font_size": 1050, "fill": "FFFFFF", "line": "D8DEE9"},
-            {"text": "5 Synthesize\ntop-5 full evidence\nFLAN/T5 summary", "x": 10.05, "y": 1.45, "w": 2.2, "h": 1.15, "font_size": 1050, "fill": "FFFFFF", "line": "D8DEE9"},
-            {"text": "Biến thể so với SemAE gốc: taxonomy/seeds đổi sang HASOS 29 aspects. Abstractive stage dùng ranked evidence trước truncate; sentiment split chỉ là audit post-processing.", "x": 0.75, "y": 3.75, "w": 11.4, "h": 0.85, "font_size": 1200, "fill": "EEF6FF", "line": "BFDBFE"},
+            {"text": "1 Data prep\nHASOS reviews\n29 child aspects", "x": 0.65, "y": 1.45, "w": 1.8, "h": 1.2, "font_size": 1050, "fill": "FFFFFF", "line": "D8DEE9"},
+            {"text": "2 Tokenizer gate\nSPACE SentencePiece\ncheckpoint-safe IDs", "x": 2.55, "y": 1.45, "w": 1.8, "h": 1.2, "font_size": 1050, "fill": "FFFFFF", "line": "D8DEE9"},
+            {"text": "3 SemAE score\nD_z(s), P_z, P_k\nKL objective", "x": 4.45, "y": 1.45, "w": 1.8, "h": 1.2, "font_size": 1050, "fill": "FFFFFF", "line": "D8DEE9"},
+            {"text": "4 Threshold\nscore <= 0.005\nfull evidence", "x": 6.35, "y": 1.45, "w": 1.8, "h": 1.2, "font_size": 1050, "fill": "FFFFFF", "line": "D8DEE9"},
+            {"text": "5 Child\nFLAN-base\n29 aspects", "x": 8.25, "y": 1.45, "w": 1.8, "h": 1.2, "font_size": 1050, "fill": "FFFFFF", "line": "D8DEE9"},
+            {"text": "6 Parent + entity\nFLAN-base\n6 groups + overall", "x": 10.15, "y": 1.45, "w": 1.95, "h": 1.2, "font_size": 1050, "fill": "FFFFFF", "line": "D8DEE9"},
+            {"text": "Biến thể so với SemAE gốc: taxonomy/seeds đổi sang HASOS 29 aspects. Abstractive stage dùng threshold evidence trước truncate; sentiment split chỉ là audit post-processing.", "x": 0.75, "y": 3.75, "w": 11.4, "h": 0.85, "font_size": 1200, "fill": "EEF6FF", "line": "BFDBFE"},
         ]),
         slide_xml("Artifact gate và dữ liệu chuẩn bị", "Readiness", [
             {"text": trace_tail, "x": 0.75, "y": 1.35, "w": 5.9, "h": 4.8, "font_size": 1000, "fill": "FFFFFF", "line": "D8DEE9"},
@@ -376,7 +593,7 @@ def build_slides(run_id: str) -> list[str]:
         slide_xml("SemAE scoring theo aspect", "Formula", [
             {"text": "score(s, k) = KL(D_z(s) || P_z) - beta * KL(D_z(s) || P_k)", "x": 0.8, "y": 1.45, "w": 11.4, "h": 0.65, "font_size": 1900, "bold": True, "fill": "FFFFFF", "line": "D8DEE9"},
             {"text": "D_z(s): phân phối cluster của câu s.\nP_z: background distribution.\nP_k: prototype distribution của aspect k.\nbeta=0.7 theo recipe hiện tại.", "x": 0.9, "y": 2.5, "w": 5.7, "h": 1.8, "font_size": 1250, "fill": "FFFFFF", "line": "D8DEE9"},
-            {"text": "Câu có score thấp hơn được ưu tiên. Bản abstractive mới không đọc summary đã truncate; nó đọc top-5 ranked evidence full sentence rồi sinh summary ngắn.", "x": 7.0, "y": 2.5, "w": 5.4, "h": 1.35, "font_size": 1250, "fill": "ECFDF5", "line": "99F6E4"},
+            {"text": "Câu có score thấp hơn được ưu tiên. Bản mới không đọc summary đã truncate; nó đọc mọi câu full sentence có score <= 0.005, dedupe ý trùng, rồi synthesize theo 3 tầng.", "x": 7.0, "y": 2.5, "w": 5.4, "h": 1.35, "font_size": 1250, "fill": "ECFDF5", "line": "99F6E4"},
         ]),
         slide_xml("SPACE original aspects: official ROUGE", "Old Baseline", [
             {"text": "Bản cũ dùng đúng SPACE benchmark và 6 aspect gốc: building, cleanliness, food, location, rooms, service. Run này chạy without --no_eval nên điểm dưới đây là pyrouge official, khác với HASOS reference-free metrics.", "x": 0.75, "y": 1.35, "w": 11.35, "h": 0.95, "font_size": 1120, "fill": "FFF7ED", "line": "FDBA74"},
@@ -384,19 +601,28 @@ def build_slides(run_id: str) -> list[str]:
             {"text": "ALL split by aspect\nR1 / R2 / RL\n" + old_aspect_rows, "x": 6.15, "y": 2.45, "w": 5.95, "h": 2.65, "font_size": 850, "fill": "ECFDF5", "line": "99F6E4"},
             {"text": "Kết luận so sánh: HASOS 29 aspects là adaptation/inference mới không có gold summary; SPACE original 6 aspects là baseline có gold và có thể so sánh bằng ROUGE.", "x": 0.85, "y": 5.35, "w": 11.15, "h": 0.55, "font_size": 1050, "fill": "EEF6FF", "line": "BFDBFE"},
         ]),
-        slide_xml(sample_output_1_title, "Output 1", [
-            {"text": sample_aspect, "x": 0.75, "y": 1.35, "w": 3.2, "h": 0.9, "font_size": 1250, "bold": True, "fill": "FFFFFF", "line": "D8DEE9"},
-            {"text": sample_sent, "x": 4.15, "y": 1.35, "w": 8.0, "h": 4.8, "font_size": 1050, "fill": "FFFFFF", "line": "D8DEE9"},
+        slide_xml("Từ extractive sang abstractive", "Output correction", [
+            {"text": "Vấn đề bạn thấy là đúng\nOutput SemAE gốc trong run này là extractive: chọn câu source rồi nối lại. Với max_tokens=40, câu cuối có thể bị cắt cụt như `Each room is named... and one of`.", "x": 0.75, "y": 1.35, "w": 5.5, "h": 1.65, "font_size": 1200, "fill": "FFF7ED", "line": "FDBA74"},
+            {"text": f"Trạng thái artifact synthesis local\nSynthesis rows tìm thấy: {synthesis_rows}\nThreshold evidence rows: {ranked_evidence_rows}\nDeck sẽ không còn trình bày output extractive bị cắt như final summary.", "x": 6.55, "y": 1.35, "w": 5.55, "h": 1.65, "font_size": 1200, "fill": "ECFDF5", "line": "99F6E4"},
+            {"text": "Kết quả sau khi sửa\n1. Evidence đầu vào là full review sentences trước truncate.\n2. Aspect summary giữ chi tiết review thay vì nối câu extractive bị cắt.\n3. Parent/entity summary gom thông tin theo 6 nhóm rồi viết output tổng cho từng khách sạn.", "x": 0.75, "y": 3.55, "w": 11.35, "h": 1.45, "font_size": 1180, "fill": "FFFFFF", "line": "D8DEE9"},
         ]),
-        slide_xml(sample_output_2_title, "Output 2", [
-            {"text": sample_split, "x": 0.75, "y": 1.35, "w": 11.5, "h": 5.0, "font_size": 1050, "fill": "FFFFFF", "line": "D8DEE9"},
+        slide_xml(sample_output_1_title, "Output", [
+            {"text": sample_aspect, "x": 0.75, "y": 1.25, "w": 3.15, "h": 0.95, "font_size": 1150, "bold": True, "fill": "FFFFFF", "line": "D8DEE9"},
+            {"text": "Source reviews\n" + sample_sent, "x": 4.15, "y": 1.25, "w": 8.0, "h": 3.15, "font_size": 800, "fill": "FFFFFF", "line": "D8DEE9"},
+            {"text": "Summarization\n" + sample_split, "x": 0.75, "y": 4.65, "w": 11.4, "h": 1.05, "font_size": 980, "bold": False, "fill": "ECFDF5", "line": "99F6E4"},
+        ]),
+        slide_xml("Output tổng hợp nhất 6 parent aspects", "Entity summary", [
+            {"text": overall_entity_label, "x": 0.75, "y": 1.25, "w": 3.15, "h": 0.85, "font_size": 1100, "bold": True, "fill": "FFFFFF", "line": "D8DEE9"},
+            {"text": "Parent aspect summaries\n" + parent_output_text, "x": 0.75, "y": 2.3, "w": 5.35, "h": 3.55, "font_size": 720, "fill": "FFFFFF", "line": "D8DEE9"},
+            {"text": "Overall entity summary\n" + overall_output_text, "x": 6.45, "y": 1.25, "w": 5.8, "h": 3.75, "font_size": 880, "fill": "ECFDF5", "line": "99F6E4"},
+            {"text": "Điều slide này muốn nói\nPipeline không dừng ở aspect summary. Nó gom 29 child aspects thành 6 parent groups, rồi viết output tổng cho từng khách sạn.", "x": 6.45, "y": 5.25, "w": 5.8, "h": 0.75, "font_size": 880, "fill": "EEF6FF", "line": "BFDBFE"},
         ]),
         slide_xml("Metrics và health checks", "Quality", [
             {"text": f"source_fidelity: {macro.get('source_fidelity', 'n/a')}\nsource_fidelity_excl_truncated: {macro.get('source_fidelity_excl_truncated', 'n/a')}\naspect_purity: {macro.get('aspect_purity', 'n/a')}\ndistinct_2: {macro.get('distinct_2', 'n/a')}\nself_bleu4: {macro.get('self_bleu4', 'n/a')}", "x": 0.85, "y": 1.45, "w": 5.15, "h": 2.25, "font_size": 1250, "fill": "FFFFFF", "line": "D8DEE9"},
             {"text": "HASOS không có gold summary nên dùng reference-free metrics: fidelity, purity, diversity, compression. BERTScore có thể chạy thêm nếu dependency/model tải được.", "x": 6.1, "y": 1.45, "w": 6.0, "h": 1.25, "font_size": 1250, "fill": "FFFFFF", "line": "D8DEE9"},
         ]),
         slide_xml("Limitations và quyết định kỹ thuật", "Caveats", [
-            {"text": "1. Sentiment là keyword post-processing, không phải sentiment-aware ranking.\n2. Abstractive summary không còn verbatim traceable như extractive output, nhưng mỗi row giữ top-5 evidence provenance.\n3. Tokenizer là artifact bắt buộc và phải sync cùng checkpoint.\n4. Không dùng output đã truncate làm input synthesis.", "x": 0.85, "y": 1.45, "w": 11.3, "h": 2.4, "font_size": 1250, "fill": "FFFFFF", "line": "D8DEE9"},
+            {"text": "1. Sentiment là keyword post-processing, không phải sentiment-aware ranking.\n2. Abstractive summary không còn verbatim traceable như extractive output, nhưng mỗi row giữ threshold evidence provenance.\n3. Tokenizer là artifact bắt buộc và phải sync cùng checkpoint.\n4. Không dùng output đã truncate làm input synthesis.", "x": 0.85, "y": 1.45, "w": 11.3, "h": 2.4, "font_size": 1250, "fill": "FFFFFF", "line": "D8DEE9"},
             {"text": f"Final deck path: outputs/{run_id}_report.pptx", "x": 0.85, "y": 4.55, "w": 11.3, "h": 0.65, "font_size": 1300, "bold": True, "fill": "ECFDF5", "line": "99F6E4"},
         ]),
     ])
@@ -431,6 +657,10 @@ def write_pptx(run_id: str, out_path: Path) -> None:
         for i, slide in enumerate(slides, 1):
             z.writestr(f"ppt/slides/slide{i}.xml", slide)
             z.writestr(f"ppt/slides/_rels/slide{i}.xml.rels", '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/></Relationships>''')
+    consolidated = REPORTS_DIR / "space_hasos_final_consolidated.pptx"
+    consolidated.parent.mkdir(parents=True, exist_ok=True)
+    if out_path.resolve() != consolidated.resolve():
+        shutil.copy2(out_path, consolidated)
 
 
 def main() -> None:

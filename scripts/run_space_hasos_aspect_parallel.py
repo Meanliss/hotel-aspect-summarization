@@ -47,7 +47,7 @@ def build_cmd(args, shard_idx, shard_run_id):
         "--run_id", shard_run_id,
         "--gpu", str(args.gpu),
         "--max_tokens", str(args.max_tokens),
-        "--evidence_top_k", str(args.evidence_top_k),
+        "--evidence_score_threshold", str(args.evidence_score_threshold),
         "--shard_idx", str(shard_idx),
         "--num_shards", str(args.num_shards),
         "--sample_sentences",
@@ -62,6 +62,13 @@ def build_cmd(args, shard_idx, shard_run_id):
     if args.sentiment_split:
         cmd.append("--sentiment_split")
         cmd.extend(["--taxonomy", str(DATA_DIR / "hasos" / "aspect_taxonomy.json")])
+    if args.sentiment_backend == "bert":
+        cmd.extend(["--sentiment_backend", "bert",
+                    "--sentiment_model", args.sentiment_model])
+        # taxonomy provides aspect display names for the aspect-aware model
+        if "--taxonomy" not in cmd:
+            cmd.extend(["--taxonomy",
+                        str(DATA_DIR / "hasos" / "aspect_taxonomy.json")])
     return cmd
 
 
@@ -140,11 +147,13 @@ def merge_provenance(shard_run_ids, final_run_id):
 
 
 def merge_ranked_evidence(shard_run_ids, final_run_id):
-    """Merge per-shard top-ranked full evidence rows into a final JSONL."""
+    """Merge per-shard threshold-selected full evidence rows into final JSONL files."""
     final_path = OUTPUTS_DIR / f"{final_run_id}_ranked_evidence.jsonl"
+    threshold_path = OUTPUTS_DIR / f"{final_run_id}_threshold_evidence.jsonl"
     final_path.parent.mkdir(exist_ok=True)
     merged = 0
-    with final_path.open("w", encoding="utf-8") as fout:
+    with final_path.open("w", encoding="utf-8") as fout, threshold_path.open(
+            "w", encoding="utf-8") as threshold_out:
         for shard_run_id in shard_run_ids:
             shard_path = LOGS_DIR / f"{shard_run_id}.ranked_evidence.jsonl"
             if not shard_path.exists():
@@ -159,9 +168,12 @@ def merge_ranked_evidence(shard_run_ids, final_run_id):
                     continue
                 row["run_id"] = final_run_id
                 row["shard_run_id"] = shard_run_id
-                fout.write(json.dumps(row, ensure_ascii=False) + "\n")
+                payload = json.dumps(row, ensure_ascii=False) + "\n"
+                fout.write(payload)
+                threshold_out.write(payload)
                 merged += 1
-    print(f"[merge] copied {merged} ranked evidence rows into {final_path}")
+    print(f"[merge] copied {merged} threshold evidence rows into {final_path}")
+    print(f"[merge] copied {merged} threshold evidence rows into {threshold_path}")
     return final_path
 
 
@@ -178,12 +190,20 @@ def main():
                         help="do not hard-cut the final extractive sentence")
     parser.add_argument("--no_early_stop", action="store_true",
                         help="continue selecting after an over-budget sentence")
-    parser.add_argument("--evidence_top_k", type=int, default=5,
-                        help="top full ranked evidence rows to emit per entity/aspect")
+    parser.add_argument("--evidence_top_k", type=int, default=0,
+                        help="legacy no-op; threshold evidence uses --evidence_score_threshold")
+    parser.add_argument("--evidence_score_threshold", type=float, default=0.005,
+                        help="emit full evidence rows with SemAE score <= this value")
     parser.add_argument("--gold_aspects", default=None,
                         help="comma-separated aspect codes; default: taxonomy")
     parser.add_argument("--sentiment_split", action="store_true",
-                        help="enable keyword-based sentiment splitting")
+                        help="enable sentiment splitting into pos/neg/neu buckets")
+    parser.add_argument("--sentiment_backend", choices=["keyword", "bert"],
+                        default="keyword",
+                        help="sentiment labeller: keyword (default) or bert (ABSA)")
+    parser.add_argument("--sentiment_model",
+                        default="yangheng/deberta-v3-base-absa-v1.1",
+                        help="HuggingFace model id for --sentiment_backend bert")
     parser.add_argument("--trace_sample_limit", type=int, default=40,
                         help="max trace sample rows emitted per shard")
     parser.add_argument("--keep_shards", action="store_true",
@@ -207,7 +227,7 @@ def main():
     log_files = []
     print(f"[main] launching {args.num_shards} shards on GPU {args.gpu}")
     print(f"[main] trace_sample_limit={args.trace_sample_limit}")
-    print(f"[main] max_tokens={args.max_tokens} no_cut_sents={args.no_cut_sents} evidence_top_k={args.evidence_top_k}")
+    print(f"[main] max_tokens={args.max_tokens} no_cut_sents={args.no_cut_sents} evidence_score_threshold={args.evidence_score_threshold}")
     if args.sentiment_split:
         print("[main] sentiment_split ENABLED — will write <run_id>_sentiment/ tree")
     start = time.time()

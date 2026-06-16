@@ -167,15 +167,30 @@ def main() -> None:
                         help="allow legacy hard-cut summary truncation")
     parser.add_argument("--no_early_stop", action="store_true",
                         help="continue selecting after an over-budget sentence")
-    parser.add_argument("--evidence_top_k", type=int, default=5,
-                        help="top full ranked evidence rows to emit per entity/aspect")
+    parser.add_argument("--evidence_top_k", type=int, default=0,
+                        help="legacy no-op; threshold evidence uses --evidence_score_threshold")
+    parser.add_argument("--evidence_score_threshold", type=float, default=0.005,
+                        help="emit full evidence rows with SemAE score <= this value")
     parser.add_argument("--skip_bert_score", action="store_true")
+    parser.add_argument("--sentiment_backend", choices=["keyword", "bert"],
+                        default="keyword",
+                        help="sentiment labeling backend for the inference stage")
+    parser.add_argument("--sentiment_model",
+                        default="yangheng/deberta-v3-base-absa-v1.1",
+                        help="HuggingFace model id when --sentiment_backend bert")
+    parser.add_argument("--split_sentiment", action="store_true",
+                        help="generate separate positive/negative abstractive "
+                             "summaries per sub-aspect")
     parser.add_argument("--abstractive", action="store_true",
                         help="run abstractive synthesis after extractive summarization")
-    parser.add_argument("--abstractive_model", default="google/flan-t5-base")
+    parser.add_argument("--abstractive_model", default="google/flan-t5-small")
+    parser.add_argument("--parent_abstractive_model", default="google/flan-t5-base")
+    parser.add_argument("--entity_abstractive_model", default="google/flan-t5-base")
     parser.add_argument("--abstractive_limit", type=int, default=None,
                         help="optional smoke-test limit for abstractive synthesis")
-    parser.add_argument("--abstractive_max_input_sentences", type=int, default=5)
+    parser.add_argument("--abstractive_max_input_sentences", type=int, default=0,
+                        help="0 means use all threshold-selected evidence")
+    parser.add_argument("--abstractive_max_source_tokens", type=int, default=768)
     parser.add_argument("--abstractive_max_new_tokens", type=int, default=192)
     parser.add_argument("--abstractive_backend",
                         choices=["vllm", "transformers"],
@@ -193,6 +208,7 @@ def main() -> None:
         model=args.model,
         sentencepiece=args.sentencepiece,
         num_shards=args.num_shards,
+        evidence_score_threshold=args.evidence_score_threshold,
     )
 
     source_json = Path(args.source_json)
@@ -244,9 +260,12 @@ def main() -> None:
         "--num_shards", str(args.num_shards),
         "--gpu", str(args.gpu),
         "--max_tokens", str(args.max_tokens),
-        "--evidence_top_k", str(args.evidence_top_k),
+        "--evidence_score_threshold", str(args.evidence_score_threshold),
         "--sentiment_split",
     ]
+    if args.sentiment_backend == "bert":
+        inference_cmd.extend(["--sentiment_backend", "bert",
+                              "--sentiment_model", args.sentiment_model])
     if args.no_cut_sents:
         inference_cmd.append("--no_cut_sents")
     if args.no_early_stop:
@@ -261,24 +280,31 @@ def main() -> None:
         "--run_id", args.run_id,
     ])
 
-    abstractive_run_id = f"{args.run_id}_abstractive_ranked"
+    abstractive_run_id = f"{args.run_id}_abstractive_threshold"
     if args.abstractive:
         ensure_abstractive_requirements(trace)
         synthesis_cmd = [
             sys.executable, str(SCRIPT_DIR / "synthesize_aspect_summaries.py"),
             "--run_id", args.run_id,
             "--output_run_id", abstractive_run_id,
-            "--source_mode", "ranked_evidence",
+            "--source_mode", "threshold_evidence",
             "--evidence_jsonl",
-            str(OUTPUTS_DIR / f"{args.run_id}_ranked_evidence.jsonl"),
-            "--evidence_top_k", str(args.evidence_top_k),
+            str(OUTPUTS_DIR / f"{args.run_id}_threshold_evidence.jsonl"),
+            "--evidence_score_threshold", str(args.evidence_score_threshold),
             "--backend", args.abstractive_backend,
             "--model_name", args.abstractive_model,
+            "--parent_model_name", args.parent_abstractive_model,
+            "--entity_model_name", args.entity_abstractive_model,
             "--max_input_sentences",
             str(args.abstractive_max_input_sentences),
+            "--max_source_tokens",
+            str(args.abstractive_max_source_tokens),
             "--max_new_tokens", str(args.abstractive_max_new_tokens),
             "--concurrency", str(args.abstractive_concurrency),
+            "--hierarchical",
         ]
+        if args.split_sentiment:
+            synthesis_cmd.append("--split_sentiment")
         if args.abstractive_backend == "vllm":
             synthesis_cmd.extend([
                 "--vllm_base_url", args.vllm_base_url,

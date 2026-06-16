@@ -1,0 +1,398 @@
+{
+  "m1": {
+    "method": "m1_extractive",
+    "by_split": {
+      "dev": {
+        "facility": {
+          "rouge1": 0.18407,
+          "rouge2": 0.07833,
+          "rougeL": 0.10685,
+          "n": 24
+        },
+        "amenity": {
+          "rouge1": 0.10316,
+          "rouge2": 0.03756,
+          "rougeL": 0.06583,
+          "n": 24
+        },
+        "service": {
+          "rouge1": 0.10808,
+          "rouge2": 0.03869,
+          "rougeL": 0.07844,
+          "n": 24
+        },
+        "experience": {
+          "rouge1": 0.03177,
+          "rouge2": 0.00877,
+          "rougeL": 0.02775,
+          "n": 17
+        },
+        "MACRO": {
+          "rouge1": 0.10677,
+          "rouge2": 0.0408375,
+          "rougeL": 0.0697175
+        }
+      },
+      "test": {
+        "facility": {
+          "rouge1": 0.18121,
+          "rouge2": 0.07961,
+          "rougeL": 0.10644,
+          "n": 26
+        },
+        "amenity": {
+          "rouge1": 0.08658,
+          "rouge2": 0.03166,
+          "rougeL": 0.05827,
+          "n": 26
+        },
+        "service": {
+          "rouge1": 0.09511,
+          "rouge2": 0.0397,
+          "rougeL": 0.07332,
+          "n": 26
+        },
+        "experience": {
+          "rouge1": 0.03731,
+          "rouge2": 0.00933,
+          "rougeL": 0.02847,
+          "n": 15
+        },
+        "MACRO": {
+          "rouge1": 0.1000525,
+          "rouge2": 0.040075,
+          "rougeL": 0.066625
+        }
+      },
+      "all": {
+        "facility": {
+          "rouge1": 0.18248,
+          "rouge2": 0.07907,
+          "rougeL": 0.10672,
+          "n": 50
+        },
+        "amenity": {
+          "rouge1": 0.09418,
+          "rouge2": 0.0343,
+          "rougeL": 0.0617,
+          "n": 50
+        },
+        "service": {
+          "rouge1": 0.10125,
+          "rouge2": 0.03887,
+          "rougeL": 0.07561,
+          "n": 50
+        },
+        "experience": {
+          "rouge1": 0.03438,
+          "rouge2": 0.00906,
+          "rougeL": 0.02808,
+          "n": 32
+        },
+        "MACRO": {
+          "rouge1": 0.10307250000000001,
+          "rouge2": 0.040325,
+          "rougeL": 0.06802749999999999
+        }
+      }
+    },
+    "coverage": {}
+  },
+  "m2": {
+    "method": "m2_abstractive",
+    "by_split": {
+      "dev": {
+        "facility": {
+          "rouge1": 0.23075,
+          "rouge2": 0.0511,
+          "rougeL": 0.14417,
+          "n": 24
+        },
+        "amenity": {
+          "rouge1": 0.25556,
+          "rouge2": 0.04315,
+          "rougeL": 0.15153,
+          "n": 24
+        },
+        "service": {
+          "rouge1": 0.2599,
+          "rouge2": 0.06825,
+          "rougeL": 0.20073,
+          "n": 22
+        },
+        "experience": {
+          "rouge1": 0.10982,
+          "rouge2": 0.00558,
+          "rougeL": 0.08039,
+          "n": 17
+        },
+        "MACRO": {
+          "rouge1": 0.21400750000000002,
+          "rouge2": 0.04202,
+          "rougeL": 0.14420499999999997
+        }
+      },
+      "test": {
+        "facility": {
+          "rouge1": 0.22137,
+          "rouge2": 0.05123,
+          "rougeL": 0.14792,
+          "n": 26
+        },
+        "amenity": {
+          "rouge1": 0.1907,
+          "rouge2": 0.02531,
+          "rougeL": 0.12238,
+          "n": 26
+        },
+        "service": {
+          "rouge1": 0.20539,
+          "rouge2": 0.04545,
+          "rougeL": 0.15452,
+          "n": 26
+        },
+        "experience": {
+          "rouge1": 0.13787,
+          "rouge2": 0.01671,
+          "rougeL": 0.1094,
+          "n": 14
+        },
+        "MACRO": {
+          "rouge1": 0.18883250000000001,
+          "rouge2": 0.034675,
+          "rougeL": 0.13355499999999998
+        }
+      },
+      "all": {
+        "facility": {
+          "rouge1": 0.22596,
+          "rouge2": 0.05066,
+          "rougeL": 0.14614,
+          "n": 50
+        },
+        "amenity": {
+          "rouge1": 0.22138,
+          "rouge2": 0.03363,
+          "rougeL": 0.13595,
+          "n": 50
+        },
+        "service": {
+          "rouge1": 0.22957,
+          "rouge2": 0.05553,
+          "rougeL": 0.17542,
+          "n": 48
+        },
+        "experience": {
+          "rouge1": 0.12371,
+          "rouge2": 0.01121,
+          "rougeL": 0.09462,
+          "n": 31
+        },
+        "MACRO": {
+          "rouge1": 0.20015499999999997,
+          "rouge2": 0.0377575,
+          "rougeL": 0.1380325
+        }
+      }
+    },
+    "coverage": {}
+  },
+  "m3": {
+    "method": "m3_kw",
+    "by_split": {
+      "dev": {
+        "facility": {
+          "rouge1": 0.23066,
+          "rouge2": 0.05413,
+          "rougeL": 0.14749,
+          "n": 22
+        },
+        "amenity": {
+          "rouge1": 0.19217,
+          "rouge2": 0.0292,
+          "rougeL": 0.13419,
+          "n": 11
+        },
+        "service": {
+          "rouge1": 0.38586,
+          "rouge2": 0.13398,
+          "rougeL": 0.30905,
+          "n": 9
+        },
+        "experience": {
+          "rouge1": 0.10778,
+          "rouge2": 0.01343,
+          "rougeL": 0.09012,
+          "n": 16
+        },
+        "MACRO": {
+          "rouge1": 0.2291175,
+          "rouge2": 0.057685,
+          "rougeL": 0.1702125
+        }
+      },
+      "test": {
+        "facility": {
+          "rouge1": 0.24923,
+          "rouge2": 0.06463,
+          "rougeL": 0.15889,
+          "n": 25
+        },
+        "amenity": {
+          "rouge1": 0.22219,
+          "rouge2": 0.03057,
+          "rougeL": 0.15338,
+          "n": 14
+        },
+        "service": {
+          "rouge1": 0.29404,
+          "rouge2": 0.08883,
+          "rougeL": 0.22628,
+          "n": 18
+        },
+        "experience": {
+          "rouge1": 0.1395,
+          "rouge2": 0.01237,
+          "rougeL": 0.11103,
+          "n": 14
+        },
+        "MACRO": {
+          "rouge1": 0.22624,
+          "rouge2": 0.049100000000000005,
+          "rougeL": 0.16239499999999998
+        }
+      },
+      "all": {
+        "facility": {
+          "rouge1": 0.23998,
+          "rouge2": 0.05957,
+          "rougeL": 0.15315,
+          "n": 47
+        },
+        "amenity": {
+          "rouge1": 0.21163,
+          "rouge2": 0.03028,
+          "rougeL": 0.14636,
+          "n": 25
+        },
+        "service": {
+          "rouge1": 0.32622,
+          "rouge2": 0.10529,
+          "rougeL": 0.25507,
+          "n": 27
+        },
+        "experience": {
+          "rouge1": 0.12344,
+          "rouge2": 0.01304,
+          "rougeL": 0.10015,
+          "n": 30
+        },
+        "MACRO": {
+          "rouge1": 0.2253175,
+          "rouge2": 0.052044999999999994,
+          "rougeL": 0.1636825
+        }
+      }
+    },
+    "coverage": {}
+  },
+  "m4": {
+    "method": "m4_bert",
+    "by_split": {
+      "dev": {
+        "facility": {
+          "rouge1": 0.29838,
+          "rouge2": 0.06103,
+          "rougeL": 0.16504,
+          "n": 23
+        },
+        "amenity": {
+          "rouge1": 0.25455,
+          "rouge2": 0.04742,
+          "rougeL": 0.15324,
+          "n": 24
+        },
+        "service": {
+          "rouge1": 0.21469,
+          "rouge2": 0.04712,
+          "rougeL": 0.15352,
+          "n": 22
+        },
+        "experience": {
+          "rouge1": 0.10561,
+          "rouge2": 0.00755,
+          "rougeL": 0.08291,
+          "n": 17
+        },
+        "MACRO": {
+          "rouge1": 0.2183075,
+          "rouge2": 0.04078,
+          "rougeL": 0.1386775
+        }
+      },
+      "test": {
+        "facility": {
+          "rouge1": 0.28341,
+          "rouge2": 0.06985,
+          "rougeL": 0.17009,
+          "n": 26
+        },
+        "amenity": {
+          "rouge1": 0.22592,
+          "rouge2": 0.03335,
+          "rougeL": 0.14135,
+          "n": 26
+        },
+        "service": {
+          "rouge1": 0.20352,
+          "rouge2": 0.04854,
+          "rougeL": 0.14772,
+          "n": 26
+        },
+        "experience": {
+          "rouge1": 0.1256,
+          "rouge2": 0.01255,
+          "rougeL": 0.10486,
+          "n": 14
+        },
+        "MACRO": {
+          "rouge1": 0.20961250000000003,
+          "rouge2": 0.0410725,
+          "rougeL": 0.141005
+        }
+      },
+      "all": {
+        "facility": {
+          "rouge1": 0.29128,
+          "rouge2": 0.0661,
+          "rougeL": 0.16862,
+          "n": 49
+        },
+        "amenity": {
+          "rouge1": 0.23855,
+          "rouge2": 0.03952,
+          "rougeL": 0.14654,
+          "n": 50
+        },
+        "service": {
+          "rouge1": 0.20701,
+          "rouge2": 0.04719,
+          "rougeL": 0.14931,
+          "n": 48
+        },
+        "experience": {
+          "rouge1": 0.11435,
+          "rouge2": 0.01018,
+          "rougeL": 0.09314,
+          "n": 31
+        },
+        "MACRO": {
+          "rouge1": 0.2127975,
+          "rouge2": 0.0407475,
+          "rougeL": 0.13940249999999998
+        }
+      }
+    },
+    "coverage": {}
+  }
+}

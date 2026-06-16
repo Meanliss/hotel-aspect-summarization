@@ -1,3 +1,7 @@
 transformers
 sentencepiece
 accelerate
+torch
+# sentiment backend (BERT/DeBERTa ABSA): yangheng/deberta-v3-base-absa-v1.1
+# needs sentencepiece (above) + the slow tokenizer fallback
+protobuf

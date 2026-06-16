@@ -3,6 +3,7 @@
 
 import os
 import os.path
+import sys
 import json
 import argparse
 from random import seed
@@ -184,6 +185,29 @@ if __name__ == '__main__':
         type=str,
         default='../data/hasos/aspect_taxonomy.json')
     out_arg_group.add_argument(
+        '--sentiment_backend',
+        help='how to label sentiment: "keyword" (taxonomy keyword counting, '
+             'default) or "bert" (aspect-based transformer classifier)',
+        choices=['keyword', 'bert'],
+        type=str,
+        default='keyword')
+    out_arg_group.add_argument(
+        '--sentiment_model',
+        help='HuggingFace model id for --sentiment_backend bert '
+             '(default: yangheng/deberta-v3-base-absa-v1.1)',
+        type=str,
+        default='yangheng/deberta-v3-base-absa-v1.1')
+    out_arg_group.add_argument(
+        '--sentiment_whole_sentence',
+        help='for --sentiment_backend bert: score whole-sentence sentiment '
+             'instead of aspect-aware (pass when using a non-ABSA model)',
+        action='store_true')
+    out_arg_group.add_argument(
+        '--sentiment_batch_size',
+        help='batch size for the BERT sentiment classifier (default: 16)',
+        type=int,
+        default=16)
+    out_arg_group.add_argument(
         '--trace_jsonl',
         help='optional JSONL trace path for pipeline stage/sample logs',
         type=str,
@@ -195,9 +219,14 @@ if __name__ == '__main__':
         default=30)
     out_arg_group.add_argument(
         '--evidence_top_k',
-        help='write top-k full ranked evidence sentences before summary truncation',
+        help='legacy: no longer controls threshold evidence selection',
         type=int,
         default=0)
+    out_arg_group.add_argument(
+        '--evidence_score_threshold',
+        help='write full ranked evidence sentences with score <= threshold before summary truncation',
+        type=float,
+        default=0.005)
 
     other_arg_group = argparser.add_argument_group('Other arguments')
     other_arg_group.add_argument('--run_id',
@@ -298,7 +327,7 @@ if __name__ == '__main__':
         ranked_evidence_path = os.path.join(
             os.path.dirname(os.path.abspath(args.trace_jsonl)),
             '{0}.ranked_evidence.jsonl'.format(args.run_id))
-        if args.evidence_top_k > 0:
+        if args.evidence_score_threshold is not None:
             ranked_evidence_file = open(ranked_evidence_path, 'w',
                                         encoding='utf-8')
         else:
@@ -316,6 +345,7 @@ if __name__ == '__main__':
                    no_cut_sents=bool(args.no_cut_sents),
                    no_early_stop=bool(args.no_early_stop),
                    evidence_top_k=args.evidence_top_k,
+                   evidence_score_threshold=args.evidence_score_threshold,
                    beta=beta)
 
     # read aspect seed words
@@ -476,9 +506,13 @@ if __name__ == '__main__':
 
     all_texts = []
 
-    # Load taxonomy sentiment keywords for --sentiment_split
+    # Load taxonomy sentiment keywords (for keyword backend) and aspect display
+    # names (for the aspect-aware BERT backend). Both are read from the same
+    # taxonomy JSON whenever we need any sentiment signal.
     taxonomy_sentiment = {}
-    if args.sentiment_split:
+    aspect_display_names = {}
+    need_sentiment = args.sentiment_split or args.sentiment_backend == 'bert'
+    if need_sentiment:
         with open(args.taxonomy, 'r', encoding='utf-8') as tf:
             taxonomy_data = json.load(tf)
         # Handle both formats: {"aspects": [...]} or [...]
@@ -493,14 +527,55 @@ if __name__ == '__main__':
                 'neg': set(w.lower() for w in entry.get(neg_key, [])),
                 'neu': set(w.lower() for w in entry.get(neu_key, [])),
             }
+            scale = (entry.get('MEASUREMENT_SCALE')
+                     or entry.get('measurement_scale') or '')
+            aspect_display_names[code] = scale or code
         print('[sentiment] loaded keywords for {0} aspects'.format(len(taxonomy_sentiment)))
         emit_trace('sentiment_taxonomy_loaded',
                    aspects=len(taxonomy_sentiment),
                    taxonomy=args.taxonomy,
-                   method='taxonomy_keyword_post_rank')
+                   backend=args.sentiment_backend,
+                   method=('bert_absa' if args.sentiment_backend == 'bert'
+                           else 'taxonomy_keyword_post_rank'))
+
+    # BERT sentiment backend: lazy classifier + per-(aspect,sentence) cache that
+    # is pre-populated in batches per entity (see the encode loop below).
+    bert_classifier = None
+    bert_sentiment_cache = {}
+    if args.sentiment_backend == 'bert':
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from sentiment_classifier import get_classifier
+        bert_classifier = get_classifier(
+            model_name=args.sentiment_model,
+            aspect_aware=(not args.sentiment_whole_sentence),
+            device=('cuda' if args.gpu >= 0 else 'cpu'),
+            batch_size=args.sentiment_batch_size)
+        emit_trace('bert_sentiment_init',
+                   model=args.sentiment_model,
+                   aspect_aware=(not args.sentiment_whole_sentence))
+
+    def _sentiment_cache_key(sentence, aspect):
+        return (aspect, ' '.join(str(sentence).split()))
 
     def classify_sentiment_with_reason(sentence, aspect):
-        """Keyword-based sentiment: count keyword hits, return pos/neg/neu."""
+        """Return (label, reason_list).
+
+        keyword backend: reason_list = matched keywords.
+        bert backend:    reason_list = ["bert:<confidence>"].
+        """
+        if args.sentiment_backend == 'bert':
+            cached = bert_sentiment_cache.get(
+                _sentiment_cache_key(sentence, aspect))
+            if cached is None:
+                # Cold lookup (sentence not pre-batched): classify on demand.
+                label, conf = bert_classifier.classify(
+                    sentence, aspect_display_names.get(aspect, aspect))
+                bert_sentiment_cache[
+                    _sentiment_cache_key(sentence, aspect)] = (label, conf)
+            else:
+                label, conf = cached
+            return label, ['bert:{0:.3f}'.format(conf)]
+
         if aspect not in taxonomy_sentiment:
             return 'neu', []
         sent_lower = sentence.lower()
@@ -561,6 +636,31 @@ if __name__ == '__main__':
 
                 for aspect in sent_aspects:
                     aspect_wise_sentences[aspect].append(i)
+
+            # Pre-classify sentiment in batches per (aspect) for the BERT backend.
+            # We only classify the (sentence, aspect) pairs that actually matched
+            # an aspect, which is far fewer than all sentences x all aspects.
+            if bert_classifier is not None:
+                batch_sentences = []
+                batch_aspect_names = []
+                batch_keys = []
+                for aspect, idx_list in aspect_wise_sentences.items():
+                    display_name = aspect_display_names.get(aspect, aspect)
+                    for idx in idx_list:
+                        key = _sentiment_cache_key(texts[idx], aspect)
+                        if key in bert_sentiment_cache:
+                            continue
+                        batch_sentences.append(texts[idx])
+                        batch_aspect_names.append(display_name)
+                        batch_keys.append(key)
+                if batch_sentences:
+                    labels = bert_classifier.classify_batch(
+                        batch_sentences, batch_aspect_names)
+                    for key, (label, conf) in zip(batch_keys, labels):
+                        bert_sentiment_cache[key] = (label, conf)
+                    emit_trace('bert_sentiment_batch',
+                               entity_id=current_entity_id,
+                               classified=len(batch_sentences))
 
             distances = torch.stack(distances)
             P_k = torch.mean(distances, dim=0)
@@ -681,8 +781,13 @@ if __name__ == '__main__':
 
             ranked_sentences = ranked_entity_sentences[entity_id].get(aspect, [])
             ranked_records = ranked_entity_records[entity_id].get(aspect, [])
-            if args.evidence_top_k > 0:
-                for rec in ranked_records[:args.evidence_top_k]:
+            if args.evidence_score_threshold is not None:
+                threshold_records = [
+                    rec for rec in ranked_records
+                    if rec.get('score') is not None
+                    and rec.get('score') <= args.evidence_score_threshold
+                ]
+                for rec in threshold_records:
                     sentiment_label, sentiment_keywords = classify_sentiment_with_reason(
                         rec.get('sentence', ''), aspect)
                     emit_ranked_evidence(
@@ -704,8 +809,10 @@ if __name__ == '__main__':
                         sentiment_label=sentiment_label,
                         matched_sentiment_keywords=sentiment_keywords,
                         was_truncated=False,
-                        selection_reason='top {0} ranked full evidence before summary truncation'.format(
-                            args.evidence_top_k))
+                        selection_mode='score_threshold',
+                        score_threshold=args.evidence_score_threshold,
+                        selection_reason='full ranked evidence with score <= {0} before summary truncation'.format(
+                            args.evidence_score_threshold))
             if ranked_sentences:
                 summary_sentences, summary_meta = truncate_summary(
                     ranked_sentences,
