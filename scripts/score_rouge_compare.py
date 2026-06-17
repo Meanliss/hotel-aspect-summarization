@@ -47,9 +47,11 @@ PARENT_KEYS = {
 }
 
 # SPACE has 6 flat generic aspects; the gold key IS the output subdir name, so
-# the "group" is an identity mapping and there is no parent aggregation. The
-# "general" aspect is excluded (no aspect-specific system output for it).
+# the "group" is an identity mapping. The optional "general" gold key is the
+# entity-level / overall summary and is scored separately as GENERAL.
 SPACE_ASPECTS = ["building", "cleanliness", "food", "location", "rooms", "service"]
+SPACE_GENERAL_KEY = "general"
+GENERAL_RESULT_KEY = "GENERAL"
 
 
 def load_taxonomy_groups(path):
@@ -131,6 +133,49 @@ def system_text_sentiment(senti_dir, group, split, eid, code2group,
     return clean_text(" ".join(parts))
 
 
+def system_text_space_general(root_dir, method, split, eid, entity_dir=None):
+    """Return SPACE entity-level / overall system text for one method.
+
+    Preference order:
+      1. A generated entity-level overall file `<entity_dir>/<split>_<eid>`
+         (produced by hierarchical synthesis with --entity_max_new_tokens).
+      2. For M2, a flat `<root_dir>/<split>_<eid>` file.
+      3. Fallback: concatenate the six SPACE aspect outputs (M1/M2) or
+         pos+neg across the six aspects (M3/M4).
+
+    This mirrors the available SPACE gold `general` references without
+    inventing sentiment-level gold.
+    """
+    file_name = f"{split}_{eid}"
+    if entity_dir:
+        ent_fp = os.path.join(entity_dir, file_name)
+        if os.path.isfile(ent_fp):
+            with io.open(ent_fp, encoding="utf-8") as f:
+                text = clean_text(f.read())
+            if text:
+                return text
+    parts = []
+    if method == "m2_abstractive":
+        direct = os.path.join(root_dir, file_name)
+        if os.path.isfile(direct):
+            with io.open(direct, encoding="utf-8") as f:
+                return clean_text(f.read())
+    for aspect in SPACE_ASPECTS:
+        aspect_dir = os.path.join(root_dir, aspect)
+        if method in {"m1_extractive", "m2_abstractive"}:
+            fp = os.path.join(aspect_dir, file_name)
+            if os.path.isfile(fp):
+                with io.open(fp, encoding="utf-8") as f:
+                    parts.append(f.read())
+        else:
+            for pol in ("pos", "neg"):
+                fp = os.path.join(aspect_dir, pol, file_name)
+                if os.path.isfile(fp):
+                    with io.open(fp, encoding="utf-8") as f:
+                        parts.append(f.read())
+    return clean_text(" ".join(parts))
+
+
 def discover_entities(run_dir):
     """Return sorted [(split, eid)] from filenames at any depth under run_dir.
 
@@ -204,6 +249,15 @@ def main():
     ap.add_argument("--dataset", choices=["hasos", "space"], default="hasos",
                     help="hasos: aggregate 29 sub-aspects -> 4 gold parents. "
                          "space: 6 flat generic aspects, identity mapping.")
+    ap.add_argument("--include_general", action="store_true",
+                    help="For SPACE, also score the non-aspectual 'general' gold "
+                         "summary as GENERAL by concatenating the six aspect "
+                         "system outputs.")
+    ap.add_argument("--entity_dir",
+                    help="For SPACE --include_general: directory of generated "
+                         "entity-level overall files (<split>_<eid>), e.g. "
+                         "outputs/space_eval_4method_m2_entity. Preferred over "
+                         "aspect concatenation when present.")
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
 
@@ -270,13 +324,40 @@ def main():
             scores, n = out
             scores["n"] = n
             per_aspect[pkey] = scores
-        # macro average
+        # macro average over aspect keys only. GENERAL, when present, is an
+        # entity-level SPACE score and must not be folded into aspect MACRO.
         if per_aspect:
             macro = {}
+            aspect_scores = [
+                v for k, v in per_aspect.items()
+                if k != GENERAL_RESULT_KEY
+            ]
             for k in ("rouge1", "rouge2", "rougeL"):
-                vals = [v[k] for v in per_aspect.values() if k in v]
+                vals = [v[k] for v in aspect_scores if k in v]
                 macro[k] = sum(vals) / len(vals) if vals else 0.0
             per_aspect["MACRO"] = macro
+
+        if args.dataset == "space" and args.include_general:
+            pairs = []
+            general_root = disc_dir
+            for split, eid in entities:
+                if split not in split_filter:
+                    continue
+                refs = gold.get(eid, {}).get(SPACE_GENERAL_KEY, [])
+                if not refs:
+                    continue
+                entity_dir = (os.path.join(REPO, args.entity_dir)
+                              if args.entity_dir else None)
+                sys_text = system_text_space_general(
+                    general_root, args.method, split, eid, entity_dir)
+                if not sys_text.strip():
+                    continue
+                pairs.append((sys_text, refs))
+            out = run_rouge(pairs)
+            if out is not None:
+                scores, n = out
+                scores["n"] = n
+                per_aspect[GENERAL_RESULT_KEY] = scores
         results["by_split"][label] = per_aspect
 
     out_path = os.path.join(REPO, args.out)
@@ -291,6 +372,10 @@ def main():
         if m:
             print(f"  {label:5s} R1={m['rouge1']:.5f} "
                   f"R2={m['rouge2']:.5f} RL={m['rougeL']:.5f}")
+    general = results["by_split"].get("all", {}).get(GENERAL_RESULT_KEY)
+    if general:
+        print(f"  {'general':5s} R1={general['rouge1']:.5f} "
+              f"R2={general['rouge2']:.5f} RL={general['rougeL']:.5f}")
     print(f"written -> {args.out}")
 
 

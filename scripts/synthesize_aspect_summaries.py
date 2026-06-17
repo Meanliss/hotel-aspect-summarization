@@ -355,14 +355,14 @@ def build_prompt(task: SummaryTask, taxonomy: dict[str, dict[str, str]],
         )
     if task.level == "entity":
         return (
-            "You are writing the overall hotel review summary for one entity.\n"
-            "Use only the parent aspect summaries below. Write a detailed 4-6 "
-            "sentence English paragraph covering facilities, amenities, service, "
-            "experience, brand perception, and loyalty when those signals exist. "
-            "Preserve concrete details and tradeoffs. Avoid bland output like "
-            "'it is a good hotel' unless no better detail exists. Do not mention "
-            "evidence numbers or aspect codes.\n"
-            f"Parent aspect summaries:\n{evidence_lines}\n"
+            "You are writing the overall SPACE hotel review summary for one entity.\n"
+            "Use only the parent/aspect summaries below. Write a compact 5-6 sentence "
+            "English paragraph that covers the six hotel dimensions when evidence "
+            "exists: building/facilities, cleanliness, food, location, rooms, and "
+            "service. Preserve concrete details and tradeoffs, including both praise "
+            "and complaints. Avoid bland output like 'it is a good hotel' unless no "
+            "better detail exists. Do not mention evidence numbers or aspect codes.\n"
+            f"Parent/aspect summaries:\n{evidence_lines}\n"
             "Final summary:"
         )
 
@@ -441,12 +441,38 @@ def fallback_evidence_summary(evidence: list[str], max_sentences: int = 2) -> st
     return " ".join(norm_text(sent) for sent in evidence[:max_sentences])
 
 
+# Parent/entity evidence is built as "<aspect> (<polarity>): <summary>" strings
+# so the generator can attribute each sentence. When we fall back to the raw
+# evidence we strip that bookkeeping prefix so the surfaced summary reads like
+# prose instead of leaking aspect codes. The labels can appear anywhere once
+# several evidence strings are joined ("... friendly, cleanliness: The room"),
+# so the pattern matches at the start of the text or after whitespace/comma/
+# sentence punctuation, not only the leading position. Mirrors the standalone
+# scripts/clean_overall_summaries.py cleaner.
+_SPACE_ASPECT_ALT = "building|cleanliness|food|location|rooms|service"
+_LEVEL_PREFIX_RE = re.compile(
+    r"(?:^|(?<=[\s,.!?]))"
+    r"(?:\d+\.\s*)?"
+    r"(?:" + _SPACE_ASPECT_ALT + r")"
+    r"\s*(?:\((?:positive|negative)\))?\s*:\s*",
+    re.IGNORECASE,
+)
+# Orphan enumeration left behind after a label is removed ("... city. 2. The").
+_ORPHAN_NUM_RE = re.compile(r"(?:^|(?<=\s))\d+\.\s+")
+
+
+def strip_level_prefix(sentence: str) -> str:
+    out = _LEVEL_PREFIX_RE.sub(" ", norm_text(sentence))
+    out = _ORPHAN_NUM_RE.sub(" ", out)
+    return norm_text(out)
+
+
 def fallback_detailed_summary(task: SummaryTask, max_input_sentences: int) -> str:
     evidence = evidence_limit(task.evidence, max_input_sentences)
-    if task.level == "entity":
-        return fallback_evidence_summary(evidence, max_sentences=6)
-    if task.level == "parent":
-        return fallback_evidence_summary(evidence, max_sentences=5)
+    if task.level in ("entity", "parent"):
+        cleaned = [strip_level_prefix(sent) for sent in evidence]
+        max_sentences = 6 if task.level == "entity" else 5
+        return fallback_evidence_summary(cleaned, max_sentences=max_sentences)
     return fallback_evidence_summary(evidence, max_sentences=4)
 
 
@@ -985,11 +1011,16 @@ def build_entity_tasks(parent_rows: list[dict], output_run_id: str,
     tasks = []
     for (split, entity_id), rows in sorted(grouped.items()):
         rows.sort(key=lambda row: order.get(row.get("aspect", ""), 10**9))
-        evidence = [
-            f"{row.get('aspect')}: {norm_text(row.get('summary', ''))}"
-            for row in rows
-            if norm_text(row.get("summary", ""))
-        ]
+        evidence = []
+        for row in rows:
+            summary = norm_text(row.get("summary", ""))
+            if not summary:
+                continue
+            aspect = row.get("aspect")
+            polarity = row.get("sentiment", "")
+            label = {"pos": "positive", "neg": "negative"}.get(polarity, "")
+            prefix = f"{aspect} ({label})" if label else str(aspect)
+            evidence.append(f"{prefix}: {summary}")
         tasks.append(SummaryTask(
             source_run_id=source_run_id,
             aspect="ENTITY_OVERALL",
@@ -1087,6 +1118,10 @@ def main() -> None:
     parser.add_argument("--max_source_tokens", type=int, default=768,
                         help="chunk evidence before generation when prompt source exceeds this token estimate")
     parser.add_argument("--max_new_tokens", type=int, default=192)
+    parser.add_argument("--parent_max_new_tokens", type=int, default=None,
+                        help="Override output tokens for hierarchical parent summaries; defaults to --max_new_tokens.")
+    parser.add_argument("--entity_max_new_tokens", type=int, default=128,
+                        help="Output tokens for entity-level / overall summaries. 128 matches SPACE general refs.")
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--hierarchical", action="store_true",
@@ -1157,10 +1192,21 @@ def main() -> None:
             rows, args.output_run_id, args.run_id, taxonomy)
         if args.limit is not None:
             parent_tasks = parent_tasks[:args.limit]
-        parent_rows = generate_rows_for_tasks(
-            parent_tasks, taxonomy, args, args.parent_model_name,
-            f"{args.run_id}_parent_synthesis",
-            OUTPUTS_DIR / f"{args.run_id}_parent_synthesis_cache.jsonl")
+        entity_source_rows = rows
+        entity_parent_order = sorted({row.get("aspect", "") for row in rows if row.get("aspect")})
+        if parent_tasks:
+            parent_token_limit = args.max_new_tokens
+            if args.parent_max_new_tokens is not None:
+                parent_token_limit = args.parent_max_new_tokens
+            original_max_new_tokens = args.max_new_tokens
+            args.max_new_tokens = parent_token_limit
+            parent_rows = generate_rows_for_tasks(
+                parent_tasks, taxonomy, args, args.parent_model_name,
+                f"{args.run_id}_parent_synthesis",
+                OUTPUTS_DIR / f"{args.run_id}_parent_synthesis_cache.jsonl")
+            args.max_new_tokens = original_max_new_tokens
+            entity_source_rows = parent_rows
+            entity_parent_order = taxonomy_parent_order(taxonomy)
         parent_jsonl = OUTPUTS_DIR / f"{args.run_id}_parent_synthesis_lines.jsonl"
         parent_tsv = OUTPUTS_DIR / f"{args.run_id}_parent_synthesis_lines.tsv"
         write_jsonl(parent_jsonl, parent_rows)
@@ -1172,14 +1218,17 @@ def main() -> None:
         ])
 
         entity_tasks = build_entity_tasks(
-            parent_rows, args.output_run_id, args.run_id,
-            taxonomy_parent_order(taxonomy))
+            entity_source_rows, args.output_run_id, args.run_id,
+            entity_parent_order)
         if args.limit is not None:
             entity_tasks = entity_tasks[:args.limit]
+        original_max_new_tokens = args.max_new_tokens
+        args.max_new_tokens = args.entity_max_new_tokens
         entity_rows = generate_rows_for_tasks(
             entity_tasks, taxonomy, args, args.entity_model_name,
             f"{args.run_id}_entity_synthesis",
             OUTPUTS_DIR / f"{args.run_id}_entity_synthesis_cache.jsonl")
+        args.max_new_tokens = original_max_new_tokens
         entity_jsonl = OUTPUTS_DIR / f"{args.run_id}_entity_synthesis_lines.jsonl"
         entity_tsv = OUTPUTS_DIR / f"{args.run_id}_entity_synthesis_lines.tsv"
         write_jsonl(entity_jsonl, entity_rows)

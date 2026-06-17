@@ -30,6 +30,8 @@ PARENTS_BY_DATASET = {
     "space": ["building", "cleanliness", "food", "location", "rooms", "service"],
 }
 
+GENERAL_RESULT_KEY = "GENERAL"
+
 
 def load(dataset):
     data = {}
@@ -56,6 +58,7 @@ def main():
 
     parents = PARENTS_BY_DATASET[args.dataset]
     n_aspects = len(parents)
+    label_by_mid = dict(METHODS)
 
     lines = []
     lines.append(f"# ROUGE Comparison — {args.dataset.upper()} ({len(data)} methods)\n")
@@ -84,11 +87,40 @@ def main():
         lines.append(f"| {label} | {fmt(m.get('rouge1'))} | "
                      f"{fmt(m.get('rouge2'))} | {fmt(m.get('rougeL'))} |")
 
+    # SPACE entity-level / overall summary table (split = all)
+    general_all = {}
+    if args.dataset == "space":
+        for mid, _label in METHODS:
+            if mid not in data:
+                continue
+            _, res = data[mid]
+            g = res.get("by_split", {}).get("all", {}).get(GENERAL_RESULT_KEY, {})
+            if g:
+                general_all[mid] = g
+        if general_all:
+            lines.append("\n## Overall / general ROUGE F1 (SPACE `general`, split = all)\n")
+            lines.append("| Method | ROUGE-1 | ROUGE-2 | ROUGE-L | N |")
+            lines.append("| --- | ---: | ---: | ---: | ---: |")
+            for mid, label in METHODS:
+                if mid not in general_all:
+                    continue
+                g = general_all[mid]
+                lines.append(f"| {label} | {fmt(g.get('rouge1'))} | "
+                             f"{fmt(g.get('rouge2'))} | {fmt(g.get('rougeL'))} | "
+                             f"{g.get('n', '—')} |")
+
+            lines.append("\n## Winner per overall/general metric (SPACE, split = all)\n")
+            lines.append("| Metric | Best method | Score |")
+            lines.append("| --- | --- | ---: |")
+            for k, name in (("rouge1", "ROUGE-1"), ("rouge2", "ROUGE-2"), ("rougeL", "ROUGE-L")):
+                best_mid = max(general_all, key=lambda m: general_all[m].get(k, 0) or 0)
+                lines.append(f"| {name} | {label_by_mid[best_mid]} | "
+                             f"{fmt(general_all[best_mid].get(k))} |")
+
     # Winner per metric
     lines.append("\n## Winner per metric (macro, split = all)\n")
     lines.append("| Metric | Best method | Score |")
     lines.append("| --- | --- | ---: |")
-    label_by_mid = dict(METHODS)
     for k, name in (("rouge1", "ROUGE-1"), ("rouge2", "ROUGE-2"), ("rougeL", "ROUGE-L")):
         best_mid = max(macro_all, key=lambda m: macro_all[m].get(k, 0) or 0)
         lines.append(f"| {name} | {label_by_mid[best_mid]} | "
@@ -128,8 +160,10 @@ def main():
         lines.append("- Gold: `data/hasos/hasos_summ.json`, multi-reference where available.")
         lines.append("- 29 sub-aspects aggregated to 4 gold parents; Branding/Loyalty omitted (no gold).")
     else:
-        lines.append("- Gold: `data/space/json/space_summ.json` (SHA256-verified), 3 references per aspect.")
-        lines.append("- 6 flat generic aspects; the non-aspectual `general` gold summary is excluded.")
+        lines.append("- Gold: `data/space/json/space_summ.json`, 3 references per aspect and 3 references for `general`.")
+        lines.append("- 6 flat generic aspects are averaged into MACRO; `GENERAL` scores the overall entity summary separately when present.")
+        lines.append("- SPACE has no sentiment-level gold references, so sentiment split is visualized but not scored independently.")
+        lines.append("- Evidence selection uses a score threshold of 0.0082; since the SPACE evidence scores top out at ~0.0081, this effectively keeps all threshold-eligible evidence (no additional filtering).")
     lines.append("- M3/M4 concatenate positive + negative generated summaries per aspect.")
     lines.append("- M1 = raw SemAE sentences; M2 = FLAN-T5 rewrite (no split); "
                  "M3 = keyword-sentiment split; M4 = BERT-ABSA-sentiment split.")

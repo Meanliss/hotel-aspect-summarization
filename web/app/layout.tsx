@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "HASOS Sentiment Summarization",
+  title: "Aspect-Based Sentiment Summarization for the Hotel Domain",
   description:
-    "Aspect-based opinion summarization with positive/negative sentiment split",
+    "Aspect-based sentiment summarization for the hotel domain — 4-method comparison on the SPACE benchmark.",
 };
 
 export default function RootLayout({

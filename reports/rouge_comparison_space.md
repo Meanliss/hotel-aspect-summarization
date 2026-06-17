@@ -11,6 +11,23 @@ Official pyrouge (ROUGE-1.5.5) F1 against the human SPACE gold summaries (6 flat
 | M3 Sau sentiment — Keyword | 0.3094 | 0.0886 | 0.2398 |
 | M4 Sau sentiment — BERT-ABSA | 0.3080 | 0.0886 | 0.2393 |
 
+## Overall / general ROUGE F1 (SPACE `general`, split = all)
+
+| Method | ROUGE-1 | ROUGE-2 | ROUGE-L | N |
+| --- | ---: | ---: | ---: | ---: |
+| M1 SemAE gốc (extractive) | 0.2842 | 0.0921 | 0.1774 | 50 |
+| M2 Trước sentiment (abstractive) | 0.3604 | 0.0910 | 0.2076 | 50 |
+| M3 Sau sentiment — Keyword | 0.3414 | 0.0871 | 0.2106 | 50 |
+| M4 Sau sentiment — BERT-ABSA | 0.3430 | 0.0865 | 0.2088 | 50 |
+
+## Winner per overall/general metric (SPACE, split = all)
+
+| Metric | Best method | Score |
+| --- | --- | ---: |
+| ROUGE-1 | M2 Trước sentiment (abstractive) | 0.3604 |
+| ROUGE-2 | M1 SemAE gốc (extractive) | 0.0921 |
+| ROUGE-L | M3 Sau sentiment — Keyword | 0.2106 |
+
 ## Winner per metric (macro, split = all)
 
 | Metric | Best method | Score |
@@ -61,7 +78,9 @@ Official pyrouge (ROUGE-1.5.5) F1 against the human SPACE gold summaries (6 flat
 ## Notes
 
 - ROUGE-1.5.5 via pyrouge + Strawberry Perl (Windows).
-- Gold: `data/space/json/space_summ.json` (SHA256-verified), 3 references per aspect.
-- 6 flat generic aspects; the non-aspectual `general` gold summary is excluded.
+- Gold: `data/space/json/space_summ.json`, 3 references per aspect and 3 references for `general`.
+- 6 flat generic aspects are averaged into MACRO; `GENERAL` scores the overall entity summary separately when present.
+- SPACE has no sentiment-level gold references, so sentiment split is visualized but not scored independently.
+- Evidence selection uses a score threshold of 0.0082; since the SPACE evidence scores top out at ~0.0081, this effectively keeps all threshold-eligible evidence (no additional filtering).
 - M3/M4 concatenate positive + negative generated summaries per aspect.
 - M1 = raw SemAE sentences; M2 = FLAN-T5 rewrite (no split); M3 = keyword-sentiment split; M4 = BERT-ABSA-sentiment split.

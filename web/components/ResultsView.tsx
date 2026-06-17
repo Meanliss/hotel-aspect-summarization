@@ -3,59 +3,33 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ASPECT_LABEL,
-  DATASET_META,
-  METRIC_LABEL,
+  COLOR_BAR,
+  COLOR_BG_LIGHT,
+  COLOR_RING,
+  COLOR_TEXT,
+  METHOD_IDS,
   METHOD_META,
-  type Dataset,
-  type RougeResults,
-  type Split,
-} from "@/lib/results";
+  METRIC_LABEL,
+  SPACE_ASPECTS,
+  type MethodId,
+  type RougeComparison,
+} from "@/lib/space";
 
-const METHODS = ["m1", "m2", "m3", "m4"] as const;
 const METRICS = ["rouge1", "rouge2", "rougeL"] as const;
+type Split = "dev" | "test" | "all";
 
 function fmt(v: number | undefined): string {
   if (v === undefined || v === null || Number.isNaN(v)) return "—";
   return v.toFixed(4);
 }
 
-function pct(v: number | undefined): string {
-  if (v === undefined || v === null || Number.isNaN(v)) return "—";
-  return `${(v * 100).toFixed(1)}%`;
+function methodMeta(mid: MethodId) {
+  return METHOD_META[mid];
 }
 
-const COLOR_BAR: Record<string, string> = {
-  slate: "bg-slate-500",
-  sky: "bg-sky-500",
-  emerald: "bg-emerald-500",
-  violet: "bg-violet-500",
-};
-
-const COLOR_TEXT: Record<string, string> = {
-  slate: "text-slate-600",
-  sky: "text-sky-600",
-  emerald: "text-emerald-600",
-  violet: "text-violet-600",
-};
-
-const COLOR_BG_LIGHT: Record<string, string> = {
-  slate: "bg-slate-50",
-  sky: "bg-sky-50",
-  emerald: "bg-emerald-50",
-  violet: "bg-violet-50",
-};
-
-const COLOR_RING: Record<string, string> = {
-  slate: "ring-slate-300",
-  sky: "ring-sky-300",
-  emerald: "ring-emerald-300",
-  violet: "ring-violet-300",
-};
-
 export function ResultsView() {
-  const [dataset, setDataset] = useState<Dataset>("space");
   const [split, setSplit] = useState<Split>("all");
-  const [data, setData] = useState<RougeResults | null>(null);
+  const [data, setData] = useState<RougeComparison | null>(null);
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(false);
 
@@ -63,8 +37,7 @@ export function ResultsView() {
     let cancelled = false;
     setLoading(true);
     setError("");
-    setData(null);
-    fetch(`/data/${DATASET_META[dataset].file}`, { cache: "no-store" })
+    fetch(`/data/rouge_space.json`, { cache: "no-store" })
       .then((r) => {
         if (!r.ok) throw new Error(`Failed to load (${r.status})`);
         return r.json();
@@ -81,19 +54,39 @@ export function ResultsView() {
     return () => {
       cancelled = true;
     };
-  }, [dataset]);
+  }, []);
+
+  const cell = (mid: MethodId, key: string) =>
+    data?.[mid]?.by_split?.[split]?.[key];
 
   const macro = useMemo(() => {
     if (!data) return null;
-    return METHODS.map((m) => {
-      const cell = data[m].by_split[split]?.["MACRO"];
+    return METHOD_IDS.map((m) => {
+      const c = cell(m, "MACRO");
       return {
         method: m,
-        rouge1: cell?.rouge1 ?? NaN,
-        rouge2: cell?.rouge2 ?? NaN,
-        rougeL: cell?.rougeL ?? NaN,
+        rouge1: c?.rouge1 ?? NaN,
+        rouge2: c?.rouge2 ?? NaN,
+        rougeL: c?.rougeL ?? NaN,
       };
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, split]);
+
+  const general = useMemo(() => {
+    if (!data) return null;
+    const rows = METHOD_IDS.map((m) => {
+      const c = cell(m, "GENERAL");
+      return {
+        method: m,
+        rouge1: c?.rouge1 ?? NaN,
+        rouge2: c?.rouge2 ?? NaN,
+        rougeL: c?.rougeL ?? NaN,
+        n: c?.n,
+      };
+    });
+    return rows.some((r) => !Number.isNaN(r.rouge1)) ? rows : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, split]);
 
   const bestPerMetric = useMemo(() => {
@@ -115,40 +108,19 @@ export function ResultsView() {
 
   const perAspect = useMemo(() => {
     if (!data) return null;
-    const aspects = DATASET_META[dataset].aspects;
-    return aspects.map((a) => {
+    return SPACE_ASPECTS.map((a) => {
       const row: Record<string, number> = {};
-      for (const m of METHODS) {
-        row[m] = data[m].by_split[split]?.[a]?.rouge1 ?? NaN;
+      for (const m of METHOD_IDS) {
+        row[m] = cell(m, a)?.rouge1 ?? NaN;
       }
       return { aspect: a, scores: row };
     });
-  }, [data, dataset, split]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, split]);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end gap-3">
-        <div>
-          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Dataset
-          </label>
-          <div className="inline-flex rounded-md border border-slate-300 bg-white p-0.5">
-            {(["space", "hasos"] as Dataset[]).map((d) => (
-              <button
-                key={d}
-                type="button"
-                onClick={() => setDataset(d)}
-                className={`rounded px-3 py-1.5 text-sm font-medium transition ${
-                  dataset === d
-                    ? "bg-indigo-600 text-white"
-                    : "text-slate-600 hover:bg-slate-100"
-                }`}
-              >
-                {DATASET_META[d].label}
-              </button>
-            ))}
-          </div>
-        </div>
         <div>
           <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
             Split
@@ -177,19 +149,77 @@ export function ResultsView() {
           {error}
         </div>
       ) : null}
-      {loading ? (
-        <div className="text-sm text-slate-500">Loading…</div>
-      ) : null}
+      {loading ? <div className="text-sm text-slate-500">Loading…</div> : null}
 
       {macro && bestPerMetric && perAspect ? (
         <>
+          {/* Per-method cards */}
+          <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {METHOD_IDS.map((m) => {
+              const meta = methodMeta(m);
+              const c = cell(m, "MACRO");
+              const g = cell(m, "GENERAL");
+              const vals = [c?.rouge1, c?.rouge2, c?.rougeL];
+              const maxBar = 0.4; // ROUGE-1 on SPACE tops out well under this
+              return (
+                <div
+                  key={m}
+                  className={`rounded-xl border p-4 ring-1 ${COLOR_BG_LIGHT[meta.color]} ${COLOR_RING[meta.color]}`}
+                >
+                  <div className="mb-2 flex items-center gap-2">
+                    <span
+                      className={`inline-block h-2.5 w-2.5 rounded-full ${COLOR_BAR[meta.color]}`}
+                    />
+                    <span className={`text-sm font-semibold ${COLOR_TEXT[meta.color]}`}>
+                      {meta.short}
+                    </span>
+                  </div>
+                  <p className="mb-3 text-[11px] leading-snug text-slate-600">
+                    {meta.desc}
+                  </p>
+                  <div className="space-y-1.5">
+                    {METRICS.map((metric, i) => {
+                      const v = vals[i] ?? NaN;
+                      const width = Number.isNaN(v)
+                        ? 0
+                        : Math.min(100, (v / maxBar) * 100);
+                      return (
+                        <div key={metric} className="text-[11px]">
+                          <div className="mb-0.5 flex justify-between text-slate-500">
+                            <span>{METRIC_LABEL[metric]}</span>
+                            <span className="font-mono">{fmt(v)}</span>
+                          </div>
+                          <div className="h-2 overflow-hidden rounded bg-white/70">
+                            <div
+                              className={`h-full ${COLOR_BAR[meta.color]}`}
+                              style={{ width: `${width}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {g ? (
+                    <div className="mt-3 border-t border-slate-200/70 pt-2 text-[11px] text-slate-600">
+                      <div className="flex justify-between">
+                        <span className="font-medium">Overall R1</span>
+                        <span className="font-mono">{fmt(g.rouge1)}</span>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </section>
+
+          {/* Macro table */}
           <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="mb-1 text-lg font-semibold text-slate-900">
-              Macro ROUGE F1 — {DATASET_META[dataset].label} ({split})
+              Macro ROUGE F1 — SPACE ({split})
             </h2>
             <p className="mb-4 text-xs text-slate-500">
-              Mean ROUGE over {DATASET_META[dataset].aspects.length} aspects,
-              against human gold summaries (ROUGE-1.5.5 via pyrouge).
+              Mean ROUGE over {SPACE_ASPECTS.length} aspects, against human gold
+              summaries (ROUGE-1.5.5 via pyrouge).
             </p>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -206,9 +236,11 @@ export function ResultsView() {
                 </thead>
                 <tbody>
                   {macro.map((row) => {
-                    const meta = METHOD_META[row.method];
+                    const meta = methodMeta(row.method);
                     const isM1 = row.method === "m1";
-                    const delta = macro[0].rouge1 ? row.rouge1 - macro[0].rouge1 : 0;
+                    const delta = macro[0].rouge1
+                      ? row.rouge1 - macro[0].rouge1
+                      : 0;
                     return (
                       <tr
                         key={row.method}
@@ -262,7 +294,9 @@ export function ResultsView() {
                               : "text-slate-500"
                           }`}
                         >
-                          {isM1 ? "—" : `${delta >= 0 ? "+" : ""}${delta.toFixed(4)}`}
+                          {isM1
+                            ? "—"
+                            : `${delta >= 0 ? "+" : ""}${delta.toFixed(4)}`}
                         </td>
                       </tr>
                     );
@@ -272,19 +306,78 @@ export function ResultsView() {
             </div>
           </section>
 
+          {/* Overall / general */}
+          {general ? (
+            <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h2 className="mb-1 text-lg font-semibold text-slate-900">
+                Overall summary ROUGE F1 — SPACE ({split})
+              </h2>
+              <p className="mb-4 text-xs text-slate-500">
+                Entity-level overall summary scored against the SPACE{" "}
+                <code className="rounded bg-slate-100 px-1">general</code> gold
+                reference. There is no sentiment-level gold, so positive /
+                negative summaries are shown in Explore but not scored.
+              </p>
+              <div className="space-y-3">
+                {(["rouge1", "rouge2", "rougeL"] as const).map((metric) => {
+                  const vals = general.map((r) => r[metric]);
+                  const max = Math.max(
+                    ...vals.filter((v) => !Number.isNaN(v)),
+                    0.0001,
+                  );
+                  return (
+                    <div key={metric}>
+                      <div className="mb-1 text-sm font-semibold text-slate-700">
+                        {METRIC_LABEL[metric]}
+                      </div>
+                      <div className="space-y-1.5">
+                        {general.map((r) => {
+                          const meta = methodMeta(r.method);
+                          const v = r[metric];
+                          const width = Number.isNaN(v) ? 0 : (v / max) * 100;
+                          return (
+                            <div
+                              key={r.method}
+                              className="flex items-center gap-2 text-xs"
+                            >
+                              <div className="w-8 text-right font-mono text-slate-500">
+                                {meta.short}
+                              </div>
+                              <div className="relative h-5 flex-1 overflow-hidden rounded bg-slate-100">
+                                <div
+                                  className={`h-full ${COLOR_BAR[meta.color]}`}
+                                  style={{ width: `${width}%` }}
+                                />
+                                <div className="absolute inset-0 flex items-center px-2 font-mono text-[11px] text-slate-700">
+                                  {fmt(v)}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          ) : null}
+
+          {/* Per-aspect bars */}
           <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="mb-1 text-lg font-semibold text-slate-900">
-              Per-aspect ROUGE-1 — {DATASET_META[dataset].label} ({split})
+              Per-aspect ROUGE-1 — SPACE ({split})
             </h2>
             <p className="mb-4 text-xs text-slate-500">
               F1 on each aspect, 4 methods overlaid.
             </p>
             <div className="space-y-4">
               {perAspect.map((row) => {
-                const values = METHODS.map(
-                  (m) => row.scores[m] ?? NaN,
+                const values = METHOD_IDS.map((m) => row.scores[m] ?? NaN);
+                const max = Math.max(
+                  ...values.filter((v) => !Number.isNaN(v)),
+                  0.0001,
                 );
-                const max = Math.max(...values.filter((v) => !Number.isNaN(v)));
                 return (
                   <div key={row.aspect}>
                     <div className="mb-1 flex items-baseline justify-between">
@@ -296,10 +389,10 @@ export function ResultsView() {
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      {METHODS.map((m, i) => {
+                      {METHOD_IDS.map((m) => {
                         const v = row.scores[m] ?? NaN;
                         const width = max > 0 ? (v / max) * 100 : 0;
-                        const meta = METHOD_META[m];
+                        const meta = methodMeta(m);
                         return (
                           <div
                             key={m}
@@ -327,42 +420,15 @@ export function ResultsView() {
             </div>
           </section>
 
-          <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="mb-3 text-lg font-semibold text-slate-900">
-              Methods
-            </h2>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              {METHODS.map((m) => {
-                const meta = METHOD_META[m];
-                return (
-                  <div
-                    key={m}
-                    className={`rounded-lg border p-3 ring-1 ${COLOR_BG_LIGHT[meta.color]} ${COLOR_RING[meta.color]}`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`inline-block h-2.5 w-2.5 rounded-full ${COLOR_BAR[meta.color]}`}
-                      />
-                      <div
-                        className={`text-sm font-semibold ${COLOR_TEXT[meta.color]}`}
-                      >
-                        {meta.label}
-                      </div>
-                    </div>
-                    <p className="mt-1 text-xs text-slate-600">{meta.desc}</p>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
           <section className="rounded-xl border border-slate-200 bg-slate-100 p-4 text-xs text-slate-600">
             <strong>Setup.</strong> ROUGE-1.5.5 via pyrouge + Strawberry Perl.
-            SPACE gold: 6 flat aspects × 3 refs. HASOS gold: 4 parent aspects
-            aggregated from 29 sub-aspects. All 4 methods share identical SemAE
-            sentence selection; they differ only in how the selected evidence
-            is rendered. M3 and M4 concatenate positive + negative generated
-            summaries per aspect before scoring.
+            SPACE gold: 6 flat aspects × 3 refs, plus a non-aspectual{" "}
+            <code className="rounded bg-white px-1">general</code> overall
+            summary. All 4 methods share identical SemAE sentence selection; they
+            differ only in how the selected evidence is rendered. M3 and M4
+            concatenate positive + negative generated summaries per aspect before
+            scoring. SPACE has no sentiment-level gold, so the positive / negative
+            split is visualized in Explore but not scored by ROUGE.
           </section>
         </>
       ) : null}

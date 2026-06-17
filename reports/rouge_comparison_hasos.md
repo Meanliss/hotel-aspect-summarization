@@ -6,8 +6,8 @@ Official pyrouge (ROUGE-1.5.5) F1 against human gold summaries, aggregated to th
 
 | Method | ROUGE-1 | ROUGE-2 | ROUGE-L |
 | --- | ---: | ---: | ---: |
-| M1 SemAE gốc (extractive) | 0.1031 | 0.0403 | 0.0680 |
-| M2 Trước sentiment (abstractive) | 0.2002 | 0.0378 | 0.1380 |
+| M1 SemAE gốc (extractive) | 0.2035 | 0.0550 | 0.1223 |
+| M2 Trước sentiment (abstractive) | 0.2258 | 0.0377 | 0.1525 |
 | M3 Sau sentiment — Keyword | 0.2253 | 0.0520 | 0.1637 |
 | M4 Sau sentiment — BERT-ABSA | 0.2128 | 0.0407 | 0.1394 |
 
@@ -15,8 +15,8 @@ Official pyrouge (ROUGE-1.5.5) F1 against human gold summaries, aggregated to th
 
 | Metric | Best method | Score |
 | --- | --- | ---: |
-| ROUGE-1 | M3 Sau sentiment — Keyword | 0.2253 |
-| ROUGE-2 | M3 Sau sentiment — Keyword | 0.0520 |
+| ROUGE-1 | M2 Trước sentiment (abstractive) | 0.2258 |
+| ROUGE-2 | M1 SemAE gốc (extractive) | 0.0550 |
 | ROUGE-L | M3 Sau sentiment — Keyword | 0.1637 |
 
 ## Macro ROUGE F1 by split
@@ -26,8 +26,8 @@ Official pyrouge (ROUGE-1.5.5) F1 against human gold summaries, aggregated to th
 
 | Method | ROUGE-1 | ROUGE-2 | ROUGE-L |
 | --- | ---: | ---: | ---: |
-| M1 SemAE gốc (extractive) | 0.1068 | 0.0408 | 0.0697 |
-| M2 Trước sentiment (abstractive) | 0.2140 | 0.0420 | 0.1442 |
+| M1 SemAE gốc (extractive) | 0.2086 | 0.0540 | 0.1225 |
+| M2 Trước sentiment (abstractive) | 0.2228 | 0.0358 | 0.1469 |
 | M3 Sau sentiment — Keyword | 0.2291 | 0.0577 | 0.1702 |
 | M4 Sau sentiment — BERT-ABSA | 0.2183 | 0.0408 | 0.1387 |
 
@@ -35,8 +35,8 @@ Official pyrouge (ROUGE-1.5.5) F1 against human gold summaries, aggregated to th
 
 | Method | ROUGE-1 | ROUGE-2 | ROUGE-L |
 | --- | ---: | ---: | ---: |
-| M1 SemAE gốc (extractive) | 0.1001 | 0.0401 | 0.0666 |
-| M2 Trước sentiment (abstractive) | 0.1888 | 0.0347 | 0.1336 |
+| M1 SemAE gốc (extractive) | 0.2001 | 0.0566 | 0.1231 |
+| M2 Trước sentiment (abstractive) | 0.2311 | 0.0401 | 0.1591 |
 | M3 Sau sentiment — Keyword | 0.2262 | 0.0491 | 0.1624 |
 | M4 Sau sentiment — BERT-ABSA | 0.2096 | 0.0411 | 0.1410 |
 
@@ -44,8 +44,8 @@ Official pyrouge (ROUGE-1.5.5) F1 against human gold summaries, aggregated to th
 
 | Method | ROUGE-1 | ROUGE-2 | ROUGE-L |
 | --- | ---: | ---: | ---: |
-| M1 SemAE gốc (extractive) | 0.1031 | 0.0403 | 0.0680 |
-| M2 Trước sentiment (abstractive) | 0.2002 | 0.0378 | 0.1380 |
+| M1 SemAE gốc (extractive) | 0.2035 | 0.0550 | 0.1223 |
+| M2 Trước sentiment (abstractive) | 0.2258 | 0.0377 | 0.1525 |
 | M3 Sau sentiment — Keyword | 0.2253 | 0.0520 | 0.1637 |
 | M4 Sau sentiment — BERT-ABSA | 0.2128 | 0.0407 | 0.1394 |
 
@@ -53,8 +53,8 @@ Official pyrouge (ROUGE-1.5.5) F1 against human gold summaries, aggregated to th
 
 | Method | Facility | Amenity | Service | Experience |
 | --- | ---: | ---: | ---: | ---: |
-| M1 SemAE gốc (extractive) | 0.1825 | 0.0942 | 0.1013 | 0.0344 |
-| M2 Trước sentiment (abstractive) | 0.2260 | 0.2214 | 0.2296 | 0.1237 |
+| M1 SemAE gốc (extractive) | 0.3383 | 0.1917 | 0.2066 | 0.0774 |
+| M2 Trước sentiment (abstractive) | 0.2446 | 0.2523 | 0.2564 | 0.1500 |
 | M3 Sau sentiment — Keyword | 0.2400 | 0.2116 | 0.3262 | 0.1234 |
 | M4 Sau sentiment — BERT-ABSA | 0.2913 | 0.2386 | 0.2070 | 0.1143 |
 

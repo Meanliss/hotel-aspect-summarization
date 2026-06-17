@@ -1,0 +1,1325 @@
+{
+  "generated_at": "2026-06-17T13:33:10.142005+00:00",
+  "dataset": "space",
+  "entity": {
+    "entity_id": "250023",
+    "entity_name": "River Hotel",
+    "split": "test",
+    "review_count": 100,
+    "sample_reviews": [
+      {
+        "review_id": "UR76245650",
+        "rating": 4,
+        "sentences": [
+          "We enjoyed our stay at The River Hotel.",
+          "It is a great location easily accessible to public transit.",
+          "Our room was small, but it had a European type of feel, and it seemed many guests were European.",
+          "We had both a small fridge and a microwave which was helpful.",
+          "The free wireless is a nice feature with ability to print downstairs."
+        ]
+      },
+      {
+        "review_id": "UR117945179",
+        "rating": 4,
+        "sentences": [
+          "My husband, adult son and I stayed in a 2 bedroom suite.",
+          "The kitchenette (stove top, microwave, refrigerator) allowed us to fix breakfasts quickly \"at home\" before going out for early tours and to save money on some easy suppers.",
+          "Basic pots, pans, plates, and cooking and eating utensils were provided.",
+          "Beds and pillows were very comfortable.",
+          "We didn't hear any noise from the street or from other guests with the white noise of the air conditioner....delightful sleeping."
+        ]
+      },
+      {
+        "review_id": "UR23772613",
+        "rating": 3,
+        "sentences": [
+          "nice enough...check-in dude acted like he was doing me a big favor giving me a king-size bed, as they were out of queens.",
+          "Woo-hoo!",
+          "If I had made my own reservation, instead of our company picking this place for us, I would have got this as a matter of course... No tub, just shower; old tube tv.",
+          "Was cold close to window.",
+          "One light by bed didn't work, stopper in sink wouldn't stay stopped, and shower head had a leak in back, squirting water in reverse....what left bad impression (and was the last interaction I had with staff) was when I was checking out, I wanted to tell person behind desk about these things that needed fixing, and *she did not even interrupt her conversation with her colleague or even LOOK at me while she handed me my receipt*."
+        ]
+      }
+    ],
+    "gold_overall": [
+      "It's a very nice hotel in a great location. The entire staff, from the doorman to the check-in, were very helpful and friendly. The rooms are very clean and generally well-kept by the staff, and they feature refrigerators and comfortable beds to sleep in. Restaurant in hotel is good for breakfast but best avoided for lunch and dinner for its lackluster menu with inconsistent quality.",
+      "The entire hotel staff was very nice and helpful. The room was immaculately clean, as was the hotel. The rooms although small are beautifully designed, comfortably and stylishly equipped with almost everything, except perhaps a fridge. Beds and pillows were very comfortable. Restaurant in hotel is good for breakfast, but lunch and dinner have a lackluster menu with inconsistent quality. It's a great value for the wonderful location - right in the middle of everything. It's much better than many of the chain hotels in the area.",
+      "The entire hotel staff was very nice and helpful. The room was immaculately clean and well maintained. The rooms although small are beautifully designed, comfortably and stylishly equipped with just about everything you could want, with comfortable beds. The restaurant in hotel is good, too. The best part was the location - right in the middle of everything."
+    ]
+  },
+  "method_meta": {
+    "m1": {
+      "label": "M1 - Extractive (SemAE)",
+      "short": "M1",
+      "desc": "Raw SemAE-selected sentences joined as evidence.",
+      "color": "slate"
+    },
+    "m2": {
+      "label": "M2 - Abstractive",
+      "short": "M2",
+      "desc": "FLAN-T5 rewrite of the same selected evidence, without sentiment split.",
+      "color": "sky"
+    },
+    "m3": {
+      "label": "M3 - Keyword sentiment split",
+      "short": "M3",
+      "desc": "Keyword polarity split before FLAN-T5 rewrites positive and negative buckets.",
+      "color": "emerald"
+    },
+    "m4": {
+      "label": "M4 - BERT-ABSA sentiment split",
+      "short": "M4",
+      "desc": "BERT-ABSA polarity split before FLAN-T5 rewrites positive and negative buckets.",
+      "color": "violet"
+    }
+  },
+  "pipeline": {
+    "shared_selection": "All methods start from the same SemAE ranked evidence.",
+    "m1": "Write selected sentences directly.",
+    "m2": "Rewrite selected sentences once with FLAN-T5.",
+    "m3": "Classify selected evidence with keyword sentiment, then rewrite each polarity bucket.",
+    "m4": "Classify selected evidence with BERT-ABSA, then rewrite each polarity bucket."
+  },
+  "overall": {
+    "m1": "This hotel is in a perfect location to downtown Chicago - couldn't ask for better! The hotel has a small bar and the restaurant is fine. Our room was small, but perfectly adequate since we weren't in Chicago to spend",
+    "m2": "This hotel is in a perfect location to downtown Chicago - couldn't ask for better! Yes, the size of the room was small, but I only went there to sleep. The hotel restaurant is surprisingly good, and makes the famous Chicago deep dish pizza. This is the best hotel in the area. Rooms are small but clean and comfortable, until the patron next door started signing every morning with his radio around 7 am. I'm not a big fan of this hotel but I've been to a lot of hotels in the",
+    "m3": "I've been to a lot of hotels and this one was the worst. The service was terrible, the room was dirty, and the food was mediocre. I'm not sure if it's because of the food, or because the service was bad, but I don't think I'll be staying here again.",
+    "m4": "This hotel is in a perfect location to downtown Chicago - couldn't ask for better! The location could not be better - just off Michigan Ave and Rooms are small but clean and comfortable, until the patron next door started signing every morning with his radio around 7 am."
+  },
+  "aspects": [
+    {
+      "aspect": "building",
+      "gold": [
+        "The decor was very modern and tasteful. Internet was available in a business center in the lobby. Free wireless internet and laundry were really nice.",
+        "The hotel provided free WiFi, a laundry room, and a business center in the lobby. It was designed with modern, tasteful decorations.",
+        "The decor was very modern and tasteful. Internet was available in a business center in the lobby and there was also a laundry on site that was free."
+      ],
+      "shared_evidence": [
+        {
+          "sentence": "This hotel is in a perfect location to downtown Chicago - couldn't ask for better!",
+          "rank": 1,
+          "score": 0.007469704374670982,
+          "source_review_id": "UR18015648",
+          "source_sentence_index": 0,
+          "matched_aspect_seed": [
+            "hotel"
+          ],
+          "sentiment_label": "neu",
+          "matched_sentiment_keywords": [],
+          "was_truncated": false
+        },
+        {
+          "sentence": "The hotel has a small bar and the restaurant is fine.",
+          "rank": 2,
+          "score": 0.007473396137356758,
+          "source_review_id": "UR3906221",
+          "source_sentence_index": 7,
+          "matched_aspect_seed": [
+            "hotel"
+          ],
+          "sentiment_label": "neu",
+          "matched_sentiment_keywords": [],
+          "was_truncated": false
+        },
+        {
+          "sentence": "Our room was small, but perfectly adequate since we weren't in Chicago to spend",
+          "rank": 3,
+          "score": 0.007556332275271416,
+          "source_review_id": "UR78648925",
+          "source_sentence_index": 1,
+          "matched_aspect_seed": [
+            "hotel"
+          ],
+          "sentiment_label": "neu",
+          "matched_sentiment_keywords": [],
+          "was_truncated": true
+        }
+      ],
+      "keyword_evidence": [
+        {
+          "sentence": "This hotel is in a perfect location to downtown Chicago - couldn't ask for better!",
+          "rank": 1,
+          "score": 0.007469704374670982,
+          "source_review_id": "UR18015648",
+          "source_sentence_index": 0,
+          "matched_aspect_seed": [
+            "hotel"
+          ],
+          "sentiment_label": "pos",
+          "matched_sentiment_keywords": [
+            "generic_kw"
+          ],
+          "was_truncated": false
+        },
+        {
+          "sentence": "The hotel has a small bar and the restaurant is fine.",
+          "rank": 2,
+          "score": 0.007473396137356758,
+          "source_review_id": "UR3906221",
+          "source_sentence_index": 7,
+          "matched_aspect_seed": [
+            "hotel"
+          ],
+          "sentiment_label": "neg",
+          "matched_sentiment_keywords": [
+            "generic_kw"
+          ],
+          "was_truncated": false
+        },
+        {
+          "sentence": "Our room was small, but perfectly adequate since we weren't in Chicago to spend",
+          "rank": 3,
+          "score": 0.007556332275271416,
+          "source_review_id": "UR78648925",
+          "source_sentence_index": 1,
+          "matched_aspect_seed": [
+            "hotel"
+          ],
+          "sentiment_label": "neg",
+          "matched_sentiment_keywords": [
+            "generic_kw"
+          ],
+          "was_truncated": true
+        }
+      ],
+      "bert_evidence": [
+        {
+          "sentence": "This hotel is in a perfect location to downtown Chicago - couldn't ask for better!",
+          "rank": 1,
+          "score": 0.007469704374670982,
+          "source_review_id": "UR18015648",
+          "source_sentence_index": 0,
+          "matched_aspect_seed": [
+            "hotel"
+          ],
+          "sentiment_label": "pos",
+          "matched_sentiment_keywords": [
+            "bert:0.883"
+          ],
+          "was_truncated": false
+        },
+        {
+          "sentence": "The hotel has a small bar and the restaurant is fine.",
+          "rank": 2,
+          "score": 0.007473396137356758,
+          "source_review_id": "UR3906221",
+          "source_sentence_index": 7,
+          "matched_aspect_seed": [
+            "hotel"
+          ],
+          "sentiment_label": "neu",
+          "matched_sentiment_keywords": [
+            "bert:0.958"
+          ],
+          "was_truncated": false
+        },
+        {
+          "sentence": "Our room was small, but perfectly adequate since we weren't in Chicago to spend",
+          "rank": 3,
+          "score": 0.007556332275271416,
+          "source_review_id": "UR78648925",
+          "source_sentence_index": 1,
+          "matched_aspect_seed": [
+            "hotel"
+          ],
+          "sentiment_label": "neg",
+          "matched_sentiment_keywords": [
+            "bert:0.488"
+          ],
+          "was_truncated": true
+        }
+      ],
+      "methods": {
+        "m1": {
+          "output": "This hotel is in a perfect location to downtown Chicago - couldn't ask for better! The hotel has a small bar and the restaurant is fine. Our room was small, but perfectly adequate since we weren't in Chicago to spend",
+          "evidence": [
+            {
+              "sentence": "This hotel is in a perfect location to downtown Chicago - couldn't ask for better!",
+              "rank": 1,
+              "score": 0.007469704374670982,
+              "source_review_id": "UR18015648",
+              "source_sentence_index": 0,
+              "matched_aspect_seed": [
+                "hotel"
+              ],
+              "sentiment_label": "neu",
+              "matched_sentiment_keywords": [],
+              "was_truncated": false
+            },
+            {
+              "sentence": "The hotel has a small bar and the restaurant is fine.",
+              "rank": 2,
+              "score": 0.007473396137356758,
+              "source_review_id": "UR3906221",
+              "source_sentence_index": 7,
+              "matched_aspect_seed": [
+                "hotel"
+              ],
+              "sentiment_label": "neu",
+              "matched_sentiment_keywords": [],
+              "was_truncated": false
+            },
+            {
+              "sentence": "Our room was small, but perfectly adequate since we weren't in Chicago to spend",
+              "rank": 3,
+              "score": 0.007556332275271416,
+              "source_review_id": "UR78648925",
+              "source_sentence_index": 1,
+              "matched_aspect_seed": [
+                "hotel"
+              ],
+              "sentiment_label": "neu",
+              "matched_sentiment_keywords": [],
+              "was_truncated": true
+            }
+          ]
+        },
+        "m2": {
+          "output": "This hotel is in a perfect location to downtown Chicago - couldn't ask for better! 2. The hotel has a small bar and the restaurant is fine. 3. Our room was small, but perfectly adequate since we weren't in Chicago to spend",
+          "synthesis": {
+            "summary": "This hotel is in a perfect location to downtown Chicago - couldn't ask for better! 2. The hotel has a small bar and the restaurant is fine. 3. Our room was small, but perfectly adequate since we weren't in Chicago to spend",
+            "status": "cached_existing_output",
+            "evidence_count": 3,
+            "evidence_used": 3,
+            "copied_from_evidence": false,
+            "evidence": [
+              {
+                "sentence": "This hotel is in a perfect location to downtown Chicago - couldn't ask for better!",
+                "rank": 1,
+                "score": 0.007469704374670982,
+                "source_review_id": "UR18015648",
+                "source_sentence_index": 0,
+                "matched_aspect_seed": [
+                  "hotel"
+                ],
+                "sentiment_label": "neu",
+                "matched_sentiment_keywords": [],
+                "was_truncated": false
+              },
+              {
+                "sentence": "The hotel has a small bar and the restaurant is fine.",
+                "rank": 2,
+                "score": 0.007473396137356758,
+                "source_review_id": "UR3906221",
+                "source_sentence_index": 7,
+                "matched_aspect_seed": [
+                  "hotel"
+                ],
+                "sentiment_label": "neu",
+                "matched_sentiment_keywords": [],
+                "was_truncated": false
+              },
+              {
+                "sentence": "Our room was small, but perfectly adequate since we weren't in Chicago to spend",
+                "rank": 3,
+                "score": 0.007556332275271416,
+                "source_review_id": "UR78648925",
+                "source_sentence_index": 1,
+                "matched_aspect_seed": [
+                  "hotel"
+                ],
+                "sentiment_label": "neu",
+                "matched_sentiment_keywords": [],
+                "was_truncated": true
+              }
+            ]
+          }
+        },
+        "m3": {
+          "positive": "This hotel is in a perfect location to downtown Chicago - couldn't ask for better!",
+          "negative": "The hotel has a small bar and the restaurant is fine. Our room was small, but perfectly adequate since we weren't in Chicago to spend",
+          "positive_synthesis": {
+            "summary": "This hotel is in a perfect location to downtown Chicago - couldn't ask for better!",
+            "status": "generated",
+            "evidence_count": 1,
+            "evidence_used": 1,
+            "copied_from_evidence": true,
+            "evidence": [
+              {
+                "sentence": "This hotel is in a perfect location to downtown Chicago - couldn't ask for better!",
+                "rank": 1,
+                "score": 0.007469704374670982,
+                "source_review_id": "UR18015648",
+                "source_sentence_index": 0,
+                "matched_aspect_seed": [
+                  "hotel"
+                ],
+                "sentiment_label": "pos",
+                "matched_sentiment_keywords": [
+                  "generic_kw"
+                ],
+                "was_truncated": false
+              }
+            ]
+          },
+          "negative_synthesis": {
+            "summary": "The hotel has a small bar and the restaurant is fine. Our room was small, but perfectly adequate since we weren't in Chicago to spend",
+            "status": "fallback_generic",
+            "evidence_count": 2,
+            "evidence_used": 2,
+            "copied_from_evidence": true,
+            "evidence": [
+              {
+                "sentence": "The hotel has a small bar and the restaurant is fine.",
+                "rank": 2,
+                "score": 0.007473396137356758,
+                "source_review_id": "UR3906221",
+                "source_sentence_index": 7,
+                "matched_aspect_seed": [
+                  "hotel"
+                ],
+                "sentiment_label": "neg",
+                "matched_sentiment_keywords": [
+                  "generic_kw"
+                ],
+                "was_truncated": false
+              },
+              {
+                "sentence": "Our room was small, but perfectly adequate since we weren't in Chicago to spend",
+                "rank": 3,
+                "score": 0.007556332275271416,
+                "source_review_id": "UR78648925",
+                "source_sentence_index": 1,
+                "matched_aspect_seed": [
+                  "hotel"
+                ],
+                "sentiment_label": "neg",
+                "matched_sentiment_keywords": [
+                  "generic_kw"
+                ],
+                "was_truncated": true
+              }
+            ]
+          }
+        },
+        "m4": {
+          "positive": "This hotel is in a perfect location to downtown Chicago - couldn't ask for better!",
+          "negative": "The room was small, but perfectly adequate since we weren't in Chicago to spend",
+          "positive_synthesis": {
+            "summary": "This hotel is in a perfect location to downtown Chicago - couldn't ask for better!",
+            "status": "generated",
+            "evidence_count": 1,
+            "evidence_used": 1,
+            "copied_from_evidence": true,
+            "evidence": [
+              {
+                "sentence": "This hotel is in a perfect location to downtown Chicago - couldn't ask for better!",
+                "rank": 1,
+                "score": 0.007469704374670982,
+                "source_review_id": "UR18015648",
+                "source_sentence_index": 0,
+                "matched_aspect_seed": [
+                  "hotel"
+                ],
+                "sentiment_label": "pos",
+                "matched_sentiment_keywords": [
+                  "bert:0.883"
+                ],
+                "was_truncated": false
+              }
+            ]
+          },
+          "negative_synthesis": {
+            "summary": "The room was small, but perfectly adequate since we weren't in Chicago to spend",
+            "status": "generated",
+            "evidence_count": 1,
+            "evidence_used": 1,
+            "copied_from_evidence": false,
+            "evidence": [
+              {
+                "sentence": "Our room was small, but perfectly adequate since we weren't in Chicago to spend",
+                "rank": 3,
+                "score": 0.007556332275271416,
+                "source_review_id": "UR78648925",
+                "source_sentence_index": 1,
+                "matched_aspect_seed": [
+                  "hotel"
+                ],
+                "sentiment_label": "neg",
+                "matched_sentiment_keywords": [
+                  "bert:0.488"
+                ],
+                "was_truncated": true
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "aspect": "food",
+      "gold": [
+        "Restaurant in hotel is good for breakfast and Chicago style stuffed pizza. Lunch and dinner are kind of lackluster, with inconsistent quality.",
+        "The restaurant has options for both breakfast and lunch/dinner with Chicago styled stuffed pizza.",
+        "The hotel restaurant is good for breakfast. Some considered the lunch and dinner menu lackluster, with inconsistent quality, but most thought it was very good. The Chicago style stuffed pizza was especially appreciated."
+      ],
+      "shared_evidence": [
+        {
+          "sentence": "The hotel restaurant is surprisingly good, and makes the famous Chicago deep dish pizza.",
+          "rank": 1,
+          "score": 0.005421562120318413,
+          "source_review_id": "UR78648925",
+          "source_sentence_index": 4,
+          "matched_aspect_seed": [
+            "restaurant"
+          ],
+          "sentiment_label": "neu",
+          "matched_sentiment_keywords": [],
+          "was_truncated": false
+        },
+        {
+          "sentence": "Restaurant in hotel is good for breakfast but best avoided for lunch and dinner for its lackluster menu with inconsistent quality.",
+          "rank": 2,
+          "score": 0.005871864035725594,
+          "source_review_id": "UR116304955",
+          "source_sentence_index": 2,
+          "matched_aspect_seed": [
+            "breakfast"
+          ],
+          "sentiment_label": "neu",
+          "matched_sentiment_keywords": [],
+          "was_truncated": false
+        },
+        {
+          "sentence": "The Italian restaurant downstairs was",
+          "rank": 3,
+          "score": 0.0061311181634664536,
+          "source_review_id": "UR13505717",
+          "source_sentence_index": 8,
+          "matched_aspect_seed": [
+            "restaurant"
+          ],
+          "sentiment_label": "neu",
+          "matched_sentiment_keywords": [],
+          "was_truncated": true
+        }
+      ],
+      "keyword_evidence": [
+        {
+          "sentence": "The hotel restaurant is surprisingly good, and makes the famous Chicago deep dish pizza.",
+          "rank": 1,
+          "score": 0.005421562120318413,
+          "source_review_id": "UR78648925",
+          "source_sentence_index": 4,
+          "matched_aspect_seed": [
+            "restaurant"
+          ],
+          "sentiment_label": "pos",
+          "matched_sentiment_keywords": [
+            "generic_kw"
+          ],
+          "was_truncated": false
+        },
+        {
+          "sentence": "Restaurant in hotel is good for breakfast but best avoided for lunch and dinner for its lackluster menu with inconsistent quality.",
+          "rank": 2,
+          "score": 0.005871864035725594,
+          "source_review_id": "UR116304955",
+          "source_sentence_index": 2,
+          "matched_aspect_seed": [
+            "breakfast"
+          ],
+          "sentiment_label": "pos",
+          "matched_sentiment_keywords": [
+            "generic_kw"
+          ],
+          "was_truncated": false
+        },
+        {
+          "sentence": "The Italian restaurant downstairs was",
+          "rank": 3,
+          "score": 0.0061311181634664536,
+          "source_review_id": "UR13505717",
+          "source_sentence_index": 8,
+          "matched_aspect_seed": [
+            "restaurant"
+          ],
+          "sentiment_label": "neu",
+          "matched_sentiment_keywords": [
+            "generic_kw"
+          ],
+          "was_truncated": true
+        }
+      ],
+      "bert_evidence": [
+        {
+          "sentence": "The hotel restaurant is surprisingly good, and makes the famous Chicago deep dish pizza.",
+          "rank": 1,
+          "score": 0.005421562120318413,
+          "source_review_id": "UR78648925",
+          "source_sentence_index": 4,
+          "matched_aspect_seed": [
+            "restaurant"
+          ],
+          "sentiment_label": "neu",
+          "matched_sentiment_keywords": [
+            "bert:0.649"
+          ],
+          "was_truncated": false
+        },
+        {
+          "sentence": "Restaurant in hotel is good for breakfast but best avoided for lunch and dinner for its lackluster menu with inconsistent quality.",
+          "rank": 2,
+          "score": 0.005871864035725594,
+          "source_review_id": "UR116304955",
+          "source_sentence_index": 2,
+          "matched_aspect_seed": [
+            "breakfast"
+          ],
+          "sentiment_label": "neg",
+          "matched_sentiment_keywords": [
+            "bert:0.993"
+          ],
+          "was_truncated": false
+        },
+        {
+          "sentence": "The Italian restaurant downstairs was",
+          "rank": 3,
+          "score": 0.0061311181634664536,
+          "source_review_id": "UR13505717",
+          "source_sentence_index": 8,
+          "matched_aspect_seed": [
+            "restaurant"
+          ],
+          "sentiment_label": "pos",
+          "matched_sentiment_keywords": [
+            "bert:0.788"
+          ],
+          "was_truncated": true
+        }
+      ],
+      "methods": {
+        "m1": {
+          "output": "The hotel restaurant is surprisingly good, and makes the famous Chicago deep dish pizza. Restaurant in hotel is good for breakfast but best avoided for lunch and dinner for its lackluster menu with inconsistent quality. The Italian restaurant downstairs was",
+          "evidence": [
+            {
+              "sentence": "The hotel restaurant is surprisingly good, and makes the famous Chicago deep dish pizza.",
+              "rank": 1,
+              "score": 0.005421562120318413,
+              "source_review_id": "UR78648925",
+              "source_sentence_index": 4,
+              "matched_aspect_seed": [
+                "restaurant"
+              ],
+              "sentiment_label": "neu",
+              "matched_sentiment_keywords": [],
+              "was_truncated": false
+            },
+            {
+              "sentence": "Restaurant in hotel is good for breakfast but best avoided for lunch and dinner for its lackluster menu with inconsistent quality.",
+              "rank": 2,
+              "score": 0.005871864035725594,
+              "source_review_id": "UR116304955",
+              "source_sentence_index": 2,
+              "matched_aspect_seed": [
+                "breakfast"
+              ],
+              "sentiment_label": "neu",
+              "matched_sentiment_keywords": [],
+              "was_truncated": false
+            },
+            {
+              "sentence": "The Italian restaurant downstairs was",
+              "rank": 3,
+              "score": 0.0061311181634664536,
+              "source_review_id": "UR13505717",
+              "source_sentence_index": 8,
+              "matched_aspect_seed": [
+                "restaurant"
+              ],
+              "sentiment_label": "neu",
+              "matched_sentiment_keywords": [],
+              "was_truncated": true
+            }
+          ]
+        },
+        "m2": {
+          "output": "The hotel restaurant is surprisingly good, and makes the famous Chicago deep dish pizza.",
+          "synthesis": {
+            "summary": "The hotel restaurant is surprisingly good, and makes the famous Chicago deep dish pizza.",
+            "status": "cached_existing_output",
+            "evidence_count": 3,
+            "evidence_used": 3,
+            "copied_from_evidence": true,
+            "evidence": [
+              {
+                "sentence": "The hotel restaurant is surprisingly good, and makes the famous Chicago deep dish pizza.",
+                "rank": 1,
+                "score": 0.005421562120318413,
+                "source_review_id": "UR78648925",
+                "source_sentence_index": 4,
+                "matched_aspect_seed": [
+                  "restaurant"
+                ],
+                "sentiment_label": "neu",
+                "matched_sentiment_keywords": [],
+                "was_truncated": false
+              },
+              {
+                "sentence": "Restaurant in hotel is good for breakfast but best avoided for lunch and dinner for its lackluster menu with inconsistent quality.",
+                "rank": 2,
+                "score": 0.005871864035725594,
+                "source_review_id": "UR116304955",
+                "source_sentence_index": 2,
+                "matched_aspect_seed": [
+                  "breakfast"
+                ],
+                "sentiment_label": "neu",
+                "matched_sentiment_keywords": [],
+                "was_truncated": false
+              },
+              {
+                "sentence": "The Italian restaurant downstairs was",
+                "rank": 3,
+                "score": 0.0061311181634664536,
+                "source_review_id": "UR13505717",
+                "source_sentence_index": 8,
+                "matched_aspect_seed": [
+                  "restaurant"
+                ],
+                "sentiment_label": "neu",
+                "matched_sentiment_keywords": [],
+                "was_truncated": true
+              }
+            ]
+          }
+        },
+        "m3": {
+          "positive": "The restaurant in the hotel is surprisingly good and makes the famous Chicago deep dish pizza. The hotel restaurant in hotel is good for breakfast but best avoided for lunch and dinner for its lackluster menu with inconsistent quality.",
+          "negative": "",
+          "positive_synthesis": {
+            "summary": "The restaurant in the hotel is surprisingly good and makes the famous Chicago deep dish pizza. The hotel restaurant in hotel is good for breakfast but best avoided for lunch and dinner for its lackluster menu with inconsistent quality.",
+            "status": "generated",
+            "evidence_count": 2,
+            "evidence_used": 2,
+            "copied_from_evidence": false,
+            "evidence": [
+              {
+                "sentence": "The hotel restaurant is surprisingly good, and makes the famous Chicago deep dish pizza.",
+                "rank": 1,
+                "score": 0.005421562120318413,
+                "source_review_id": "UR78648925",
+                "source_sentence_index": 4,
+                "matched_aspect_seed": [
+                  "restaurant"
+                ],
+                "sentiment_label": "pos",
+                "matched_sentiment_keywords": [
+                  "generic_kw"
+                ],
+                "was_truncated": false
+              },
+              {
+                "sentence": "Restaurant in hotel is good for breakfast but best avoided for lunch and dinner for its lackluster menu with inconsistent quality.",
+                "rank": 2,
+                "score": 0.005871864035725594,
+                "source_review_id": "UR116304955",
+                "source_sentence_index": 2,
+                "matched_aspect_seed": [
+                  "breakfast"
+                ],
+                "sentiment_label": "pos",
+                "matched_sentiment_keywords": [
+                  "generic_kw"
+                ],
+                "was_truncated": false
+              }
+            ]
+          },
+          "negative_synthesis": {
+            "summary": "",
+            "status": "",
+            "evidence_count": 0,
+            "evidence_used": 0,
+            "copied_from_evidence": false,
+            "evidence": []
+          }
+        },
+        "m4": {
+          "positive": "The Italian restaurant downstairs was",
+          "negative": "Restaurant in hotel is good for breakfast but best avoided for lunch and dinner for its lackluster menu with inconsistent quality.",
+          "positive_synthesis": {
+            "summary": "The Italian restaurant downstairs was",
+            "status": "fallback_generic",
+            "evidence_count": 1,
+            "evidence_used": 1,
+            "copied_from_evidence": true,
+            "evidence": [
+              {
+                "sentence": "The Italian restaurant downstairs was",
+                "rank": 3,
+                "score": 0.0061311181634664536,
+                "source_review_id": "UR13505717",
+                "source_sentence_index": 8,
+                "matched_aspect_seed": [
+                  "restaurant"
+                ],
+                "sentiment_label": "pos",
+                "matched_sentiment_keywords": [
+                  "bert:0.788"
+                ],
+                "was_truncated": true
+              }
+            ]
+          },
+          "negative_synthesis": {
+            "summary": "Restaurant in hotel is good for breakfast but best avoided for lunch and dinner for its lackluster menu with inconsistent quality.",
+            "status": "fallback_generic",
+            "evidence_count": 1,
+            "evidence_used": 1,
+            "copied_from_evidence": true,
+            "evidence": [
+              {
+                "sentence": "Restaurant in hotel is good for breakfast but best avoided for lunch and dinner for its lackluster menu with inconsistent quality.",
+                "rank": 2,
+                "score": 0.005871864035725594,
+                "source_review_id": "UR116304955",
+                "source_sentence_index": 2,
+                "matched_aspect_seed": [
+                  "breakfast"
+                ],
+                "sentiment_label": "neg",
+                "matched_sentiment_keywords": [
+                  "bert:0.993"
+                ],
+                "was_truncated": false
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "aspect": "rooms",
+      "gold": [
+        "The rooms were smaller then normal but weren't uncomfortable. They were beautifully designed and comfortably, stylishly equipped, with just about everything you could want, there was no fridge or place to put your case other than on the ground. Beds and pillows were very comfortable.",
+        "The rooms were small but there were comfy beds and basic amenities.",
+        "I was very satisfied with the amenities of the club sized room (bed and bathroom) but it was small. However, they are beautifully designed, comfortably and stylishly equipped with just about everything you could want, (except perhaps a fridge)."
+      ],
+      "shared_evidence": [
+        {
+          "sentence": "The room was small but clean and comfortable, until the patron next door started signing every morning with his radio around 7 am.",
+          "rank": 1,
+          "score": 0.006537649780511856,
+          "source_review_id": "UR120582919",
+          "source_sentence_index": 7,
+          "matched_aspect_seed": [
+            "room"
+          ],
+          "sentiment_label": "neu",
+          "matched_sentiment_keywords": [],
+          "was_truncated": false
+        },
+        {
+          "sentence": "Rooms are as you expect in a city -- small -- but the bed was clean and",
+          "rank": 2,
+          "score": 0.006549039855599403,
+          "source_review_id": "UR6546681",
+          "source_sentence_index": 2,
+          "matched_aspect_seed": [
+            "bed"
+          ],
+          "sentiment_label": "neu",
+          "matched_sentiment_keywords": [],
+          "was_truncated": true
+        }
+      ],
+      "keyword_evidence": [
+        {
+          "sentence": "The room was small but clean and comfortable, until the patron next door started signing every morning with his radio around 7 am.",
+          "rank": 1,
+          "score": 0.006537649780511856,
+          "source_review_id": "UR120582919",
+          "source_sentence_index": 7,
+          "matched_aspect_seed": [
+            "room"
+          ],
+          "sentiment_label": "pos",
+          "matched_sentiment_keywords": [
+            "generic_kw"
+          ],
+          "was_truncated": false
+        },
+        {
+          "sentence": "Rooms are as you expect in a city -- small -- but the bed was clean and",
+          "rank": 2,
+          "score": 0.006549039855599403,
+          "source_review_id": "UR6546681",
+          "source_sentence_index": 2,
+          "matched_aspect_seed": [
+            "bed"
+          ],
+          "sentiment_label": "pos",
+          "matched_sentiment_keywords": [
+            "generic_kw"
+          ],
+          "was_truncated": true
+        }
+      ],
+      "bert_evidence": [
+        {
+          "sentence": "The room was small but clean and comfortable, until the patron next door started signing every morning with his radio around 7 am.",
+          "rank": 1,
+          "score": 0.006537649780511856,
+          "source_review_id": "UR120582919",
+          "source_sentence_index": 7,
+          "matched_aspect_seed": [
+            "room"
+          ],
+          "sentiment_label": "pos",
+          "matched_sentiment_keywords": [
+            "bert:0.865"
+          ],
+          "was_truncated": false
+        },
+        {
+          "sentence": "Rooms are as you expect in a city -- small -- but the bed was clean and",
+          "rank": 2,
+          "score": 0.006549039855599403,
+          "source_review_id": "UR6546681",
+          "source_sentence_index": 2,
+          "matched_aspect_seed": [
+            "bed"
+          ],
+          "sentiment_label": "neg",
+          "matched_sentiment_keywords": [
+            "bert:0.585"
+          ],
+          "was_truncated": true
+        }
+      ],
+      "methods": {
+        "m1": {
+          "output": "The room was small but clean and comfortable, until the patron next door started signing every morning with his radio around 7 am. Rooms are as you expect in a city -- small -- but the bed was clean and",
+          "evidence": [
+            {
+              "sentence": "The room was small but clean and comfortable, until the patron next door started signing every morning with his radio around 7 am.",
+              "rank": 1,
+              "score": 0.006537649780511856,
+              "source_review_id": "UR120582919",
+              "source_sentence_index": 7,
+              "matched_aspect_seed": [
+                "room"
+              ],
+              "sentiment_label": "neu",
+              "matched_sentiment_keywords": [],
+              "was_truncated": false
+            },
+            {
+              "sentence": "Rooms are as you expect in a city -- small -- but the bed was clean and",
+              "rank": 2,
+              "score": 0.006549039855599403,
+              "source_review_id": "UR6546681",
+              "source_sentence_index": 2,
+              "matched_aspect_seed": [
+                "bed"
+              ],
+              "sentiment_label": "neu",
+              "matched_sentiment_keywords": [],
+              "was_truncated": true
+            }
+          ]
+        },
+        "m2": {
+          "output": "Rooms are as you expect in a city -- small but clean and comfortable, until the patron next door started signing every morning with his radio around 7 am.",
+          "synthesis": {
+            "summary": "Rooms are as you expect in a city -- small but clean and comfortable, until the patron next door started signing every morning with his radio around 7 am.",
+            "status": "cached_existing_output",
+            "evidence_count": 2,
+            "evidence_used": 2,
+            "copied_from_evidence": false,
+            "evidence": [
+              {
+                "sentence": "The room was small but clean and comfortable, until the patron next door started signing every morning with his radio around 7 am.",
+                "rank": 1,
+                "score": 0.006537649780511856,
+                "source_review_id": "UR120582919",
+                "source_sentence_index": 7,
+                "matched_aspect_seed": [
+                  "room"
+                ],
+                "sentiment_label": "neu",
+                "matched_sentiment_keywords": [],
+                "was_truncated": false
+              },
+              {
+                "sentence": "Rooms are as you expect in a city -- small -- but the bed was clean and",
+                "rank": 2,
+                "score": 0.006549039855599403,
+                "source_review_id": "UR6546681",
+                "source_sentence_index": 2,
+                "matched_aspect_seed": [
+                  "bed"
+                ],
+                "sentiment_label": "neu",
+                "matched_sentiment_keywords": [],
+                "was_truncated": true
+              }
+            ]
+          }
+        },
+        "m3": {
+          "positive": "Rooms are as you expect in a city -- small but clean and comfortable, until the patron next door started signing every morning with his radio around 7 am.",
+          "negative": "",
+          "positive_synthesis": {
+            "summary": "Rooms are as you expect in a city -- small but clean and comfortable, until the patron next door started signing every morning with his radio around 7 am.",
+            "status": "generated",
+            "evidence_count": 2,
+            "evidence_used": 2,
+            "copied_from_evidence": false,
+            "evidence": [
+              {
+                "sentence": "The room was small but clean and comfortable, until the patron next door started signing every morning with his radio around 7 am.",
+                "rank": 1,
+                "score": 0.006537649780511856,
+                "source_review_id": "UR120582919",
+                "source_sentence_index": 7,
+                "matched_aspect_seed": [
+                  "room"
+                ],
+                "sentiment_label": "pos",
+                "matched_sentiment_keywords": [
+                  "generic_kw"
+                ],
+                "was_truncated": false
+              },
+              {
+                "sentence": "Rooms are as you expect in a city -- small -- but the bed was clean and",
+                "rank": 2,
+                "score": 0.006549039855599403,
+                "source_review_id": "UR6546681",
+                "source_sentence_index": 2,
+                "matched_aspect_seed": [
+                  "bed"
+                ],
+                "sentiment_label": "pos",
+                "matched_sentiment_keywords": [
+                  "generic_kw"
+                ],
+                "was_truncated": true
+              }
+            ]
+          },
+          "negative_synthesis": {
+            "summary": "",
+            "status": "",
+            "evidence_count": 0,
+            "evidence_used": 0,
+            "copied_from_evidence": false,
+            "evidence": []
+          }
+        },
+        "m4": {
+          "positive": "The room was small but clean and comfortable, until the patron next door started signing every morning with his radio around 7 am.",
+          "negative": "Rooms are as you expect in a city -- small -- but the bed was clean and",
+          "positive_synthesis": {
+            "summary": "The room was small but clean and comfortable, until the patron next door started signing every morning with his radio around 7 am.",
+            "status": "generated",
+            "evidence_count": 1,
+            "evidence_used": 1,
+            "copied_from_evidence": true,
+            "evidence": [
+              {
+                "sentence": "The room was small but clean and comfortable, until the patron next door started signing every morning with his radio around 7 am.",
+                "rank": 1,
+                "score": 0.006537649780511856,
+                "source_review_id": "UR120582919",
+                "source_sentence_index": 7,
+                "matched_aspect_seed": [
+                  "room"
+                ],
+                "sentiment_label": "pos",
+                "matched_sentiment_keywords": [
+                  "bert:0.865"
+                ],
+                "was_truncated": false
+              }
+            ]
+          },
+          "negative_synthesis": {
+            "summary": "Rooms are as you expect in a city -- small -- but the bed was clean and",
+            "status": "generated",
+            "evidence_count": 1,
+            "evidence_used": 1,
+            "copied_from_evidence": true,
+            "evidence": [
+              {
+                "sentence": "Rooms are as you expect in a city -- small -- but the bed was clean and",
+                "rank": 2,
+                "score": 0.006549039855599403,
+                "source_review_id": "UR6546681",
+                "source_sentence_index": 2,
+                "matched_aspect_seed": [
+                  "bed"
+                ],
+                "sentiment_label": "neg",
+                "matched_sentiment_keywords": [
+                  "bert:0.585"
+                ],
+                "was_truncated": true
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "aspect": "service",
+      "gold": [
+        "The staff was very friendly, efficient, and helpful in answering my questions. The housekeeper staff and the desk clerks were equally as professional.",
+        "The professional staff was very friendly and helpful in answering questions",
+        "Hotel staff was very friendly, and the housekeeper staff was equally as professional."
+      ],
+      "shared_evidence": [
+        {
+          "sentence": "When I asked for a rate reduction because of the problems, first I was scolded by the front desk clerk who said I should have reported the TV problem the night before.",
+          "rank": 1,
+          "score": 0.006626537069678307,
+          "source_review_id": "UR10056239",
+          "source_sentence_index": 7,
+          "matched_aspect_seed": [
+            "desk"
+          ],
+          "sentiment_label": "neu",
+          "matched_sentiment_keywords": [],
+          "was_truncated": false
+        },
+        {
+          "sentence": "I saw several customers have trouble getting to",
+          "rank": 2,
+          "score": 0.0068028997629880905,
+          "source_review_id": "UR10019068",
+          "source_sentence_index": 3,
+          "matched_aspect_seed": [
+            "staff"
+          ],
+          "sentiment_label": "neu",
+          "matched_sentiment_keywords": [],
+          "was_truncated": true
+        }
+      ],
+      "keyword_evidence": [
+        {
+          "sentence": "When I asked for a rate reduction because of the problems, first I was scolded by the front desk clerk who said I should have reported the TV problem the night before.",
+          "rank": 1,
+          "score": 0.006626537069678307,
+          "source_review_id": "UR10056239",
+          "source_sentence_index": 7,
+          "matched_aspect_seed": [
+            "desk"
+          ],
+          "sentiment_label": "neg",
+          "matched_sentiment_keywords": [
+            "generic_kw"
+          ],
+          "was_truncated": false
+        },
+        {
+          "sentence": "I saw several customers have trouble getting to",
+          "rank": 2,
+          "score": 0.0068028997629880905,
+          "source_review_id": "UR10019068",
+          "source_sentence_index": 3,
+          "matched_aspect_seed": [
+            "staff"
+          ],
+          "sentiment_label": "neu",
+          "matched_sentiment_keywords": [
+            "generic_kw"
+          ],
+          "was_truncated": true
+        }
+      ],
+      "bert_evidence": [
+        {
+          "sentence": "When I asked for a rate reduction because of the problems, first I was scolded by the front desk clerk who said I should have reported the TV problem the night before.",
+          "rank": 1,
+          "score": 0.006626537069678307,
+          "source_review_id": "UR10056239",
+          "source_sentence_index": 7,
+          "matched_aspect_seed": [
+            "desk"
+          ],
+          "sentiment_label": "neg",
+          "matched_sentiment_keywords": [
+            "bert:0.922"
+          ],
+          "was_truncated": false
+        },
+        {
+          "sentence": "I saw several customers have trouble getting to",
+          "rank": 2,
+          "score": 0.0068028997629880905,
+          "source_review_id": "UR10019068",
+          "source_sentence_index": 3,
+          "matched_aspect_seed": [
+            "staff"
+          ],
+          "sentiment_label": "neg",
+          "matched_sentiment_keywords": [
+            "bert:0.598"
+          ],
+          "was_truncated": true
+        }
+      ],
+      "methods": {
+        "m1": {
+          "output": "When I asked for a rate reduction because of the problems, first I was scolded by the front desk clerk who said I should have reported the TV problem the night before. I saw several customers have trouble getting to",
+          "evidence": [
+            {
+              "sentence": "When I asked for a rate reduction because of the problems, first I was scolded by the front desk clerk who said I should have reported the TV problem the night before.",
+              "rank": 1,
+              "score": 0.006626537069678307,
+              "source_review_id": "UR10056239",
+              "source_sentence_index": 7,
+              "matched_aspect_seed": [
+                "desk"
+              ],
+              "sentiment_label": "neu",
+              "matched_sentiment_keywords": [],
+              "was_truncated": false
+            },
+            {
+              "sentence": "I saw several customers have trouble getting to",
+              "rank": 2,
+              "score": 0.0068028997629880905,
+              "source_review_id": "UR10019068",
+              "source_sentence_index": 3,
+              "matched_aspect_seed": [
+                "staff"
+              ],
+              "sentiment_label": "neu",
+              "matched_sentiment_keywords": [],
+              "was_truncated": true
+            }
+          ]
+        },
+        "m2": {
+          "output": "I'm not a big fan of this hotel, but I've been to a lot of hotels in the area and I'd like to give it a try if I can.",
+          "synthesis": {
+            "summary": "I'm not a big fan of this hotel, but I've been to a lot of hotels in the area and I'd like to give it a try if I can.",
+            "status": "cached_existing_output",
+            "evidence_count": 2,
+            "evidence_used": 2,
+            "copied_from_evidence": false,
+            "evidence": [
+              {
+                "sentence": "When I asked for a rate reduction because of the problems, first I was scolded by the front desk clerk who said I should have reported the TV problem the night before.",
+                "rank": 1,
+                "score": 0.006626537069678307,
+                "source_review_id": "UR10056239",
+                "source_sentence_index": 7,
+                "matched_aspect_seed": [
+                  "desk"
+                ],
+                "sentiment_label": "neu",
+                "matched_sentiment_keywords": [],
+                "was_truncated": false
+              },
+              {
+                "sentence": "I saw several customers have trouble getting to",
+                "rank": 2,
+                "score": 0.0068028997629880905,
+                "source_review_id": "UR10019068",
+                "source_sentence_index": 3,
+                "matched_aspect_seed": [
+                  "staff"
+                ],
+                "sentiment_label": "neu",
+                "matched_sentiment_keywords": [],
+                "was_truncated": true
+              }
+            ]
+          }
+        },
+        "m3": {
+          "positive": "",
+          "negative": "I've been to a lot of hotels and this one was the worst. The service was terrible, the room was dirty, and the food was mediocre. I'm not sure if it's because of the food, or because the service was bad, but I don't think I'll be staying here again.",
+          "positive_synthesis": {
+            "summary": "",
+            "status": "",
+            "evidence_count": 0,
+            "evidence_used": 0,
+            "copied_from_evidence": false,
+            "evidence": []
+          },
+          "negative_synthesis": {
+            "summary": "I've been to a lot of hotels and this one was the worst. The service was terrible, the room was dirty, and the food was mediocre. I'm not sure if it's because of the food, or because the service was bad, but I don't think I'll be staying here again.",
+            "status": "generated",
+            "evidence_count": 1,
+            "evidence_used": 1,
+            "copied_from_evidence": false,
+            "evidence": [
+              {
+                "sentence": "When I asked for a rate reduction because of the problems, first I was scolded by the front desk clerk who said I should have reported the TV problem the night before.",
+                "rank": 1,
+                "score": 0.006626537069678307,
+                "source_review_id": "UR10056239",
+                "source_sentence_index": 7,
+                "matched_aspect_seed": [
+                  "desk"
+                ],
+                "sentiment_label": "neg",
+                "matched_sentiment_keywords": [
+                  "generic_kw"
+                ],
+                "was_truncated": false
+              }
+            ]
+          }
+        },
+        "m4": {
+          "positive": "",
+          "negative": "When I asked for a rate reduction because of the problems, first I was scolded by the front desk clerk who said I should have reported the TV problem the night before. I saw several customers have trouble getting to",
+          "positive_synthesis": {
+            "summary": "",
+            "status": "",
+            "evidence_count": 0,
+            "evidence_used": 0,
+            "copied_from_evidence": false,
+            "evidence": []
+          },
+          "negative_synthesis": {
+            "summary": "When I asked for a rate reduction because of the problems, first I was scolded by the front desk clerk who said I should have reported the TV problem the night before. I saw several customers have trouble getting to",
+            "status": "fallback_generic",
+            "evidence_count": 2,
+            "evidence_used": 2,
+            "copied_from_evidence": true,
+            "evidence": [
+              {
+                "sentence": "When I asked for a rate reduction because of the problems, first I was scolded by the front desk clerk who said I should have reported the TV problem the night before.",
+                "rank": 1,
+                "score": 0.006626537069678307,
+                "source_review_id": "UR10056239",
+                "source_sentence_index": 7,
+                "matched_aspect_seed": [
+                  "desk"
+                ],
+                "sentiment_label": "neg",
+                "matched_sentiment_keywords": [
+                  "bert:0.922"
+                ],
+                "was_truncated": false
+              },
+              {
+                "sentence": "I saw several customers have trouble getting to",
+                "rank": 2,
+                "score": 0.0068028997629880905,
+                "source_review_id": "UR10019068",
+                "source_sentence_index": 3,
+                "matched_aspect_seed": [
+                  "staff"
+                ],
+                "sentiment_label": "neg",
+                "matched_sentiment_keywords": [
+                  "bert:0.598"
+                ],
+                "was_truncated": true
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}
