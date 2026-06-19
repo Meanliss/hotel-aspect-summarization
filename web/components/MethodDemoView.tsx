@@ -213,41 +213,149 @@ function pipelineStages(method: DemoMethodId, aspectLabel: string): Stage[] {
   ];
 }
 
-function MethodTabs({
+// Renders the real data that flows through a given stage. Keyed by the stable
+// stage.title strings produced in pipelineStages().
+function StageEvidence({
   data,
-  value,
-  onChange,
+  method,
+  aspect,
+  stageTitle,
 }: {
   data: DemoData;
-  value: DemoMethodId;
-  onChange: (method: DemoMethodId) => void;
+  method: DemoMethodId;
+  aspect: DemoAspectBlock;
+  stageTitle: string;
+}) {
+  if (stageTitle === "Raw review pool") {
+    const reviews = data.entity.sample_reviews.slice(0, 2);
+    return (
+      <div className="space-y-3">
+        <p className="text-xs text-slate-500">
+          Raw input: review sentences flattened into the entity pool (showing a
+          sample).
+        </p>
+        {reviews.map((review) => (
+          <div
+            key={review.review_id}
+            className="rounded-md border border-slate-200 bg-white p-3"
+          >
+            <div className="mb-1 flex items-center justify-between text-[11px] text-slate-500">
+              <span className="font-mono">{review.review_id}</span>
+              <span>rating {review.rating}</span>
+            </div>
+            <ul className="space-y-1">
+              {review.sentences.slice(0, 4).map((sentence, index) => (
+                <li
+                  key={`${review.review_id}-${index}`}
+                  className="text-xs leading-relaxed text-slate-700"
+                >
+                  {sentence}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (stageTitle === "SemAE aspect ranking") {
+    return <EvidenceTable rows={aspect.shared_evidence} mode="base" />;
+  }
+
+  if (stageTitle === "Keyword polarity gate") {
+    return <EvidenceTable rows={aspect.keyword_evidence} mode="keyword" />;
+  }
+
+  if (stageTitle === "BERT-ABSA polarity gate") {
+    return <EvidenceTable rows={aspect.bert_evidence} mode="bert" />;
+  }
+
+  if (stageTitle === "Extractive write") {
+    return (
+      <TextPanel
+        title="Extractive evidence output"
+        tone="neutral"
+        text={aspect.methods.m1.output}
+      />
+    );
+  }
+
+  if (stageTitle === "FLAN-T5 rewrite") {
+    return (
+      <TextPanel
+        title="Single abstractive summary"
+        tone="neutral"
+        text={aspect.methods.m2.output}
+      />
+    );
+  }
+
+  if (stageTitle === "Rewrite each bucket") {
+    const branch = method === "m3" ? aspect.methods.m3 : aspect.methods.m4;
+    return (
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+        <TextPanel title="Positive bucket" tone="positive" text={branch.positive} />
+        <TextPanel title="Negative bucket" tone="negative" text={branch.negative} />
+      </div>
+    );
+  }
+
+  return null;
+}
+
+function StageIOPanel({
+  data,
+  method,
+  aspect,
+  stage,
+  panelId,
+}: {
+  data: DemoData;
+  method: DemoMethodId;
+  aspect: DemoAspectBlock;
+  stage: Stage;
+  panelId: string;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-      {METHOD_IDS.map((method) => {
-        const meta = methodMeta(data, method);
-        const active = method === value;
-        return (
-          <button
-            key={method}
-            type="button"
-            onClick={() => onChange(method)}
-            className={`min-h-24 rounded-lg border p-3 text-left transition ${
-              active
-                ? `${COLOR_BG_LIGHT[meta.color]} ${COLOR_RING[meta.color]} ring-2`
-                : "border-slate-200 bg-white hover:bg-slate-50"
-            }`}
-          >
-            <MethodBadge data={data} method={method} />
-            <div className="mt-2 text-sm font-semibold text-slate-900">
-              {meta.label.replace(`${meta.short} - `, "")}
-            </div>
-            <p className="mt-1 text-xs leading-snug text-slate-500">
-              {meta.desc}
-            </p>
-          </button>
-        );
-      })}
+    <div id={panelId} className="stage-io-panel mt-3">
+      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <h3 className="text-sm font-semibold text-slate-900">{stage.title}</h3>
+        <dl className="mt-3 grid grid-cols-1 gap-3 text-xs leading-relaxed md:grid-cols-3">
+          <div className="stage-io-item" style={{ animationDelay: "40ms" }}>
+            <dt className="font-semibold uppercase tracking-wide text-slate-400">
+              Input
+            </dt>
+            <dd className="mt-1 text-slate-700">{stage.input}</dd>
+          </div>
+          <div className="stage-io-item" style={{ animationDelay: "120ms" }}>
+            <dt className="font-semibold uppercase tracking-wide text-slate-400">
+              Operation
+            </dt>
+            <dd className="mt-1 text-slate-700">{stage.operation}</dd>
+          </div>
+          <div className="stage-io-item" style={{ animationDelay: "200ms" }}>
+            <dt className="font-semibold uppercase tracking-wide text-slate-400">
+              Output
+            </dt>
+            <dd className="mt-1 text-slate-700">{stage.output}</dd>
+          </div>
+        </dl>
+        <div
+          className="stage-io-evidence mt-4 border-t border-slate-100 pt-4"
+          style={{ animationDelay: "280ms" }}
+        >
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+            Real data at this stage
+          </div>
+          <StageEvidence
+            data={data}
+            method={method}
+            aspect={aspect}
+            stageTitle={stage.title}
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -267,6 +375,16 @@ function PipelineDiagram({
     ASPECT_LABEL[aspect.aspect] ?? aspect.aspect,
   );
 
+  const [activeStage, setActiveStage] = useState<number | null>(0);
+
+  // Reset the open stage whenever the method or aspect changes, since the
+  // number of stages differs (M1/M2 = 3, M3/M4 = 4).
+  useEffect(() => {
+    setActiveStage(0);
+  }, [method, aspect.aspect]);
+
+  const active = activeStage !== null ? stages[activeStage] : undefined;
+
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
@@ -275,8 +393,8 @@ function PipelineDiagram({
             How {meta.short} actually runs
           </h2>
           <p className="mt-1 text-xs leading-relaxed text-slate-500">
-            The first two stages are shared. The method-specific branch begins
-            after SemAE selects the evidence.
+            The first two stages are shared. Click any stage to see its real
+            input and output.
           </p>
         </div>
         <span
@@ -287,46 +405,64 @@ function PipelineDiagram({
       </div>
 
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-[repeat(4,minmax(0,1fr))]">
-        {stages.map((stage, index) => (
-          <div key={`${method}-${stage.title}`} className="relative">
-            <div
-              className={`pipeline-stage h-full rounded-lg border border-slate-200 bg-slate-50 p-3`}
-              style={{ animationDelay: `${index * 110}ms` }}
-            >
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <span className="font-mono text-[11px] text-slate-400">
-                  S{index + 1}
-                </span>
-                <span
-                  className={`h-2 w-2 rounded-full ${COLOR_BAR[meta.color]}`}
+        {stages.map((stage, index) => {
+          const isActive = index === activeStage;
+          const isPast = activeStage !== null && index <= activeStage;
+          const panelId = `stage-panel-${method}-${index}`;
+          return (
+            <div key={`${method}-${stage.title}`} className="relative">
+              <button
+                type="button"
+                onClick={() =>
+                  setActiveStage((current) =>
+                    current === index ? null : index,
+                  )
+                }
+                aria-expanded={isActive}
+                aria-controls={panelId}
+                className={`pipeline-stage flex h-full w-full flex-col rounded-lg border p-3 text-left ${
+                  isActive
+                    ? `pipeline-stage-active ${COLOR_BG_LIGHT[meta.color]} ${COLOR_RING[meta.color]} ring-2`
+                    : "border-slate-200 bg-slate-50 hover:bg-white"
+                }`}
+                style={{ animationDelay: `${index * 110}ms` }}
+              >
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="font-mono text-[11px] text-slate-400">
+                    S{index + 1}
+                  </span>
+                  <span
+                    className={`h-2 w-2 rounded-full ${COLOR_BAR[meta.color]}`}
+                  />
+                </div>
+                <h3 className="text-sm font-semibold text-slate-900">
+                  {stage.title}
+                </h3>
+                <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                  {stage.operation}
+                </p>
+              </button>
+              {index < stages.length - 1 ? (
+                <div
+                  className={`pipeline-connector hidden xl:block ${
+                    isPast ? COLOR_BAR[meta.color] : "bg-slate-300"
+                  }`}
                 />
-              </div>
-              <h3 className="text-sm font-semibold text-slate-900">
-                {stage.title}
-              </h3>
-              <dl className="mt-3 space-y-2 text-xs leading-relaxed">
-                <div>
-                  <dt className="font-semibold text-slate-500">Input</dt>
-                  <dd className="text-slate-700">{stage.input}</dd>
-                </div>
-                <div>
-                  <dt className="font-semibold text-slate-500">Operation</dt>
-                  <dd className="text-slate-700">{stage.operation}</dd>
-                </div>
-                <div>
-                  <dt className="font-semibold text-slate-500">Output</dt>
-                  <dd className="text-slate-700">{stage.output}</dd>
-                </div>
-              </dl>
+              ) : null}
             </div>
-            {index < stages.length - 1 ? (
-              <div
-                className={`pipeline-connector hidden xl:block ${COLOR_BAR[meta.color]}`}
-              />
-            ) : null}
-          </div>
-        ))}
+          );
+        })}
       </div>
+
+      {active ? (
+        <StageIOPanel
+          data={data}
+          method={method}
+          aspect={aspect}
+          stage={active}
+          panelId={`stage-panel-${method}-${activeStage}`}
+        />
+      ) : null}
     </section>
   );
 }
@@ -534,115 +670,256 @@ function SelectedMethodOutput({
   );
 }
 
-function ReviewInput({ data }: { data: DemoData }) {
+function EntityStoryHero({ data }: { data: DemoData }) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-3">
-        <h2 className="text-lg font-semibold text-slate-900">
-          {data.entity.entity_name}
-        </h2>
-        <p className="text-xs text-slate-500">
-          {data.entity.entity_id} | {data.entity.split} |{" "}
-          {data.entity.review_count} reviews
-        </p>
-      </div>
-      <div className="space-y-3">
-        {data.entity.sample_reviews.slice(0, 2).map((review) => (
-          <div
-            key={review.review_id}
-            className="border-t border-slate-100 pt-3 first:border-t-0 first:pt-0"
-          >
-            <div className="mb-1 flex items-center justify-between text-[11px] text-slate-500">
-              <span className="font-mono">{review.review_id}</span>
-              <span>rating {review.rating}</span>
-            </div>
-            <ul className="space-y-1">
-              {review.sentences.slice(0, 4).map((sentence, index) => (
-                <li
-                  key={`${review.review_id}-${index}`}
-                  className="text-xs leading-relaxed text-slate-700"
-                >
-                  {sentence}
-                </li>
-              ))}
-            </ul>
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="border-b border-slate-100 bg-slate-950 p-6 text-white lg:border-b-0 lg:border-r lg:border-slate-800">
+          <div className="text-xs font-semibold uppercase tracking-[0.28em] text-indigo-200">
+            Entity input
           </div>
-        ))}
+          <h2 className="mt-3 text-3xl font-bold tracking-tight">
+            {data.entity.entity_name}
+          </h2>
+          <div className="mt-4 flex flex-wrap gap-2 text-xs">
+            <span className="rounded-full bg-white/10 px-3 py-1 ring-1 ring-white/15">
+              ID {data.entity.entity_id}
+            </span>
+            <span className="rounded-full bg-white/10 px-3 py-1 ring-1 ring-white/15">
+              {data.entity.split} split
+            </span>
+            <span className="rounded-full bg-white/10 px-3 py-1 ring-1 ring-white/15">
+              {data.entity.review_count} reviews
+            </span>
+          </div>
+          <div className="mt-6 rounded-xl bg-white/10 p-4 ring-1 ring-white/15">
+            <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-indigo-100">
+              Human reference signal
+            </div>
+            <p className="text-sm leading-relaxed text-slate-100">
+              {data.entity.gold_overall[0]}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-slate-50 to-white p-6">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Review samples
+              </div>
+              <p className="text-sm text-slate-500">
+                These sentences are the raw material every method starts from.
+              </p>
+            </div>
+            <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200">
+              Scroll ↓ follow the pipeline
+            </span>
+          </div>
+          <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
+            {data.entity.sample_reviews.slice(0, 3).map((review) => (
+              <article
+                key={review.review_id}
+                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+              >
+                <div className="mb-2 flex items-center justify-between text-[11px] text-slate-500">
+                  <span className="font-mono">{review.review_id}</span>
+                  <span>★ {review.rating}</span>
+                </div>
+                <ul className="space-y-2">
+                  {review.sentences.slice(0, 3).map((sentence, index) => (
+                    <li
+                      key={`${review.review_id}-${index}`}
+                      className="text-xs leading-relaxed text-slate-700"
+                    >
+                      {sentence}
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            ))}
+          </div>
+        </div>
       </div>
     </section>
   );
 }
 
-function DifferencePanel({
+function StoryControls({
   data,
+  method,
+  onMethodChange,
+  aspectName,
+  onAspectChange,
+}: {
+  data: DemoData;
+  method: DemoMethodId;
+  onMethodChange: (method: DemoMethodId) => void;
+  aspectName: DemoAspect;
+  onAspectChange: (aspect: DemoAspect) => void;
+}) {
+  return (
+    <section className="sticky top-0 z-10 -mx-4 border-y border-slate-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
+      <div className="mx-auto flex max-w-6xl flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap gap-2">
+          {METHOD_IDS.map((item) => {
+            const meta = methodMeta(data, item);
+            const active = item === method;
+            return (
+              <button
+                key={item}
+                type="button"
+                onClick={() => onMethodChange(item)}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  active
+                    ? `${COLOR_BG_LIGHT[meta.color]} ${COLOR_TEXT[meta.color]} ${COLOR_RING[meta.color]} ring-2`
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                {meta.short}
+                <span className="ml-2 hidden font-normal sm:inline">
+                  {meta.label.replace(`${meta.short} - `, "")}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex flex-wrap gap-1 rounded-full bg-slate-100 p-1">
+          {data.aspects.map((item) => (
+            <button
+              key={item.aspect}
+              type="button"
+              onClick={() => onAspectChange(item.aspect)}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                aspectName === item.aspect
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : "text-slate-600 hover:bg-white"
+              }`}
+            >
+              {ASPECT_LABEL[item.aspect] ?? item.aspect}
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function MethodStoryCard({
+  data,
+  method,
   aspect,
 }: {
   data: DemoData;
+  method: DemoMethodId;
   aspect: DemoAspectBlock;
 }) {
-  const rows = [
-    {
-      method: "m1" as DemoMethodId,
-      shape: "No generation",
-      behavior: "Faithful to selected text, but often choppy.",
-      output: aspect.methods.m1.output,
-    },
-    {
-      method: "m2" as DemoMethodId,
-      shape: "One rewrite",
-      behavior: "More readable, but sentiment contrast is collapsed.",
-      output: aspect.methods.m2.output,
-    },
-    {
-      method: "m3" as DemoMethodId,
-      shape: "Keyword split",
-      behavior: "Cheap polarity split; can overreact to generic sentiment words.",
-      output: `Pos: ${aspect.methods.m3.positive || "none"} | Neg: ${
-        aspect.methods.m3.negative || "none"
-      }`,
-    },
-    {
-      method: "m4" as DemoMethodId,
-      shape: "BERT-ABSA split",
-      behavior: "Aspect-aware polarity split; better when context matters.",
-      output: `Pos: ${aspect.methods.m4.positive || "none"} | Neg: ${
-        aspect.methods.m4.negative || "none"
-      }`,
-    },
-  ];
+  const meta = methodMeta(data, method);
+  const aspectLabel = ASPECT_LABEL[aspect.aspect] ?? aspect.aspect;
+  const mode = evidenceModeFor(method);
+  const evidenceRows =
+    mode === "base"
+      ? aspect.shared_evidence
+      : mode === "keyword"
+        ? aspect.keyword_evidence
+        : aspect.bert_evidence;
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <h2 className="mb-3 text-lg font-semibold text-slate-900">
-        What changes between methods
-      </h2>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[820px] text-left text-xs">
-          <thead className="border-b border-slate-200 text-[11px] uppercase tracking-wide text-slate-500">
-            <tr>
-              <th className="w-20 py-2 pr-3 font-semibold">Method</th>
-              <th className="w-32 py-2 pr-3 font-semibold">Shape</th>
-              <th className="w-56 py-2 pr-3 font-semibold">Behavior</th>
-              <th className="py-2 font-semibold">Current aspect output</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.method} className="border-b border-slate-100 last:border-b-0">
-                <td className="py-2 pr-3">
-                  <MethodBadge data={data} method={row.method} />
-                </td>
-                <td className="py-2 pr-3 text-slate-500">{row.shape}</td>
-                <td className="py-2 pr-3 leading-relaxed text-slate-600">
-                  {row.behavior}
-                </td>
-                <td className="py-2 leading-relaxed text-slate-700">
-                  {row.output}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <section className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
+      <aside className="lg:sticky lg:top-28 lg:self-start">
+        <div
+          className={`rounded-2xl border p-5 shadow-sm ${COLOR_BG_LIGHT[meta.color]} ${COLOR_RING[meta.color]} ring-1`}
+        >
+          <MethodBadge data={data} method={method} />
+          <h2 className="mt-3 text-2xl font-bold text-slate-900">
+            {meta.label.replace(`${meta.short} - `, "")}
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed text-slate-600">
+            {meta.desc}
+          </p>
+          <div className="mt-5 space-y-3 text-xs text-slate-600">
+            <div className="rounded-lg bg-white/70 p-3 ring-1 ring-white/80">
+              <div className="font-semibold text-slate-900">Current aspect</div>
+              <div>{aspectLabel}</div>
+            </div>
+            <div className="rounded-lg bg-white/70 p-3 ring-1 ring-white/80">
+              <div className="font-semibold text-slate-900">Evidence rows</div>
+              <div>{evidenceRows.length} ranked sentences available</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <main className="space-y-6">
+        <PipelineDiagram data={data} method={method} aspect={aspect} />
+        <SelectedMethodOutput data={data} method={method} aspect={aspect} />
+      </main>
+    </section>
+  );
+}
+
+function MethodGallery({
+  data,
+  aspect,
+  activeMethod,
+  onMethodChange,
+}: {
+  data: DemoData;
+  aspect: DemoAspectBlock;
+  activeMethod: DemoMethodId;
+  onMethodChange: (method: DemoMethodId) => void;
+}) {
+  const rows = METHOD_IDS.map((method) => ({
+    method,
+    meta: methodMeta(data, method),
+    output:
+      method === "m1"
+        ? aspect.methods.m1.output
+        : method === "m2"
+          ? aspect.methods.m2.output
+          : method === "m3"
+            ? `Positive: ${aspect.methods.m3.positive || "none"}\nNegative: ${
+                aspect.methods.m3.negative || "none"
+              }`
+            : `Positive: ${aspect.methods.m4.positive || "none"}\nNegative: ${
+                aspect.methods.m4.negative || "none"
+              }`,
+  }));
+
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-slate-950 p-5 text-white shadow-sm">
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-indigo-200">
+            M1 → M4 outputs
+          </div>
+          <h2 className="mt-2 text-xl font-bold">Compare the final shape</h2>
+        </div>
+        <p className="max-w-xl text-xs leading-relaxed text-slate-300">
+          The pipeline panel above explains how the selected method reaches its
+          output. These cards show the four possible final outputs side by side.
+        </p>
+      </div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {rows.map(({ method, meta, output }) => (
+          <button
+            key={method}
+            type="button"
+            onClick={() => onMethodChange(method)}
+            className={`rounded-xl border p-4 text-left transition ${
+              method === activeMethod
+                ? "border-white bg-white text-slate-950"
+                : "border-white/10 bg-white/5 text-slate-100 hover:bg-white/10"
+            }`}
+          >
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide">
+              {meta.short}
+            </div>
+            <p className="line-clamp-6 whitespace-pre-line text-xs leading-relaxed">
+              {output}
+            </p>
+          </button>
+        ))}
       </div>
     </section>
   );
@@ -694,68 +971,23 @@ export function MethodDemoView() {
   }
   if (!data || !aspect) return null;
 
-  const evidenceMode = evidenceModeFor(method);
-  const evidenceRows =
-    evidenceMode === "base"
-      ? aspect.shared_evidence
-      : evidenceMode === "keyword"
-        ? aspect.keyword_evidence
-        : aspect.bert_evidence;
-
   return (
-    <div className="space-y-6">
-      <MethodTabs data={data} value={method} onChange={setMethod} />
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[330px_1fr]">
-        <aside className="space-y-4">
-          <ReviewInput data={data} />
-          <section className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-            <h2 className="mb-2 text-sm font-semibold text-amber-900">
-              Human gold signal
-            </h2>
-            <p className="text-xs leading-relaxed text-amber-900">
-              {data.entity.gold_overall[0]}
-            </p>
-          </section>
-        </aside>
-
-        <main className="space-y-6">
-          <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">
-                  Pick an aspect, then follow the method branch
-                </h2>
-                <p className="text-xs text-slate-500">
-                  The rows below are the actual evidence moving through the
-                  selected pipeline.
-                </p>
-              </div>
-              <div className="inline-flex flex-wrap gap-1 rounded-md border border-slate-300 bg-white p-0.5">
-                {data.aspects.map((item) => (
-                  <button
-                    key={item.aspect}
-                    type="button"
-                    onClick={() => setAspectName(item.aspect)}
-                    className={`rounded px-3 py-1.5 text-sm font-medium transition ${
-                      aspectName === item.aspect
-                        ? "bg-indigo-600 text-white"
-                        : "text-slate-600 hover:bg-slate-100"
-                    }`}
-                  >
-                    {ASPECT_LABEL[item.aspect] ?? item.aspect}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <EvidenceTable rows={evidenceRows} mode={evidenceMode} />
-          </section>
-
-          <PipelineDiagram data={data} method={method} aspect={aspect} />
-          <SelectedMethodOutput data={data} method={method} aspect={aspect} />
-          <DifferencePanel data={data} aspect={aspect} />
-        </main>
-      </div>
+    <div className="space-y-8">
+      <EntityStoryHero data={data} />
+      <StoryControls
+        data={data}
+        method={method}
+        onMethodChange={setMethod}
+        aspectName={aspectName}
+        onAspectChange={setAspectName}
+      />
+      <MethodStoryCard data={data} method={method} aspect={aspect} />
+      <MethodGallery
+        data={data}
+        aspect={aspect}
+        activeMethod={method}
+        onMethodChange={setMethod}
+      />
     </div>
   );
 }

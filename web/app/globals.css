@@ -40,6 +40,53 @@ body {
 
 .pipeline-stage {
   animation: pipeline-stage-in 420ms ease both;
+  transition:
+    transform 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.pipeline-stage:hover {
+  transform: translateY(-2px);
+}
+
+.pipeline-stage-active {
+  transform: scale(1.02);
+}
+
+@keyframes stage-io-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stage-io-panel {
+  animation: stage-io-panel-in 260ms ease both;
+}
+
+@keyframes fade-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stage-io-item,
+.stage-io-evidence {
+  animation: fade-slide-in 320ms ease both;
+}
+
+.pipeline-connector {
+  transition: background-color 220ms ease;
 }
 
 .pipeline-connector {
@@ -63,7 +110,13 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .pipeline-stage,
+  .pipeline-stage:hover,
+  .pipeline-stage-active,
+  .stage-io-panel,
+  .stage-io-item,
+  .stage-io-evidence,
   .pipeline-connector::after {
     animation: none;
+    transform: none;
   }
 }
