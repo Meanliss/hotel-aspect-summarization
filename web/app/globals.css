@@ -1,13 +1,57 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0,0&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   color-scheme: light;
+  --primary: #34261b;
+  --primary-fixed: #ead8bf;
+  --secondary: #9a6938;
+  --secondary-fixed: #f2dfc4;
+  --tertiary: #51624b;
+  --tertiary-fixed: #dfe8d3;
+  --surface: #f6f1e8;
+  --surface-bright: #fffaf2;
+  --surface-container: #eee4d4;
+  --surface-container-low: #f8f3ea;
+  --on-surface: #241b14;
+  --on-surface-variant: #725f4d;
+  --outline-variant: #d8c8b4;
+  --accent-gold: #b88746;
+  --accent-bronze: #7b4f2d;
+  --shadow-soft: 0 18px 45px rgba(52, 38, 27, 0.1);
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  background:
+    radial-gradient(circle at top left, rgba(184, 135, 70, 0.12), transparent 34rem),
+    linear-gradient(180deg, #fff9ef 0%, var(--surface) 48%, #f1e8da 100%);
+  color: var(--on-surface);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  @apply antialiased;
+}
+
+.font-body,
+.font-headline {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.material-symbols-outlined {
+  direction: ltr;
+  display: inline-block;
+  font-family: "Material Symbols Outlined";
+  font-feature-settings: "liga";
+  font-size: 1em;
+  font-style: normal;
+  font-weight: normal;
+  letter-spacing: normal;
+  line-height: 1;
+  text-rendering: optimizeLegibility;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
 }
 
 @keyframes pipeline-stage-in {

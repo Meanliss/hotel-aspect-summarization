@@ -118,32 +118,83 @@ export const METHOD_META: Record<MethodId, MethodMeta> = {
 };
 
 export const COLOR_BAR: Record<string, string> = {
-  slate: "bg-slate-500",
-  sky: "bg-sky-500",
-  emerald: "bg-emerald-500",
-  violet: "bg-violet-500",
+  slate: "bg-stone-600",
+  sky: "bg-amber-600",
+  emerald: "bg-[#6f7a4d]",
+  violet: "bg-orange-700",
 };
 export const COLOR_TEXT: Record<string, string> = {
-  slate: "text-slate-600",
-  sky: "text-sky-600",
-  emerald: "text-emerald-600",
-  violet: "text-violet-600",
+  slate: "text-stone-700",
+  sky: "text-amber-700",
+  emerald: "text-[var(--tertiary)]",
+  violet: "text-orange-800",
 };
 export const COLOR_BG_LIGHT: Record<string, string> = {
-  slate: "bg-slate-50",
-  sky: "bg-sky-50",
-  emerald: "bg-emerald-50",
-  violet: "bg-violet-50",
+  slate: "bg-stone-50",
+  sky: "bg-amber-50",
+  emerald: "bg-[#edf4e7]",
+  violet: "bg-orange-50",
 };
 export const COLOR_RING: Record<string, string> = {
-  slate: "ring-slate-300",
-  sky: "ring-sky-300",
-  emerald: "ring-emerald-300",
-  violet: "ring-violet-300",
+  slate: "ring-stone-300",
+  sky: "ring-amber-300",
+  emerald: "ring-[#becbac]",
+  violet: "ring-orange-300",
 };
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
+
+async function fetchJson<T>(path: string): Promise<T> {
+  const staticPath = path.startsWith("/") ? path : `/${path}`;
+  const urls = API_BASE ? [`${API_BASE}${staticPath}`, staticPath] : [staticPath];
+  let lastError: unknown;
+
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) throw new Error(`Failed to load ${url} (${res.status})`);
+      return res.json();
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+}
+
 export async function loadSpaceData(): Promise<SpaceData> {
-  const res = await fetch("/data/space_4method.json", { cache: "no-store" });
-  if (!res.ok) throw new Error(`Failed to load SPACE data (${res.status})`);
-  return res.json();
+  return fetchJson<SpaceData>("/data/space_4method.json");
+}
+
+export async function loadMethodDemoData<T>(): Promise<T> {
+  return fetchJson<T>("/data/space_method_demo.json");
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export function anonymizePropertyText(
+  text: string,
+  propertyName?: string,
+): string {
+  if (!text) return text;
+  const aliases = new Set(
+    [
+      propertyName,
+      propertyName?.split(" - ")[0],
+      propertyName?.replace(/^The\s+/i, ""),
+      "The River Hotel",
+      "River Hotel",
+    ].filter(Boolean) as string[],
+  );
+
+  let output = text;
+  for (const alias of [...aliases].sort((a, b) => b.length - a.length)) {
+    output = output.replace(
+      new RegExp(`\\b${escapeRegExp(alias)}\\b`, "gi"),
+      "the property",
+    );
+  }
+  return output;
 }

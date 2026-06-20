@@ -1,20 +1,10 @@
-import { TabNav } from "@/components/TabNav";
+import { AppShell } from "@/components/AppShell";
 import { ResultsView } from "@/components/ResultsView";
 
 export default function ResultsPage() {
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6">
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">
-          Aspect-Based Sentiment Summarization for the Hotel Domain
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          ROUGE comparison of 4 methods (extractive / abstractive /
-          sentiment-split) on the SPACE hotel benchmark.
-        </p>
-      </header>
-      <TabNav />
+    <AppShell page="results">
       <ResultsView />
-    </div>
+    </AppShell>
   );
 }
