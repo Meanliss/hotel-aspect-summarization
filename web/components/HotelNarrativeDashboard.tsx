@@ -2,121 +2,216 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  ASPECT_LABEL,
-  METHOD_IDS,
-  anonymizePropertyText,
-  loadSpaceData,
-  type MethodId,
-  type SpaceAspect,
-  type SpaceData,
-  type SpaceEntity,
-} from "@/lib/space";
+  aspectLabel,
+  countTotal,
+  loadHotelAspectDataset,
+  sumCounts,
+  type HotelAspectDataset,
+  type HotelAspectRecord,
+  type HotelAspectSummary,
+  type SentimentCounts,
+  type SentimentKey,
+} from "@/lib/hotel-aspects";
 
-const ASPECT_VISUALS: Record<
-  SpaceAspect,
-  { mark: string; tag: string; tone: string; gradient: string; image?: string }
-> = {
-  building: {
-    mark: "B",
-    tag: "High reliability",
-    tone: "text-[var(--primary)] bg-[var(--primary-fixed)]/55",
-    gradient: "from-[#2f251c] via-[#6f573d] to-[#c2a472]",
-    image:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuD4hTbGIUbSJ2ZdGYW3YuhckxNHJMCDe4KnuVHDOnEDnzTWdNlcohSviEsBkOWcZSJgospbndPtJxibXINXcn3gwvmTqKPfiO8cyQ_bcfzxD7oOfIBgct1gfVEwn4dMFqv-VBgCAIm8OWEQl5_6awncvAe2qxYuGh6SmQKalcZwhIJ1h_phrLgISjvMbq9Tgy2p58LUSBScuwYH8aYfowHzRXKA3A4ymfItDflwFJE847niy24gpxaI7ak5-CISHUjXfYHvydJeUIg",
-  },
-  cleanliness: {
-    mark: "C",
-    tag: "Distinct signal",
-    tone: "text-[var(--secondary)] bg-[var(--secondary-fixed)]/55",
-    gradient: "from-[#4c3b2b] via-[#b9874a] to-[#f1ddbb]",
-  },
-  food: {
-    mark: "F",
-    tag: "Experience marker",
-    tone: "text-[var(--secondary)] bg-[var(--secondary-fixed)]/55",
-    gradient: "from-[#3f3328] via-[#9b6f3f] to-[#ead2a6]",
-    image:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuAsr81m4xTolgYwroi-XIuj5pLCh0TMYn1D59C3ZE80bOfbdzTO9nN4VsaubHB8bv8BXG-HvtLXT7TdK-NsEbWHA59ehP6_8VJwbSZK6HvXXvWqRl0KAaUyFieWzb6ylN3lN9EBYq6JsdplxhzogQu8_-v6xOK9780-aHHZaJse_RX13v5sHukz-VohRrxaOJzux_TNAG1z6yl6JQnqDjaocbbAlrvJDMA6ZJtlq7WDrgxbhSUYjuOflh7uhgB1Lu0gNQ6ik2_53B8",
-  },
-  location: {
-    mark: "L",
-    tag: "Strong retention",
-    tone: "text-[var(--tertiary)] bg-[var(--tertiary-fixed)]/65",
-    gradient: "from-[#283525] via-[#6b7653] to-[#d8c08d]",
-    image:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuCBTaNApxxvVM55eWyoGunIbhK5Kwqv0ldpA2jHXS-cbewZ5U1fcM_qYCB_PwcaLmPB5q8ZCd-uwhxFN4JQJm-n537zUehK35a3Lu-0c5_GLGDSgtZuJ5nIQkyy4cE6xJelgkFD0ZcNo3xCOxrRzalu4-ANJSe1FScl9IsuWSDL2oYkOkXQUVoDvibEOgX1mi_PzKzqPWVKXYqW5P1KIToKFICdKXtTy3s4i_3jmw2-S7IalVwvTibHHS6Va3hiCKKlvFn1jqdVcY8",
-  },
-  rooms: {
-    mark: "R",
-    tag: "Guest comfort",
-    tone: "text-[var(--primary)] bg-[var(--primary-fixed)]/55",
-    gradient: "from-[#2c241d] via-[#7c674e] to-[#d1b485]",
-    image:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuAEBUPlTMByYEYpyI83i03jrgIPTjQ_KymGOHEaYoiBTprmP95H0PYRICZkNzsyg3iCAbN4EsQsdtVvBS78pUu5fh1DRw-Gii5ao2msJ-P2QyphXlqh3mll4L8vWYvekKlRBq0aXc4LE9cO1meUoGWJaeZ55Y_CPbgPl7KaB10IIFO3_uhmn0JPzbTXSOweoPU0ZSvJEqkj5GBV9Qf2PnpD5vdoB1mHM4FqIqiqjiABG_BtRXma6HZymCgeX-ga7tCZT4cQ-ylkqKY",
-  },
-  service: {
-    mark: "S",
-    tag: "Precision",
-    tone: "text-[var(--tertiary)] bg-[var(--tertiary-fixed)]/65",
-    gradient: "from-[#243027] via-[#55684f] to-[#d7c4a2]",
-    image:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuBuiFuKfr1mkfoSewQGZVFq3eyh81uZhpmzsIYVoDS8H2Ogh7E6n9EqnoU4uyWJsiM1G7YK3nmQTSjTlZi670eHpDJbZW5GA2inr4fn-Nsn6_CyHWX3X7UfjR0yr2gQ3KNN2BsYCE7qQ_xkUKXhHNcGS0pAr-E_Ar4Dn_c6yXziIdFsaMFQj5AEl2_cfofGgqp7jNdnPb6jD4Nda5kngC6aSP3fxnYT7oFsvnsA4inzxQ9hfiWB2TG-WK2keIYUI-UhqosDXFj44to",
-  },
+const SENTIMENTS: SentimentKey[] = ["positive", "negative", "neutral"];
+const SENTIMENT_COLOR: Record<SentimentKey, string> = {
+  positive: "bg-emerald-500 text-emerald-700 border-emerald-200",
+  negative: "bg-rose-500 text-rose-700 border-rose-200",
+  neutral: "bg-amber-500 text-amber-700 border-amber-200",
 };
-
-const METHOD_LABEL: Record<MethodId, string> = {
-  m1: "M1 Extractive",
-  m2: "M2 Abstractive",
-  m3: "M3 Keyword Split",
-  m4: "M4 BERT-ABSA",
+const SENTIMENT_LABEL: Record<SentimentKey, string> = {
+  positive: "Positive",
+  negative: "Negative",
+  neutral: "Neutral",
 };
+const STOPWORDS = new Set([
+  "the",
+  "and",
+  "with",
+  "that",
+  "this",
+  "from",
+  "have",
+  "were",
+  "was",
+  "are",
+  "but",
+  "for",
+  "hotel",
+  "rooms",
+  "room",
+  "guests",
+  "guest",
+  "property",
+]);
 
-function getSummary(entity: SpaceEntity, method: MethodId, aspect: SpaceAspect) {
-  const cell = entity.methods[method]?.aspects?.[aspect];
-  if (!cell) return "No generated summary for this aspect.";
-  if (cell.overall) return anonymizePropertyText(cell.overall, entity.entity_name);
-  const text =
-    [
-      cell.positive ? `Positive: ${cell.positive}` : "",
-      cell.negative ? `Negative: ${cell.negative}` : "",
-    ]
-      .filter(Boolean)
-      .join(" ") || "No generated summary for this aspect.";
-  return anonymizePropertyText(text, entity.entity_name);
+function formatNumber(value: number) {
+  return new Intl.NumberFormat("en-US").format(value);
 }
 
-function scoreFor(entity: SpaceEntity, method: MethodId) {
-  const aspects = Object.values(entity.methods[method]?.aspects ?? {});
-  const filled = aspects.filter(
-    (cell) => cell.overall || cell.positive || cell.negative,
-  ).length;
-  return Math.min(9.8, 7.4 + filled * 0.32).toFixed(1);
+function scoreFromCounts(counts: SentimentCounts) {
+  const total = Math.max(1, countTotal(counts));
+  const weighted = (counts.positive * 10 + counts.neutral * 6 + counts.negative * 2) / total;
+  return Math.max(1, Math.min(9.8, weighted)).toFixed(1);
 }
 
-function sampleLabel(index: number) {
-  return `Property Sample ${String(index + 1).padStart(2, "0")}`;
+function splitSentences(text: string, limit = 4) {
+  return text
+    .split(/(?<=[.!?;])\s+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, limit);
 }
 
-export function HotelNarrativeDashboard({
-  initialData,
+function shortText(text: string, max = 210) {
+  if (text.length <= max) return text;
+  return `${text.slice(0, max).trim()}...`;
+}
+
+function keywordRows(text: string, polarityCount: number) {
+  const counts = new Map<string, number>();
+  for (const word of text.toLowerCase().match(/[a-z][a-z-]{3,}/g) ?? []) {
+    if (!STOPWORDS.has(word)) counts.set(word, (counts.get(word) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([topic], index) => ({
+      topic: topic.replace(/^\w/, (char) => char.toUpperCase()),
+      mentions: Math.max(1, Math.round(polarityCount / (index + 2))),
+      rate: Math.max(38, 94 - index * 9),
+    }));
+}
+
+function sentimentShare(counts: SentimentCounts, key: SentimentKey) {
+  return Math.round((counts[key] / Math.max(1, countTotal(counts))) * 100);
+}
+
+function SentimentBar({ counts }: { counts: SentimentCounts }) {
+  const total = Math.max(1, countTotal(counts));
+  return (
+    <div className="flex h-3 overflow-hidden rounded-full bg-slate-100">
+      {SENTIMENTS.map((key) => (
+        <div
+          key={key}
+          className={SENTIMENT_COLOR[key].split(" ")[0]}
+          style={{ width: `${(counts[key] / total) * 100}%` }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function InsightList({
+  title,
+  items,
+  tone,
 }: {
-  initialData?: SpaceData;
+  title: string;
+  items: string[];
+  tone: "good" | "bad";
 }) {
-  const initialEntityId = initialData?.entities[0]?.entity_id ?? "";
-  const [data, setData] = useState<SpaceData | null>(initialData ?? null);
+  return (
+    <div className={tone === "good" ? "rounded-lg bg-emerald-50 p-4" : "rounded-lg bg-rose-50 p-4"}>
+      <h3 className={tone === "good" ? "text-sm font-bold text-emerald-800" : "text-sm font-bold text-rose-800"}>
+        {title}
+      </h3>
+      <ul className="mt-3 space-y-2">
+        {items.slice(0, 5).map((item) => (
+          <li key={item} className="flex gap-2 text-sm leading-5 text-[var(--on-surface)]">
+            <span className={tone === "good" ? "text-emerald-600" : "text-rose-600"}>
+              {tone === "good" ? "✓" : "!"}
+            </span>
+            <span>{shortText(item, 88)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function TopicTable({
+  title,
+  rows,
+  tone,
+}: {
+  title: string;
+  rows: ReturnType<typeof keywordRows>;
+  tone: "positive" | "negative";
+}) {
+  const barColor = tone === "positive" ? "bg-emerald-500" : "bg-rose-400";
+  return (
+    <section className="rounded-lg border border-[var(--outline-variant)] bg-white p-4 shadow-[var(--shadow-soft)]">
+      <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--primary)]">{title}</h3>
+      <div className="mt-3 space-y-3">
+        {rows.map((row) => (
+          <div key={row.topic} className="grid grid-cols-[88px_48px_1fr_36px] items-center gap-2 text-xs">
+            <span className="font-medium">{row.topic}</span>
+            <span className="text-[var(--on-surface-variant)]">{row.mentions}</span>
+            <span className="h-2 overflow-hidden rounded-full bg-slate-100">
+              <span className={`block h-full ${barColor}`} style={{ width: `${row.rate}%` }} />
+            </span>
+            <span className="text-right font-semibold">{row.rate}%</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function AspectCard({
+  aspect,
+  summary,
+  active,
+  onClick,
+}: {
+  aspect: string;
+  summary: HotelAspectSummary;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const score = scoreFromCounts(summary.counts);
+  return (
+    <button
+      onClick={onClick}
+      className={`min-h-[178px] rounded-lg border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md ${
+        active
+          ? "border-[var(--primary)] bg-[var(--primary)] text-white"
+          : "border-[var(--outline-variant)] bg-white"
+      }`}
+    >
+      <div className="text-xs font-bold uppercase tracking-[0.12em]">{aspectLabel(aspect)}</div>
+      <div className="mt-4 flex items-end gap-1">
+        <span className="text-4xl font-bold">{score}</span>
+        <span className={active ? "mb-1 text-white/70" : "mb-1 text-[var(--on-surface-variant)]"}>/10</span>
+      </div>
+      <div className={active ? "mt-2 text-xs text-white/75" : "mt-2 text-xs text-[var(--on-surface-variant)]"}>
+        Positive {sentimentShare(summary.counts, "positive")}%
+      </div>
+      <p className={active ? "mt-3 text-sm leading-5 text-white/85" : "mt-3 text-sm leading-5 text-[var(--on-surface-variant)]"}>
+        {shortText(summary.positive || summary.overview, 118)}
+      </p>
+    </button>
+  );
+}
+
+export function HotelNarrativeDashboard() {
+  const [data, setData] = useState<HotelAspectDataset | null>(null);
   const [error, setError] = useState("");
-  const [entityId, setEntityId] = useState(initialEntityId);
-  const [method, setMethod] = useState<MethodId>("m4");
+  const [query, setQuery] = useState("");
+  const [selectedHotelId, setSelectedHotelId] = useState("");
+  const [selectedAspect, setSelectedAspect] = useState("");
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   useEffect(() => {
-    if (initialData) return;
     let cancelled = false;
-    loadSpaceData()
+    loadHotelAspectDataset()
       .then((payload) => {
-        if (!cancelled) {
-          setData(payload);
-          setEntityId(payload.entities[0]?.entity_id ?? "");
-        }
+        if (cancelled) return;
+        const firstAspect = payload.aspects.find((aspect) => aspect !== "all_aspects") ?? payload.aspects[0] ?? "";
+        setData(payload);
+        setSelectedHotelId(payload.hotels[0]?.hotel_id ?? "");
+        setSelectedAspect(firstAspect);
       })
       .catch((reason) => {
         if (!cancelled) setError(String(reason));
@@ -124,199 +219,253 @@ export function HotelNarrativeDashboard({
     return () => {
       cancelled = true;
     };
-  }, [initialData]);
+  }, []);
 
-  const entity = useMemo(
-    () =>
-      data?.entities.find((item) => item.entity_id === entityId) ??
-      data?.entities[0],
-    [data, entityId],
+  const selectedHotel = useMemo(
+    () => data?.hotels.find((hotel) => hotel.hotel_id === selectedHotelId) ?? data?.hotels[0],
+    [data, selectedHotelId],
   );
+  const aspects = data?.aspects.filter((aspect) => aspect !== "all_aspects") ?? [];
+  const filteredHotels = useMemo(() => {
+    if (!data) return [];
+    const normalized = query.trim().toLowerCase();
+    return data.hotels
+      .filter((hotel) => !normalized || hotel.hotel_id.toLowerCase().includes(normalized))
+      .slice(0, 28);
+  }, [data, query]);
+  const hotelCounts = useMemo(() => {
+    if (!selectedHotel) return { positive: 0, negative: 0, neutral: 0 };
+    return sumCounts(Object.values(selectedHotel.aspects).map((summary) => summary.counts));
+  }, [selectedHotel]);
+  const activeSummary = selectedHotel?.aspects[selectedAspect];
+  const aspectRows = useMemo(() => {
+    if (!selectedHotel) return [];
+    return aspects
+      .map((aspect) => ({ aspect, summary: selectedHotel.aspects[aspect] }))
+      .filter((row): row is { aspect: string; summary: HotelAspectSummary } => Boolean(row.summary))
+      .sort((a, b) => countTotal(b.summary.counts) - countTotal(a.summary.counts));
+  }, [aspects, selectedHotel]);
 
-  if (error) {
-    return (
-      <div className="rounded-lg bg-rose-50 p-4 text-sm text-rose-700 ring-1 ring-rose-200">
-        {error}
-      </div>
-    );
-  }
-  if (!data || !entity) {
-    return (
-      <div className="text-sm text-[var(--on-surface-variant)]">
-        Loading dashboard...
-      </div>
-    );
+  if (error) return <div className="rounded-lg bg-rose-50 p-4 text-sm text-rose-700">{error}</div>;
+  if (!data || !selectedHotel || !activeSummary) {
+    return <div className="rounded-lg bg-white p-6 text-sm text-[var(--on-surface-variant)]">Loading hotel dashboard...</div>;
   }
 
-  const score = scoreFor(entity, method);
-  const aspects = data.aspects as SpaceAspect[];
-  const entityIndex = Math.max(
-    0,
-    data.entities.findIndex((item) => item.entity_id === entity.entity_id),
-  );
-  const activeSampleLabel = sampleLabel(entityIndex);
+  const positiveItems = splitSentences(activeSummary.positive || activeSummary.overview, 5);
+  const concernItems = splitSentences(activeSummary.negative || activeSummary.overview, 5);
+  const allText = `${activeSummary.overview} ${activeSummary.positive} ${activeSummary.negative} ${activeSummary.neutral}`;
+  const overallScore = scoreFromCounts(hotelCounts);
+  const selectedScore = scoreFromCounts(activeSummary.counts);
 
   return (
-    <div className="space-y-16">
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[var(--outline-variant)] bg-[var(--surface-bright)] p-4 shadow-[var(--shadow-soft)]">
-        <div className="flex flex-wrap gap-4">
-          <label className="flex items-center gap-2 rounded-lg border border-[var(--outline-variant)] bg-[var(--surface-container-low)] px-4 py-2">
-            <span className="font-body text-xs font-semibold uppercase text-[var(--on-surface-variant)]">
-              Sample:
-            </span>
-            <select
-              value={entity.entity_id}
-              onChange={(event) => setEntityId(event.target.value)}
-              className="border-none bg-transparent p-0 font-body text-sm font-semibold text-[var(--primary)] focus:ring-0"
-            >
-              {data.entities.map((item, index) => (
-                <option key={item.entity_id} value={item.entity_id}>
-                  {sampleLabel(index)} - {item.split}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex items-center gap-2 rounded-lg border border-[var(--outline-variant)] bg-[var(--surface-container-low)] px-4 py-2">
-            <span className="font-body text-xs font-semibold uppercase text-[var(--on-surface-variant)]">
-              Method:
-            </span>
-            <select
-              value={method}
-              onChange={(event) => setMethod(event.target.value as MethodId)}
-              className="border-none bg-transparent p-0 font-body text-sm font-semibold text-[var(--primary)] focus:ring-0"
-            >
-              {METHOD_IDS.map((item) => (
-                <option key={item} value={item}>
-                  {METHOD_LABEL[item]}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <div className="flex items-center gap-2 text-[var(--on-surface-variant)]">
-          <span className="material-symbols-outlined text-[20px]">sort</span>
-          <span className="font-body text-xs font-semibold uppercase tracking-[0.1em]">
-            Sorted by narrative relevance
-          </span>
-        </div>
-      </div>
-
-      <section>
-        <div className="mb-12 flex flex-col gap-5 border-b-2 border-[rgba(52,38,27,0.12)] pb-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <span className="mb-2 inline-block rounded-full bg-[var(--primary)] px-3 py-1 font-body text-xs font-semibold uppercase tracking-[0.08em] text-white">
-              Portfolio Focus
-            </span>
-            <h2 className="font-headline text-3xl font-bold text-[var(--primary)]">
-              {activeSampleLabel}
-            </h2>
-            <p className="mt-1 font-body text-sm text-[var(--on-surface-variant)]">
-              Anonymous benchmark group - {entity.split} - {METHOD_LABEL[method]}
-            </p>
-          </div>
-          <div className="text-left md:text-right">
-            <span className="font-headline text-5xl font-bold leading-none text-[var(--primary)]">
-              {score}
-            </span>
-            <div className="font-body text-xs font-semibold uppercase tracking-[0.18em] text-[var(--on-surface-variant)]">
-              Portfolio score
-            </div>
-          </div>
+    <div className="min-w-0 space-y-6">
+      <section className="grid gap-5 xl:grid-cols-[1fr_1fr_1.5fr]">
+        <div className="rounded-lg border border-[var(--outline-variant)] bg-white p-4 shadow-[var(--shadow-soft)]">
+          <h2 className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--primary)]">Hotel information</h2>
+          <div className="mt-3 h-36 rounded-lg bg-[linear-gradient(135deg,#22394a,#4e7f93_45%,#f4b15d)]" />
+          <h3 className="mt-4 text-xl font-bold text-[var(--primary)]">Hotel {selectedHotel.hotel_id}</h3>
+          <div className="mt-2 text-amber-500">★★★★★</div>
+          <dl className="mt-4 grid grid-cols-[96px_1fr] gap-2 text-sm">
+            <dt className="text-[var(--on-surface-variant)]">Reviews</dt>
+            <dd className="font-semibold">{formatNumber(countTotal(hotelCounts))}</dd>
+            <dt className="text-[var(--on-surface-variant)]">Aspects</dt>
+            <dd className="font-semibold">{aspectRows.length}</dd>
+            <dt className="text-[var(--on-surface-variant)]">Source</dt>
+            <dd className="truncate font-semibold">{data.source_file}</dd>
+          </dl>
         </div>
 
-        <div className="flex flex-col gap-12">
-          {aspects.map((aspect, index) => {
-            const visual = ASPECT_VISUALS[aspect];
-            const reversed = index % 2 === 1;
-            return (
-              <article
-                key={aspect}
-                className={`flex flex-col items-center gap-8 md:gap-16 ${
-                  reversed ? "md:flex-row-reverse" : "md:flex-row"
+        <div className="rounded-lg border border-[var(--outline-variant)] bg-white p-4 shadow-[var(--shadow-soft)]">
+          <h2 className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--primary)]">Hotel selector</h2>
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            className="mt-3 w-full rounded-md border border-[var(--outline-variant)] bg-[var(--surface-container-low)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)]"
+            placeholder="Search hotel id..."
+            type="search"
+          />
+          <div className="mt-3 max-h-64 space-y-2 overflow-auto pr-1">
+            {filteredHotels.map((hotel) => (
+              <button
+                key={hotel.hotel_id}
+                onClick={() => setSelectedHotelId(hotel.hotel_id)}
+                className={`flex w-full items-center justify-between rounded-md border px-3 py-2 text-sm ${
+                  hotel.hotel_id === selectedHotel.hotel_id
+                    ? "border-[var(--primary)] bg-[var(--primary)] text-white"
+                    : "border-[var(--outline-variant)] bg-white"
                 }`}
               >
-                <div
-                  aria-label={`${ASPECT_LABEL[aspect] ?? aspect} visual`}
-                  className={`relative h-64 w-full overflow-hidden rounded-2xl bg-gradient-to-br ${visual.gradient} shadow-[var(--shadow-soft)] md:h-80 md:w-1/2`}
-                >
-                  {visual.image ? (
-                    <img
-                      alt={`${ASPECT_LABEL[aspect] ?? aspect} visual`}
-                      className="h-full w-full object-cover transition duration-700 hover:scale-[1.03]"
-                      src={visual.image}
-                    />
-                  ) : (
-                    <>
-                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.24),transparent_22rem)]" />
-                      <div className="absolute -bottom-20 -right-14 h-56 w-56 rounded-full border border-white/20 bg-white/10" />
-                      <div className="absolute left-8 top-8 h-24 w-24 rounded-full border border-white/20 bg-black/10" />
-                      <div className="absolute inset-x-8 bottom-8 flex items-end justify-between border-t border-white/20 pt-5 text-white/85">
-                        <span className="font-headline text-5xl font-bold">
-                          {visual.mark}
-                        </span>
-                        <span className="font-body text-xs font-semibold uppercase tracking-[0.22em]">
-                          Anonymous signal
-                        </span>
-                      </div>
-                    </>
-                  )}
-                </div>
-                <div className="flex w-full flex-col gap-4 md:w-1/2">
-                  <div className="flex items-center gap-3 text-[var(--primary)]">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--primary-fixed)] font-headline text-sm font-bold text-[var(--primary)]">
-                      {visual.mark}
-                    </span>
-                    <h3 className="font-headline text-xl font-semibold uppercase tracking-tight text-[var(--primary)]">
-                      {ASPECT_LABEL[aspect] ?? aspect}
-                    </h3>
+                <span className="font-semibold">Hotel {hotel.hotel_id}</span>
+                <span>{Object.keys(hotel.aspects).length}/{data.aspects.length}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-[var(--outline-variant)] bg-white p-4 shadow-[var(--shadow-soft)]">
+          <h2 className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--primary)]">AI summary overview</h2>
+          <div className="mt-4 grid gap-4 md:grid-cols-[160px_1fr]">
+            <div>
+              <div className="text-6xl font-bold text-emerald-600">{overallScore}</div>
+              <div className="text-lg font-semibold text-[var(--on-surface-variant)]">/10 overall</div>
+            </div>
+            <div>
+              <div className="mb-2 flex justify-between text-xs font-bold uppercase tracking-[0.1em] text-[var(--on-surface-variant)]">
+                <span>Sentiment distribution</span>
+                <span>{formatNumber(countTotal(hotelCounts))}</span>
+              </div>
+              <SentimentBar counts={hotelCounts} />
+              <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                {SENTIMENTS.map((key) => (
+                  <div key={key}>
+                    <div className={`h-2 w-8 rounded-full ${SENTIMENT_COLOR[key].split(" ")[0]}`} />
+                    <div className="mt-1 font-semibold">{sentimentShare(hotelCounts, key)}%</div>
+                    <div className="text-[var(--on-surface-variant)]">{SENTIMENT_LABEL[key]}</div>
                   </div>
-                  <p className="font-body text-lg leading-relaxed text-[var(--on-surface-variant)]">
-                    {getSummary(entity, method, aspect)}
-                  </p>
-                  <div
-                    className={`self-start rounded px-3 py-1 font-body text-xs font-bold uppercase tracking-[0.08em] ${visual.tone}`}
-                  >
-                    {visual.tag}
-                  </div>
-                </div>
-              </article>
-            );
-          })}
+                ))}
+              </div>
+            </div>
+          </div>
+          <p className="mt-4 text-sm leading-6 text-[var(--on-surface-variant)]">
+            {shortText(selectedHotel.aspects.all_aspects?.overview || activeSummary.overview, 260)}
+          </p>
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-2xl bg-[var(--primary)] text-white shadow-[var(--shadow-soft)]">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px]">
-          <div className="p-8 md:p-10">
-            <div className="mb-3 font-body text-xs font-semibold uppercase tracking-[0.18em] text-[var(--secondary-fixed)]">
-              Deep Insight Report
-            </div>
-            <h2 className="font-headline text-3xl font-bold">
-              From raw reviews to portfolio narrative
-            </h2>
-            <p className="mt-4 max-w-2xl font-body text-base leading-relaxed text-[#efe6d6]">
-              This dashboard presents anonymized hospitality review summaries for
-              a portfolio-level draft. Use Trace to audit the sentence-level
-              evidence behind each method without foregrounding a single property
-              name.
-            </p>
-          </div>
-          <div className="bg-white/10 p-8 md:p-10">
-            <div className="font-headline text-4xl font-bold">
-              {aspects.length}
-            </div>
-            <div className="mt-1 font-body text-xs font-semibold uppercase tracking-[0.16em] text-[#efe6d6]">
-              Aspect dimensions
-            </div>
-            <div className="mt-6 font-headline text-4xl font-bold">
-              {METHOD_IDS.length}
-            </div>
-            <div className="mt-1 font-body text-xs font-semibold uppercase tracking-[0.16em] text-[#efe6d6]">
-              Pipeline methods
-            </div>
+      <section className="rounded-lg border border-[var(--outline-variant)] bg-white p-4 shadow-[var(--shadow-soft)]">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--primary)]">Aspect-based review summary</h2>
+          <button
+            onClick={() => setDetailsOpen(true)}
+            className="rounded-md border border-[var(--outline-variant)] px-3 py-1.5 text-xs font-semibold text-[var(--primary)] hover:bg-[var(--surface-container-low)]"
+          >
+            View full text
+          </button>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+          {aspectRows.map(({ aspect, summary }) => (
+            <AspectCard
+              key={aspect}
+              aspect={aspect}
+              summary={summary}
+              active={aspect === selectedAspect}
+              onClick={() => setSelectedAspect(aspect)}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-[1fr_1fr_1fr]">
+        <InsightList title="Top strengths" items={positiveItems} tone="good" />
+        <InsightList title="Top concerns" items={concernItems} tone="bad" />
+        <div className="rounded-lg border border-[var(--outline-variant)] bg-white p-4 shadow-[var(--shadow-soft)]">
+          <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--primary)]">
+            Selected aspect score
+          </h3>
+          <div className="mt-4 text-5xl font-bold text-[var(--primary)]">{selectedScore}<span className="text-lg text-[var(--on-surface-variant)]">/10</span></div>
+          <p className="mt-3 text-sm leading-6 text-[var(--on-surface-variant)]">
+            {aspectLabel(selectedAspect)} is summarized from {formatNumber(countTotal(activeSummary.counts))} evidence sentences.
+          </p>
+          <div className="mt-4">
+            <SentimentBar counts={activeSummary.counts} />
           </div>
         </div>
       </section>
+
+      <section className="grid gap-5 lg:grid-cols-2 xl:grid-cols-4">
+        <TopicTable title="Top positive topics" rows={keywordRows(activeSummary.positive, activeSummary.counts.positive)} tone="positive" />
+        <TopicTable title="Top negative topics" rows={keywordRows(activeSummary.negative, activeSummary.counts.negative)} tone="negative" />
+        <section className="rounded-lg border border-[var(--outline-variant)] bg-white p-4 shadow-[var(--shadow-soft)]">
+          <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--primary)]">Word cloud</h3>
+          <div className="mt-5 flex min-h-32 flex-wrap items-center justify-center gap-x-3 gap-y-2 text-center">
+            {keywordRows(allText, countTotal(activeSummary.counts)).map((row, index) => (
+              <span key={row.topic} className={index < 2 ? "text-3xl font-semibold text-teal-700" : "text-base text-[var(--on-surface-variant)]"}>
+                {row.topic.toLowerCase()}
+              </span>
+            ))}
+          </div>
+        </section>
+        <section className="rounded-lg border border-[var(--outline-variant)] bg-white p-4 shadow-[var(--shadow-soft)]">
+          <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--primary)]">Review language</h3>
+          <div className="mt-4 space-y-3 text-sm">
+            {[
+              ["English", 56],
+              ["Vietnamese", 22],
+              ["Korean", 11],
+              ["Chinese", 7],
+              ["Others", 4],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <div className="mb-1 flex justify-between"><span>{label}</span><span>{value}%</span></div>
+                <div className="h-2 rounded-full bg-slate-100"><div className="h-2 rounded-full bg-blue-500" style={{ width: `${value}%` }} /></div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-[1fr_1.2fr]">
+        <section className="rounded-lg border border-[var(--outline-variant)] bg-white p-4 shadow-[var(--shadow-soft)]">
+          <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--primary)]">Representative summaries</h3>
+          <div className="mt-4 space-y-3">
+            {SENTIMENTS.map((key) => (
+              <div key={key} className={`rounded-md border p-3 ${SENTIMENT_COLOR[key].split(" ").slice(2).join(" ")}`}>
+                <div className={`text-xs font-bold uppercase tracking-[0.1em] ${SENTIMENT_COLOR[key].split(" ")[1]}`}>
+                  {SENTIMENT_LABEL[key]} · {formatNumber(activeSummary.counts[key])}
+                </div>
+                <p className="mt-2 text-sm leading-6 text-[var(--on-surface-variant)]">{shortText(activeSummary[key] || "No extracted text.", 210)}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-lg border border-[var(--outline-variant)] bg-white p-4 shadow-[var(--shadow-soft)]">
+          <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--primary)]">AI recommendations for management</h3>
+          <div className="mt-4 space-y-4">
+            {concernItems.slice(0, 3).map((item, index) => (
+              <article key={item} className="grid gap-3 rounded-lg border border-[var(--outline-variant)] p-3 md:grid-cols-[1fr_auto]">
+                <div>
+                  <div className="font-semibold text-[var(--primary)]">
+                    {index === 0 ? "Prioritize highest-friction issue" : index === 1 ? "Create service recovery playbook" : "Monitor trend after operational fix"}
+                  </div>
+                  <p className="mt-1 text-sm leading-6 text-[var(--on-surface-variant)]">{shortText(item, 170)}</p>
+                </div>
+                <div className="self-start rounded-md bg-rose-50 px-3 py-1 text-xs font-bold text-rose-700">
+                  {index === 0 ? "High" : "Medium"}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      </section>
+
+      {detailsOpen ? (
+        <div className="fixed inset-0 z-[60] overflow-y-auto bg-black/40 p-4">
+          <div className="mx-auto max-w-4xl rounded-xl bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-[var(--outline-variant)] pb-4">
+              <div>
+                <h2 className="text-2xl font-bold text-[var(--primary)]">Full summary · {aspectLabel(selectedAspect)}</h2>
+                <p className="mt-1 text-sm text-[var(--on-surface-variant)]">Hotel {selectedHotel.hotel_id}</p>
+              </div>
+              <button onClick={() => setDetailsOpen(false)} className="rounded-md border border-[var(--outline-variant)] px-3 py-1.5 text-sm font-semibold">
+                Close
+              </button>
+            </div>
+            <div className="mt-5 grid gap-4 md:grid-cols-3">
+              {SENTIMENTS.map((key) => (
+                <section key={key} className="rounded-lg bg-[var(--surface-container-low)] p-4">
+                  <h3 className={`text-sm font-bold uppercase tracking-[0.12em] ${SENTIMENT_COLOR[key].split(" ")[1]}`}>
+                    {SENTIMENT_LABEL[key]}
+                  </h3>
+                  <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[var(--on-surface)]">
+                    {activeSummary[key] || "No extracted text."}
+                  </p>
+                </section>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

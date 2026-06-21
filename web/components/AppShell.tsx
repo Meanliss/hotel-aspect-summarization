@@ -1,11 +1,14 @@
 import { TabNav } from "@/components/TabNav";
 
-const PAGE_COPY: Record<string, { eyebrow: string; title: string; description: string }> = {
+const PAGE_COPY: Record<
+  string,
+  { eyebrow: string; title: string; description: string }
+> = {
   explore: {
-    eyebrow: "SPACE benchmark · 4 method comparison",
-    title: "Architectural Analytics",
+    eyebrow: "Hotel review pipeline · aspect intelligence",
+    title: "Hotel Aspect Analytics",
     description:
-      "A synthesized perspective on hotel guest sentiment. Browse per-method overall and aspect summaries, then drill into the evidence behind every narrative.",
+      "Turn long AI summaries into a decision dashboard: aspect scores, sentiment signals, topics, representative evidence, and management recommendations.",
   },
   results: {
     eyebrow: "Evaluation layer",
@@ -48,12 +51,15 @@ export function AppShell({
             </div>
           </div>
           <div className="hidden items-center rounded-full border border-[var(--outline-variant)] bg-[var(--surface-container)] px-4 py-2 sm:flex">
-            <span aria-hidden="true" className="mr-2 text-[15px] text-[var(--on-surface-variant)]">
+            <span
+              aria-hidden="true"
+              className="mr-2 text-[15px] text-[var(--on-surface-variant)]"
+            >
               &#8981;
             </span>
             <input
               className="w-36 border-none bg-transparent p-0 font-body text-sm text-[var(--on-surface)] placeholder:text-[var(--on-surface-variant)] focus:ring-0 md:w-52"
-              placeholder="Search sample ID..."
+              placeholder="Search hotel ID..."
               type="text"
             />
           </div>
