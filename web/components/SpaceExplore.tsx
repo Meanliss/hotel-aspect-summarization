@@ -23,6 +23,10 @@ function methodMeta(data: SpaceData, mid: MethodId) {
   };
 }
 
+function sampleLabel(index: number) {
+  return `Property Sample ${String(index + 1).padStart(2, "0")}`;
+}
+
 function GoldPanel({ entity }: { entity: SpaceEntity }) {
   const [open, setOpen] = useState(false);
   const overall = entity.gold?.overall ?? [];
@@ -157,7 +161,7 @@ export function SpaceExplore() {
     if (!q) return entities;
     return entities.filter(
       (e) =>
-        e.entity_name.toLowerCase().includes(q) ||
+        sampleLabel(entities.indexOf(e)).toLowerCase().includes(q) ||
         e.entity_id.toLowerCase().includes(q),
     );
   }, [entities, query]);
@@ -183,33 +187,36 @@ export function SpaceExplore() {
       <aside className="space-y-4">
         <div>
           <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Search hotels
+            Search samples
           </label>
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="name or id…"
+            placeholder="sample or id..."
             className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm"
           />
         </div>
         <div className="max-h-[60vh] overflow-y-auto rounded-md border border-slate-200 bg-white">
-          {filtered.map((e) => (
+          {filtered.map((e) => {
+            const index = Math.max(0, entities.findIndex((item) => item.entity_id === e.entity_id));
+            return (
             <button
               key={e.entity_id}
               type="button"
               onClick={() => setEntityId(e.entity_id)}
               className={`block w-full border-b border-slate-100 px-3 py-2 text-left text-sm last:border-b-0 ${
                 e.entity_id === entityId
-                  ? "bg-indigo-50 font-medium text-indigo-700"
-                  : "text-slate-700 hover:bg-slate-50"
+                  ? "bg-[var(--surface-container)] font-medium text-[var(--primary)]"
+                  : "text-slate-700 hover:bg-[var(--surface-container-low)]"
               }`}
             >
-              <div className="truncate">{e.entity_name}</div>
+              <div className="truncate">{sampleLabel(index)}</div>
               <div className="text-[11px] text-slate-400">
-                {e.entity_id} · {e.split}
+                Anonymous group · {e.split}
               </div>
             </button>
-          ))}
+            );
+          })}
           {filtered.length === 0 ? (
             <div className="px-3 py-2 text-sm text-slate-400">No matches.</div>
           ) : null}
@@ -221,10 +228,10 @@ export function SpaceExplore() {
           <>
             <div>
               <h2 className="text-xl font-bold text-slate-900">
-                {entity.entity_name}
+                {sampleLabel(Math.max(0, entities.findIndex((item) => item.entity_id === entity.entity_id)))}
               </h2>
               <p className="text-xs text-slate-500">
-                {entity.entity_id} · {entity.split}
+                Anonymous benchmark group · {entity.split}
               </p>
             </div>
 
@@ -242,8 +249,8 @@ export function SpaceExplore() {
                       onClick={() => setMethod(m)}
                       className={`rounded px-3 py-1.5 text-sm font-medium transition ${
                         method === m
-                          ? "bg-indigo-600 text-white"
-                          : "text-slate-600 hover:bg-slate-100"
+                          ? "bg-[var(--primary)] text-white"
+                          : "text-slate-600 hover:bg-[var(--surface-container)]"
                       }`}
                       title={mm.desc}
                     >
@@ -292,7 +299,7 @@ export function SpaceExplore() {
             </div>
           </>
         ) : (
-          <div className="text-sm text-slate-500">Select a hotel to begin.</div>
+          <div className="text-sm text-slate-500">Select a sample to begin.</div>
         )}
       </main>
     </div>

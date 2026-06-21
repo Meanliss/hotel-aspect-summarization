@@ -7,6 +7,7 @@ import {
   COLOR_BG_LIGHT,
   COLOR_RING,
   COLOR_TEXT,
+  anonymizePropertyText,
   type MethodId,
 } from "@/lib/space";
 
@@ -93,6 +94,23 @@ interface Stage {
 
 const METHOD_IDS: DemoMethodId[] = ["m1", "m2", "m3", "m4"];
 
+function sanitizeDemoData<T extends { entity?: { entity_name?: string } }>(
+  payload: T,
+): T {
+  const propertyName = payload.entity?.entity_name;
+  const visit = (value: unknown): unknown => {
+    if (typeof value === "string") return anonymizePropertyText(value, propertyName);
+    if (Array.isArray(value)) return value.map(visit);
+    if (value && typeof value === "object") {
+      return Object.fromEntries(
+        Object.entries(value).map(([key, item]) => [key, visit(item)]),
+      );
+    }
+    return value;
+  };
+  return visit(payload) as T;
+}
+
 function fmtScore(value?: number) {
   if (value === undefined || value === null || Number.isNaN(value)) return "";
   return value.toFixed(6);
@@ -138,7 +156,7 @@ function pipelineStages(method: DemoMethodId, aspectLabel: string): Stage[] {
   const shared = [
     {
       title: "Raw review pool",
-      input: "100 River Hotel reviews",
+      input: "100 anonymized review samples",
       operation: "Flatten review sentences and keep source ids for audit.",
       output: "Sentence pool with review_id and sentence index.",
     },
@@ -674,12 +692,12 @@ function EntityStoryHero({ data }: { data: DemoData }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr]">
-        <div className="border-b border-slate-100 bg-slate-950 p-6 text-white lg:border-b-0 lg:border-r lg:border-slate-800">
-          <div className="text-xs font-semibold uppercase tracking-[0.28em] text-indigo-200">
+        <div className="border-b border-[var(--outline-variant)] bg-[var(--primary)] p-6 text-white lg:border-b-0 lg:border-r lg:border-[var(--outline-variant)]">
+          <div className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--secondary-fixed)]">
             Entity input
           </div>
           <h2 className="mt-3 text-3xl font-bold tracking-tight">
-            {data.entity.entity_name}
+            Representative property sample
           </h2>
           <div className="mt-4 flex flex-wrap gap-2 text-xs">
             <span className="rounded-full bg-white/10 px-3 py-1 ring-1 ring-white/15">
@@ -693,7 +711,7 @@ function EntityStoryHero({ data }: { data: DemoData }) {
             </span>
           </div>
           <div className="mt-6 rounded-xl bg-white/10 p-4 ring-1 ring-white/15">
-            <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-indigo-100">
+            <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--secondary-fixed)]">
               Human reference signal
             </div>
             <p className="text-sm leading-relaxed text-slate-100">
@@ -712,7 +730,7 @@ function EntityStoryHero({ data }: { data: DemoData }) {
                 These sentences are the raw material every method starts from.
               </p>
             </div>
-            <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200">
+            <span className="rounded-full bg-[var(--secondary-fixed)] px-3 py-1 text-xs font-semibold text-[var(--primary)] ring-1 ring-[var(--outline-variant)]">
               Scroll ↓ follow the pipeline
             </span>
           </div>
@@ -792,7 +810,7 @@ function StoryControls({
               onClick={() => onAspectChange(item.aspect)}
               className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                 aspectName === item.aspect
-                  ? "bg-indigo-600 text-white shadow-sm"
+                  ? "bg-[var(--primary)] text-white shadow-sm"
                   : "text-slate-600 hover:bg-white"
               }`}
             >
@@ -887,10 +905,10 @@ function MethodGallery({
   }));
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-slate-950 p-5 text-white shadow-sm">
+    <section className="rounded-2xl border border-[var(--outline-variant)] bg-[var(--primary)] p-5 text-white shadow-sm">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-indigo-200">
+          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--secondary-fixed)]">
             M1 → M4 outputs
           </div>
           <h2 className="mt-2 text-xl font-bold">Compare the final shape</h2>
@@ -941,7 +959,7 @@ export function MethodDemoView() {
       })
       .then((json) => {
         if (!cancelled) {
-          setData(json);
+          setData(sanitizeDemoData(json));
           if (json.aspects?.[0]?.aspect) setAspectName(json.aspects[0].aspect);
         }
       })

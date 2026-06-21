@@ -122,10 +122,10 @@ export function ResultsView() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end gap-3">
         <div>
-          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--on-surface-variant)]">
             Split
           </label>
-          <div className="inline-flex rounded-md border border-slate-300 bg-white p-0.5">
+          <div className="inline-flex rounded-md border border-[var(--outline-variant)] bg-[var(--surface-bright)] p-0.5">
             {(["dev", "test", "all"] as Split[]).map((s) => (
               <button
                 key={s}
@@ -133,8 +133,8 @@ export function ResultsView() {
                 onClick={() => setSplit(s)}
                 className={`rounded px-3 py-1.5 text-sm font-medium transition ${
                   split === s
-                    ? "bg-indigo-600 text-white"
-                    : "text-slate-600 hover:bg-slate-100"
+                    ? "bg-[var(--primary)] text-white"
+                    : "text-[var(--on-surface-variant)] hover:bg-[var(--surface-container)]"
                 }`}
               >
                 {s.toUpperCase()}
@@ -164,7 +164,7 @@ export function ResultsView() {
               return (
                 <div
                   key={m}
-                  className={`rounded-xl border p-4 ring-1 ${COLOR_BG_LIGHT[meta.color]} ${COLOR_RING[meta.color]}`}
+                  className={`rounded-xl border border-[var(--outline-variant)] p-4 shadow-[var(--shadow-soft)] ${COLOR_BG_LIGHT[meta.color]}`}
                 >
                   <div className="mb-2 flex items-center gap-2">
                     <span
@@ -213,18 +213,18 @@ export function ResultsView() {
           </section>
 
           {/* Macro table */}
-          <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="mb-1 text-lg font-semibold text-slate-900">
+          <section className="rounded-xl border border-[var(--outline-variant)] bg-[var(--surface-bright)] p-5 shadow-[var(--shadow-soft)]">
+            <h2 className="mb-1 text-lg font-semibold text-[var(--primary)]">
               Macro ROUGE F1 — SPACE ({split})
             </h2>
-            <p className="mb-4 text-xs text-slate-500">
+            <p className="mb-4 text-xs text-[var(--on-surface-variant)]">
               Mean ROUGE over {SPACE_ASPECTS.length} aspects, against human gold
               summaries (ROUGE-1.5.5 via pyrouge).
             </p>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <tr className="border-b border-[var(--outline-variant)] text-left text-xs uppercase tracking-wide text-[var(--on-surface-variant)]">
                     <th className="py-2 pr-3 font-semibold">Method</th>
                     {METRICS.map((m) => (
                       <th key={m} className="py-2 pr-3 text-right font-semibold">
@@ -244,7 +244,7 @@ export function ResultsView() {
                     return (
                       <tr
                         key={row.method}
-                        className="border-b border-slate-100 last:border-b-0"
+                        className="border-b border-[var(--surface-container)] last:border-b-0"
                       >
                         <td className="py-2 pr-3">
                           <div className="flex items-center gap-2">
@@ -252,10 +252,10 @@ export function ResultsView() {
                               className={`inline-block h-2.5 w-2.5 rounded-full ${COLOR_BAR[meta.color]}`}
                             />
                             <div>
-                              <div className="font-medium text-slate-800">
+                              <div className="font-medium text-[var(--primary)]">
                                 {meta.short}
                               </div>
-                              <div className="text-[11px] text-slate-500">
+                              <div className="text-[11px] text-[var(--on-surface-variant)]">
                                 {meta.desc}
                               </div>
                             </div>
@@ -269,7 +269,7 @@ export function ResultsView() {
                               className={`py-2 pr-3 text-right font-mono ${
                                 isBest
                                   ? `font-semibold ${COLOR_TEXT[meta.color]}`
-                                  : "text-slate-700"
+                                  : "text-[var(--on-surface)]"
                               }`}
                             >
                               {fmt(row[metric])}
@@ -308,13 +308,13 @@ export function ResultsView() {
 
           {/* Overall / general */}
           {general ? (
-            <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="mb-1 text-lg font-semibold text-slate-900">
+            <section className="rounded-xl border border-[var(--outline-variant)] bg-[var(--surface-bright)] p-5 shadow-[var(--shadow-soft)]">
+              <h2 className="mb-1 text-lg font-semibold text-[var(--primary)]">
                 Overall summary ROUGE F1 — SPACE ({split})
               </h2>
-              <p className="mb-4 text-xs text-slate-500">
+              <p className="mb-4 text-xs text-[var(--on-surface-variant)]">
                 Entity-level overall summary scored against the SPACE{" "}
-                <code className="rounded bg-slate-100 px-1">general</code> gold
+                <code className="rounded bg-[var(--surface-container)] px-1">general</code> gold
                 reference. There is no sentiment-level gold, so positive /
                 negative summaries are shown in Explore but not scored.
               </p>
@@ -327,7 +327,7 @@ export function ResultsView() {
                   );
                   return (
                     <div key={metric}>
-                      <div className="mb-1 text-sm font-semibold text-slate-700">
+                      <div className="mb-1 text-sm font-semibold text-[var(--primary)]">
                         {METRIC_LABEL[metric]}
                       </div>
                       <div className="space-y-1.5">
@@ -340,15 +340,15 @@ export function ResultsView() {
                               key={r.method}
                               className="flex items-center gap-2 text-xs"
                             >
-                              <div className="w-8 text-right font-mono text-slate-500">
+                              <div className="w-8 text-right font-mono text-[var(--on-surface-variant)]">
                                 {meta.short}
                               </div>
-                              <div className="relative h-5 flex-1 overflow-hidden rounded bg-slate-100">
+                              <div className="relative h-5 flex-1 overflow-hidden rounded bg-[var(--surface-container)]">
                                 <div
                                   className={`h-full ${COLOR_BAR[meta.color]}`}
                                   style={{ width: `${width}%` }}
                                 />
-                                <div className="absolute inset-0 flex items-center px-2 font-mono text-[11px] text-slate-700">
+                                <div className="absolute inset-0 flex items-center px-2 font-mono text-[11px] text-[var(--on-surface)]">
                                   {fmt(v)}
                                 </div>
                               </div>
@@ -364,11 +364,11 @@ export function ResultsView() {
           ) : null}
 
           {/* Per-aspect bars */}
-          <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="mb-1 text-lg font-semibold text-slate-900">
+          <section className="rounded-xl border border-[var(--outline-variant)] bg-[var(--surface-bright)] p-5 shadow-[var(--shadow-soft)]">
+            <h2 className="mb-1 text-lg font-semibold text-[var(--primary)]">
               Per-aspect ROUGE-1 — SPACE ({split})
             </h2>
-            <p className="mb-4 text-xs text-slate-500">
+            <p className="mb-4 text-xs text-[var(--on-surface-variant)]">
               F1 on each aspect, 4 methods overlaid.
             </p>
             <div className="space-y-4">
@@ -381,10 +381,10 @@ export function ResultsView() {
                 return (
                   <div key={row.aspect}>
                     <div className="mb-1 flex items-baseline justify-between">
-                      <div className="text-sm font-semibold capitalize text-slate-700">
+                      <div className="text-sm font-semibold capitalize text-[var(--primary)]">
                         {ASPECT_LABEL[row.aspect] ?? row.aspect}
                       </div>
-                      <div className="text-[11px] text-slate-400">
+                      <div className="text-[11px] text-[var(--on-surface-variant)]">
                         max {fmt(max)}
                       </div>
                     </div>
@@ -398,15 +398,15 @@ export function ResultsView() {
                             key={m}
                             className="flex items-center gap-2 text-xs"
                           >
-                            <div className="w-8 text-right font-mono text-slate-500">
+                            <div className="w-8 text-right font-mono text-[var(--on-surface-variant)]">
                               {meta.short}
                             </div>
-                            <div className="relative h-5 flex-1 overflow-hidden rounded bg-slate-100">
+                            <div className="relative h-5 flex-1 overflow-hidden rounded bg-[var(--surface-container)]">
                               <div
                                 className={`h-full ${COLOR_BAR[meta.color]} transition-all`}
                                 style={{ width: `${width}%` }}
                               />
-                              <div className="absolute inset-0 flex items-center px-2 font-mono text-[11px] text-slate-700">
+                              <div className="absolute inset-0 flex items-center px-2 font-mono text-[11px] text-[var(--on-surface)]">
                                 {Number.isNaN(v) ? "—" : fmt(v)}
                               </div>
                             </div>
@@ -420,10 +420,10 @@ export function ResultsView() {
             </div>
           </section>
 
-          <section className="rounded-xl border border-slate-200 bg-slate-100 p-4 text-xs text-slate-600">
+          <section className="rounded-xl border border-[var(--outline-variant)] bg-[var(--surface-container-low)] p-4 text-xs text-[var(--on-surface-variant)]">
             <strong>Setup.</strong> ROUGE-1.5.5 via pyrouge + Strawberry Perl.
             SPACE gold: 6 flat aspects × 3 refs, plus a non-aspectual{" "}
-            <code className="rounded bg-white px-1">general</code> overall
+            <code className="rounded bg-[var(--surface-bright)] px-1">general</code> overall
             summary. All 4 methods share identical SemAE sentence selection; they
             differ only in how the selected evidence is rendered. M3 and M4
             concatenate positive + negative generated summaries per aspect before
