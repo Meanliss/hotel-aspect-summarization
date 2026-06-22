@@ -5,8 +5,8 @@ import {
   ASPECT_LABEL,
   COLOR_BAR,
   COLOR_BG_LIGHT,
-  COLOR_RING,
   COLOR_TEXT,
+  HASOS_ASPECTS,
   METHOD_IDS,
   METHOD_META,
   METRIC_LABEL,
@@ -17,9 +17,43 @@ import {
 
 const METRICS = ["rouge1", "rouge2", "rougeL"] as const;
 type Split = "dev" | "test" | "all";
+type Dataset = "space" | "hasos";
+
+const DATASET_META: Record<
+  Dataset,
+  {
+    label: string;
+    file: string;
+    aspects: readonly string[];
+    note: string;
+    setup: string;
+    maxBar: number;
+  }
+> = {
+  space: {
+    label: "SPACE",
+    file: "/data/rouge_space.json",
+    aspects: SPACE_ASPECTS,
+    note:
+      "Mean ROUGE over 6 flat aspects, against human gold summaries (ROUGE-1.5.5 via pyrouge).",
+    setup:
+      "SPACE gold: 6 flat aspects x 3 refs, plus a non-aspectual general overall summary.",
+    maxBar: 0.4,
+  },
+  hasos: {
+    label: "HASOS",
+    file: "/data/rouge_hasos.json",
+    aspects: HASOS_ASPECTS,
+    note:
+      "Mean ROUGE over 4 HASOS parent aspects aggregated from the hotel taxonomy, against human gold summaries (ROUGE-1.5.5 via pyrouge).",
+    setup:
+      "HASOS gold: 4 parent aspects aggregated from 29 hotel sub-aspects.",
+    maxBar: 0.25,
+  },
+};
 
 function fmt(v: number | undefined): string {
-  if (v === undefined || v === null || Number.isNaN(v)) return "—";
+  if (v === undefined || v === null || Number.isNaN(v)) return "-";
   return v.toFixed(4);
 }
 
@@ -28,16 +62,18 @@ function methodMeta(mid: MethodId) {
 }
 
 export function ResultsView() {
+  const [dataset, setDataset] = useState<Dataset>("space");
   const [split, setSplit] = useState<Split>("all");
   const [data, setData] = useState<RougeComparison | null>(null);
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const datasetMeta = DATASET_META[dataset];
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError("");
-    fetch(`/data/rouge_space.json`, { cache: "no-store" })
+    fetch(datasetMeta.file, { cache: "no-store" })
       .then((r) => {
         if (!r.ok) throw new Error(`Failed to load (${r.status})`);
         return r.json();
@@ -54,7 +90,7 @@ export function ResultsView() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [datasetMeta.file]);
 
   const cell = (mid: MethodId, key: string) =>
     data?.[mid]?.by_split?.[split]?.[key];
@@ -108,7 +144,7 @@ export function ResultsView() {
 
   const perAspect = useMemo(() => {
     if (!data) return null;
-    return SPACE_ASPECTS.map((a) => {
+    return datasetMeta.aspects.map((a) => {
       const row: Record<string, number> = {};
       for (const m of METHOD_IDS) {
         row[m] = cell(m, a)?.rouge1 ?? NaN;
@@ -116,11 +152,32 @@ export function ResultsView() {
       return { aspect: a, scores: row };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, split]);
+  }, [data, split, datasetMeta.aspects]);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--on-surface-variant)]">
+            Dataset
+          </label>
+          <div className="inline-flex rounded-md border border-[var(--outline-variant)] bg-[var(--surface-bright)] p-0.5">
+            {(["space", "hasos"] as Dataset[]).map((d) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => setDataset(d)}
+                className={`rounded px-3 py-1.5 text-sm font-medium transition ${
+                  dataset === d
+                    ? "bg-[var(--primary)] text-white"
+                    : "text-[var(--on-surface-variant)] hover:bg-[var(--surface-container)]"
+                }`}
+              >
+                {DATASET_META[d].label}
+              </button>
+            ))}
+          </div>
+        </div>
         <div>
           <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--on-surface-variant)]">
             Split
@@ -149,18 +206,16 @@ export function ResultsView() {
           {error}
         </div>
       ) : null}
-      {loading ? <div className="text-sm text-slate-500">Loading…</div> : null}
+      {loading ? <div className="text-sm text-slate-500">Loading...</div> : null}
 
       {macro && bestPerMetric && perAspect ? (
         <>
-          {/* Per-method cards */}
           <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {METHOD_IDS.map((m) => {
               const meta = methodMeta(m);
               const c = cell(m, "MACRO");
               const g = cell(m, "GENERAL");
               const vals = [c?.rouge1, c?.rouge2, c?.rougeL];
-              const maxBar = 0.4; // ROUGE-1 on SPACE tops out well under this
               return (
                 <div
                   key={m}
@@ -182,7 +237,7 @@ export function ResultsView() {
                       const v = vals[i] ?? NaN;
                       const width = Number.isNaN(v)
                         ? 0
-                        : Math.min(100, (v / maxBar) * 100);
+                        : Math.min(100, (v / datasetMeta.maxBar) * 100);
                       return (
                         <div key={metric} className="text-[11px]">
                           <div className="mb-0.5 flex justify-between text-slate-500">
@@ -212,14 +267,12 @@ export function ResultsView() {
             })}
           </section>
 
-          {/* Macro table */}
           <section className="rounded-xl border border-[var(--outline-variant)] bg-[var(--surface-bright)] p-5 shadow-[var(--shadow-soft)]">
             <h2 className="mb-1 text-lg font-semibold text-[var(--primary)]">
-              Macro ROUGE F1 — SPACE ({split})
+              Macro ROUGE F1 - {datasetMeta.label} ({split})
             </h2>
             <p className="mb-4 text-xs text-[var(--on-surface-variant)]">
-              Mean ROUGE over {SPACE_ASPECTS.length} aspects, against human gold
-              summaries (ROUGE-1.5.5 via pyrouge).
+              {datasetMeta.note}
             </p>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -231,7 +284,7 @@ export function ResultsView() {
                         {METRIC_LABEL[m]}
                       </th>
                     ))}
-                    <th className="py-2 text-right font-semibold">Δ R1 vs M1</th>
+                    <th className="py-2 text-right font-semibold">R1 vs M1</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -288,14 +341,14 @@ export function ResultsView() {
                             isM1
                               ? "text-slate-400"
                               : delta > 0
-                              ? "text-emerald-600"
-                              : delta < 0
-                              ? "text-rose-600"
-                              : "text-slate-500"
+                                ? "text-emerald-600"
+                                : delta < 0
+                                  ? "text-rose-600"
+                                  : "text-slate-500"
                           }`}
                         >
                           {isM1
-                            ? "—"
+                            ? "-"
                             : `${delta >= 0 ? "+" : ""}${delta.toFixed(4)}`}
                         </td>
                       </tr>
@@ -306,20 +359,19 @@ export function ResultsView() {
             </div>
           </section>
 
-          {/* Overall / general */}
           {general ? (
             <section className="rounded-xl border border-[var(--outline-variant)] bg-[var(--surface-bright)] p-5 shadow-[var(--shadow-soft)]">
               <h2 className="mb-1 text-lg font-semibold text-[var(--primary)]">
-                Overall summary ROUGE F1 — SPACE ({split})
+                Overall summary ROUGE F1 - {datasetMeta.label} ({split})
               </h2>
               <p className="mb-4 text-xs text-[var(--on-surface-variant)]">
-                Entity-level overall summary scored against the SPACE{" "}
+                Entity-level overall summary scored against the {datasetMeta.label}{" "}
                 <code className="rounded bg-[var(--surface-container)] px-1">general</code> gold
                 reference. There is no sentiment-level gold, so positive /
                 negative summaries are shown in Explore but not scored.
               </p>
               <div className="space-y-3">
-                {(["rouge1", "rouge2", "rougeL"] as const).map((metric) => {
+                {METRICS.map((metric) => {
                   const vals = general.map((r) => r[metric]);
                   const max = Math.max(
                     ...vals.filter((v) => !Number.isNaN(v)),
@@ -363,10 +415,9 @@ export function ResultsView() {
             </section>
           ) : null}
 
-          {/* Per-aspect bars */}
           <section className="rounded-xl border border-[var(--outline-variant)] bg-[var(--surface-bright)] p-5 shadow-[var(--shadow-soft)]">
             <h2 className="mb-1 text-lg font-semibold text-[var(--primary)]">
-              Per-aspect ROUGE-1 — SPACE ({split})
+              Per-aspect ROUGE-1 - {datasetMeta.label} ({split})
             </h2>
             <p className="mb-4 text-xs text-[var(--on-surface-variant)]">
               F1 on each aspect, 4 methods overlaid.
@@ -407,7 +458,7 @@ export function ResultsView() {
                                 style={{ width: `${width}%` }}
                               />
                               <div className="absolute inset-0 flex items-center px-2 font-mono text-[11px] text-[var(--on-surface)]">
-                                {Number.isNaN(v) ? "—" : fmt(v)}
+                                {Number.isNaN(v) ? "-" : fmt(v)}
                               </div>
                             </div>
                           </div>
@@ -421,14 +472,11 @@ export function ResultsView() {
           </section>
 
           <section className="rounded-xl border border-[var(--outline-variant)] bg-[var(--surface-container-low)] p-4 text-xs text-[var(--on-surface-variant)]">
-            <strong>Setup.</strong> ROUGE-1.5.5 via pyrouge + Strawberry Perl.
-            SPACE gold: 6 flat aspects × 3 refs, plus a non-aspectual{" "}
-            <code className="rounded bg-[var(--surface-bright)] px-1">general</code> overall
-            summary. All 4 methods share identical SemAE sentence selection; they
-            differ only in how the selected evidence is rendered. M3 and M4
-            concatenate positive + negative generated summaries per aspect before
-            scoring. SPACE has no sentiment-level gold, so the positive / negative
-            split is visualized in Explore but not scored by ROUGE.
+            <strong>Setup.</strong> ROUGE-1.5.5 via pyrouge + Strawberry Perl.{" "}
+            {datasetMeta.setup} All 4 methods share identical SemAE sentence
+            selection; they differ only in how the selected evidence is rendered.
+            M3 and M4 concatenate positive + negative generated summaries per
+            aspect before scoring.
           </section>
         </>
       ) : null}

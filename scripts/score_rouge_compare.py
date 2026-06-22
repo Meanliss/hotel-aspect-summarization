@@ -258,6 +258,19 @@ def main():
                          "entity-level overall files (<split>_<eid>), e.g. "
                          "outputs/space_eval_4method_m2_entity. Preferred over "
                          "aspect concatenation when present.")
+    ap.add_argument("--fixed_denominator", action="store_true",
+                    help="Score EVERY gold-bearing (aspect, entity) instance, "
+                         "counting empty system outputs as ROUGE 0. This keeps "
+                         "the macro denominator constant across a threshold/token "
+                         "sweep so a method that simply answers fewer instances "
+                         "is not flattered. Default off (reproduces the original "
+                         "baseline that skips empty outputs).")
+    ap.add_argument("--universe_dir",
+                    help="Directory whose <split>_<eid> filenames define the FULL "
+                         "set of (split, entity) instances to score. Use a "
+                         "full-coverage baseline output dir so the universe is "
+                         "stable even when the swept output dir is sparse. "
+                         "Defaults to the scored output dir (legacy behavior).")
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
 
@@ -272,10 +285,12 @@ def main():
         code2group = load_taxonomy_groups(os.path.join(REPO, args.taxonomy))
     gold = load_gold(os.path.join(REPO, args.gold))
 
-    # entity discovery source
-    disc_dir = args.run_dir or args.senti_dir or args.parent_dir
+    # entity discovery source. With --universe_dir, the full (split, entity)
+    # universe comes from a stable full-coverage baseline dir so a sparse swept
+    # output does not shrink the denominator.
+    disc_dir = args.universe_dir or args.run_dir or args.senti_dir or args.parent_dir
     disc_dir = os.path.join(REPO, disc_dir)
-    if args.method == "m2_abstractive":
+    if args.method == "m2_abstractive" and not args.universe_dir:
         # parent dir has GROUP subdirs, files inside
         entities = set()
         for grp in os.listdir(disc_dir):
@@ -301,29 +316,49 @@ def main():
         return system_text_sentiment(
             os.path.join(REPO, args.senti_dir), group, split, eid, code2group)
 
-    results = {"method": args.method, "by_split": {}, "coverage": {}}
+    results = {"method": args.method, "by_split": {}, "coverage": {},
+               "fixed_denominator": bool(args.fixed_denominator)}
 
     for split_filter, label in ((("dev",), "dev"), (("test",), "test"),
                                 (("dev", "test", "train"), "all")):
         per_aspect = {}
         for pkey, group in parent_keys.items():
             pairs = []
+            eligible = 0  # (entity) with gold for this aspect+split
             for split, eid in entities:
                 if split not in split_filter:
                     continue
                 refs = gold.get(eid, {}).get(pkey, [])
                 if not refs:
                     continue
+                eligible += 1
                 sys_text = get_system_text(group, split, eid)
                 if not sys_text.strip():
                     continue
                 pairs.append((sys_text, refs))
             out = run_rouge(pairs)
-            if out is None:
-                continue
-            scores, n = out
-            scores["n"] = n
-            per_aspect[pkey] = scores
+            n = out[1] if out is not None else 0
+            scores = out[0] if out is not None else {}
+            # coverage = fraction of gold-bearing instances we actually answered
+            cov = (n / eligible) if eligible else 0.0
+            if args.fixed_denominator:
+                # exact: mean over ALL eligible instances, empties contribute 0.
+                # pyrouge Average_F is over n written pairs, so rescale by n/eligible.
+                scaled = {k: (scores.get(k, 0.0) * n / eligible) if eligible else 0.0
+                          for k in ("rouge1", "rouge2", "rougeL")}
+                scaled["n"] = n
+                scaled["eligible"] = eligible
+                scaled["coverage"] = round(cov, 4)
+                # include the aspect whenever it has ANY gold (even if 0 answered)
+                if eligible:
+                    per_aspect[pkey] = scaled
+            else:
+                if out is None:
+                    continue
+                scores["n"] = n
+                scores["eligible"] = eligible
+                scores["coverage"] = round(cov, 4)
+                per_aspect[pkey] = scores
         # macro average over aspect keys only. GENERAL, when present, is an
         # entity-level SPACE score and must not be folded into aspect MACRO.
         if per_aspect:
@@ -339,13 +374,18 @@ def main():
 
         if args.dataset == "space" and args.include_general:
             pairs = []
-            general_root = disc_dir
+            # general system text comes from the dir being SCORED, not the
+            # (possibly different) universe dir used only for entity discovery.
+            general_root = os.path.join(
+                REPO, args.run_dir or args.senti_dir or args.parent_dir)
+            eligible = 0
             for split, eid in entities:
                 if split not in split_filter:
                     continue
                 refs = gold.get(eid, {}).get(SPACE_GENERAL_KEY, [])
                 if not refs:
                     continue
+                eligible += 1
                 entity_dir = (os.path.join(REPO, args.entity_dir)
                               if args.entity_dir else None)
                 sys_text = system_text_space_general(
@@ -354,10 +394,22 @@ def main():
                     continue
                 pairs.append((sys_text, refs))
             out = run_rouge(pairs)
-            if out is not None:
-                scores, n = out
-                scores["n"] = n
-                per_aspect[GENERAL_RESULT_KEY] = scores
+            n = out[1] if out is not None else 0
+            gscores = out[0] if out is not None else {}
+            cov = (n / eligible) if eligible else 0.0
+            if args.fixed_denominator:
+                if eligible:
+                    scaled = {k: gscores.get(k, 0.0) * n / eligible
+                              for k in ("rouge1", "rouge2", "rougeL")}
+                    scaled["n"] = n
+                    scaled["eligible"] = eligible
+                    scaled["coverage"] = round(cov, 4)
+                    per_aspect[GENERAL_RESULT_KEY] = scaled
+            elif out is not None:
+                gscores["n"] = n
+                gscores["eligible"] = eligible
+                gscores["coverage"] = round(cov, 4)
+                per_aspect[GENERAL_RESULT_KEY] = gscores
         results["by_split"][label] = per_aspect
 
     out_path = os.path.join(REPO, args.out)
@@ -368,10 +420,16 @@ def main():
     # console summary
     print(f"\n=== {args.method} :: ROUGE F1 (macro over aspects) ===")
     for label in ("dev", "test", "all"):
-        m = results["by_split"].get(label, {}).get("MACRO")
+        per = results["by_split"].get(label, {})
+        m = per.get("MACRO")
         if m:
+            covs = [v.get("coverage") for k, v in per.items()
+                    if k not in ("MACRO", GENERAL_RESULT_KEY)
+                    and isinstance(v, dict) and v.get("coverage") is not None]
+            mean_cov = sum(covs) / len(covs) if covs else 0.0
             print(f"  {label:5s} R1={m['rouge1']:.5f} "
-                  f"R2={m['rouge2']:.5f} RL={m['rougeL']:.5f}")
+                  f"R2={m['rouge2']:.5f} RL={m['rougeL']:.5f} "
+                  f"cov={mean_cov:.2f} ({len(covs)} aspects)")
     general = results["by_split"].get("all", {}).get(GENERAL_RESULT_KEY)
     if general:
         print(f"  {'general':5s} R1={general['rouge1']:.5f} "

@@ -1,0 +1,6 @@
+# Scratch artifacts from sweep debugging — not part of the committed study.
+_log_*.log
+_sanity_*.json
+_diag_*.json
+_chk_*.json
+_run_*.log

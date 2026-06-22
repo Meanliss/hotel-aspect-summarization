@@ -1,0 +1,196 @@
+{
+  "method": "m4_bert",
+  "by_split": {
+    "dev": {
+      "building": {
+        "rouge1": 0.0,
+        "rouge2": 0.0,
+        "rougeL": 0.0,
+        "n": 0,
+        "eligible": 25,
+        "coverage": 0.0
+      },
+      "cleanliness": {
+        "rouge1": 0.1190976,
+        "rouge2": 0.036889599999999995,
+        "rougeL": 0.1019136,
+        "n": 8,
+        "eligible": 25,
+        "coverage": 0.32
+      },
+      "food": {
+        "rouge1": 0.059337999999999995,
+        "rouge2": 0.009848,
+        "rougeL": 0.041386000000000006,
+        "n": 5,
+        "eligible": 25,
+        "coverage": 0.2
+      },
+      "location": {
+        "rouge1": 0.0,
+        "rouge2": 0.0,
+        "rougeL": 0.0,
+        "n": 0,
+        "eligible": 25,
+        "coverage": 0.0
+      },
+      "rooms": {
+        "rouge1": 0.029024800000000003,
+        "rouge2": 0.0100952,
+        "rougeL": 0.0206736,
+        "n": 2,
+        "eligible": 25,
+        "coverage": 0.08
+      },
+      "service": {
+        "rouge1": 0.0116852,
+        "rouge2": 0.0048192,
+        "rougeL": 0.0116852,
+        "n": 1,
+        "eligible": 25,
+        "coverage": 0.04
+      },
+      "MACRO": {
+        "rouge1": 0.036524266666666666,
+        "rouge2": 0.010275333333333333,
+        "rougeL": 0.029276399999999998
+      },
+      "GENERAL": {
+        "rouge1": 0.098154,
+        "rouge2": 0.024048,
+        "rougeL": 0.0673416,
+        "n": 9,
+        "eligible": 25,
+        "coverage": 0.36
+      }
+    },
+    "test": {
+      "building": {
+        "rouge1": 0.0,
+        "rouge2": 0.0,
+        "rougeL": 0.0,
+        "n": 0,
+        "eligible": 25,
+        "coverage": 0.0
+      },
+      "cleanliness": {
+        "rouge1": 0.1029112,
+        "rouge2": 0.039768399999999995,
+        "rougeL": 0.0820848,
+        "n": 7,
+        "eligible": 25,
+        "coverage": 0.28
+      },
+      "food": {
+        "rouge1": 0.06453160000000001,
+        "rouge2": 0.0093744,
+        "rougeL": 0.045368399999999996,
+        "n": 7,
+        "eligible": 25,
+        "coverage": 0.28
+      },
+      "location": {
+        "rouge1": 0.0,
+        "rouge2": 0.0,
+        "rougeL": 0.0,
+        "n": 0,
+        "eligible": 25,
+        "coverage": 0.0
+      },
+      "rooms": {
+        "rouge1": 0.0298624,
+        "rouge2": 0.0102784,
+        "rougeL": 0.0215592,
+        "n": 2,
+        "eligible": 25,
+        "coverage": 0.08
+      },
+      "service": {
+        "rouge1": 0.09031919999999999,
+        "rouge2": 0.0280992,
+        "rougeL": 0.0703224,
+        "n": 6,
+        "eligible": 25,
+        "coverage": 0.24
+      },
+      "MACRO": {
+        "rouge1": 0.0479374,
+        "rouge2": 0.014586733333333332,
+        "rougeL": 0.0365558
+      },
+      "GENERAL": {
+        "rouge1": 0.1524068,
+        "rouge2": 0.0356096,
+        "rougeL": 0.09805639999999999,
+        "n": 13,
+        "eligible": 25,
+        "coverage": 0.52
+      }
+    },
+    "all": {
+      "building": {
+        "rouge1": 0.0,
+        "rouge2": 0.0,
+        "rougeL": 0.0,
+        "n": 0,
+        "eligible": 50,
+        "coverage": 0.0
+      },
+      "cleanliness": {
+        "rouge1": 0.11160900000000001,
+        "rouge2": 0.038796,
+        "rougeL": 0.092331,
+        "n": 15,
+        "eligible": 50,
+        "coverage": 0.3
+      },
+      "food": {
+        "rouge1": 0.06191040000000001,
+        "rouge2": 0.009588,
+        "rougeL": 0.04335839999999999,
+        "n": 12,
+        "eligible": 50,
+        "coverage": 0.24
+      },
+      "location": {
+        "rouge1": 0.0,
+        "rouge2": 0.0,
+        "rougeL": 0.0,
+        "n": 0,
+        "eligible": 50,
+        "coverage": 0.0
+      },
+      "rooms": {
+        "rouge1": 0.029445600000000002,
+        "rouge2": 0.010188,
+        "rougeL": 0.02112,
+        "n": 4,
+        "eligible": 50,
+        "coverage": 0.08
+      },
+      "service": {
+        "rouge1": 0.051037,
+        "rouge2": 0.016513,
+        "rougeL": 0.0410662,
+        "n": 7,
+        "eligible": 50,
+        "coverage": 0.14
+      },
+      "MACRO": {
+        "rouge1": 0.042333666666666665,
+        "rouge2": 0.012514166666666666,
+        "rougeL": 0.032979266666666666
+      },
+      "GENERAL": {
+        "rouge1": 0.12661440000000002,
+        "rouge2": 0.03047,
+        "rougeL": 0.08367039999999999,
+        "n": 22,
+        "eligible": 50,
+        "coverage": 0.44
+      }
+    }
+  },
+  "coverage": {},
+  "fixed_denominator": true
+}

@@ -336,7 +336,7 @@ function StageIOPanel({
   panelId: string;
 }) {
   return (
-    <div id={panelId} className="stage-io-panel mt-3">
+    <div id={panelId} className="stage-io-panel">
       <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <h3 className="text-sm font-semibold text-slate-900">{stage.title}</h3>
         <dl className="mt-3 grid grid-cols-1 gap-3 text-xs leading-relaxed md:grid-cols-3">
@@ -402,6 +402,7 @@ function PipelineDiagram({
   }, [method, aspect.aspect]);
 
   const active = activeStage !== null ? stages[activeStage] : undefined;
+  const detailOpen = activeStage !== null;
 
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -411,8 +412,8 @@ function PipelineDiagram({
             How {meta.short} actually runs
           </h2>
           <p className="mt-1 text-xs leading-relaxed text-slate-500">
-            The first two stages are shared. Click any stage to see its real
-            input and output.
+            Stages run top to bottom. Click any stage to slide its real input
+            and output in on the right.
           </p>
         </div>
         <span
@@ -422,65 +423,81 @@ function PipelineDiagram({
         </span>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 xl:grid-cols-[repeat(4,minmax(0,1fr))]">
-        {stages.map((stage, index) => {
-          const isActive = index === activeStage;
-          const isPast = activeStage !== null && index <= activeStage;
-          const panelId = `stage-panel-${method}-${index}`;
-          return (
-            <div key={`${method}-${stage.title}`} className="relative">
-              <button
-                type="button"
-                onClick={() =>
-                  setActiveStage((current) =>
-                    current === index ? null : index,
-                  )
-                }
-                aria-expanded={isActive}
-                aria-controls={panelId}
-                className={`pipeline-stage flex h-full w-full flex-col rounded-lg border p-3 text-left ${
-                  isActive
-                    ? `pipeline-stage-active ${COLOR_BG_LIGHT[meta.color]} ${COLOR_RING[meta.color]} ring-2`
-                    : "border-slate-200 bg-slate-50 hover:bg-white"
-                }`}
-                style={{ animationDelay: `${index * 110}ms` }}
-              >
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <span className="font-mono text-[11px] text-slate-400">
-                    S{index + 1}
-                  </span>
-                  <span
-                    className={`h-2 w-2 rounded-full ${COLOR_BAR[meta.color]}`}
-                  />
-                </div>
-                <h3 className="text-sm font-semibold text-slate-900">
-                  {stage.title}
-                </h3>
-                <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  {stage.operation}
-                </p>
-              </button>
-              {index < stages.length - 1 ? (
-                <div
-                  className={`pipeline-connector hidden xl:block ${
-                    isPast ? COLOR_BAR[meta.color] : "bg-slate-300"
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+        <div
+          className={`stage-rail flex flex-col gap-3 ${
+            detailOpen ? "lg:w-[248px] lg:flex-none" : "lg:w-full"
+          }`}
+        >
+          {stages.map((stage, index) => {
+            const isActive = index === activeStage;
+            const isPast = activeStage !== null && index <= activeStage;
+            const panelId = `stage-panel-${method}-${index}`;
+            return (
+              <div key={`${method}-${stage.title}`} className="relative">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setActiveStage((current) =>
+                      current === index ? null : index,
+                    )
+                  }
+                  aria-expanded={isActive}
+                  aria-controls={panelId}
+                  className={`pipeline-stage flex w-full items-start gap-3 rounded-lg border p-3 text-left ${
+                    isActive
+                      ? `pipeline-stage-active ${COLOR_BG_LIGHT[meta.color]} ${COLOR_RING[meta.color]} ring-2`
+                      : "border-slate-200 bg-slate-50 hover:bg-white"
                   }`}
-                />
-              ) : null}
-            </div>
-          );
-        })}
-      </div>
+                  style={{ animationDelay: `${index * 110}ms` }}
+                >
+                  <span
+                    className={`mt-0.5 flex h-9 w-9 flex-none items-center justify-center rounded-full text-xs font-bold text-white ${COLOR_BAR[meta.color]}`}
+                  >
+                    {index + 1}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold text-slate-900">
+                        {stage.title}
+                      </span>
+                      <span className="font-mono text-[11px] text-slate-400">
+                        S{index + 1}
+                      </span>
+                    </span>
+                    <span
+                      className={`mt-1 block text-xs leading-relaxed text-slate-500 ${
+                        detailOpen ? "line-clamp-2" : ""
+                      }`}
+                    >
+                      {stage.operation}
+                    </span>
+                  </span>
+                </button>
+                {index < stages.length - 1 ? (
+                  <div
+                    className={`pipeline-connector ${
+                      isPast ? COLOR_BAR[meta.color] : "bg-slate-300"
+                    }`}
+                  />
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
 
-      {active ? (
-        <StageIOPanel
-          data={data}
-          method={method}
-          aspect={aspect}
-          stage={active}
-          panelId={`stage-panel-${method}-${activeStage}`}
-        />
-      ) : null}
+        {active ? (
+          <div key={`${method}-${activeStage}`} className="stage-detail-in min-w-0 flex-1">
+            <StageIOPanel
+              data={data}
+              method={method}
+              aspect={aspect}
+              stage={active}
+              panelId={`stage-panel-${method}-${activeStage}`}
+            />
+          </div>
+        ) : null}
+      </div>
     </section>
   );
 }

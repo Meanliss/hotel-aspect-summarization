@@ -11,6 +11,13 @@ export const SPACE_ASPECTS = [
   "service",
 ] as const;
 
+export const HASOS_ASPECTS = [
+  "facility",
+  "amenity",
+  "service",
+  "experience",
+] as const;
+
 export type SpaceAspect = (typeof SPACE_ASPECTS)[number];
 export type MethodId = "m1" | "m2" | "m3" | "m4";
 
@@ -81,6 +88,9 @@ export const ASPECT_LABEL: Record<string, string> = {
   location: "Location",
   rooms: "Rooms",
   service: "Service",
+  facility: "Facility",
+  amenity: "Amenity",
+  experience: "Experience",
 };
 
 export const METRIC_LABEL: Record<string, string> = {

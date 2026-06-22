@@ -16,6 +16,12 @@ const PAGE_COPY: Record<
     description:
       "Compare extractive, abstractive, keyword-split, and BERT-ABSA sentiment-split methods across SPACE hotel summaries.",
   },
+  optimality: {
+    eyebrow: "Hyperparameter study",
+    title: "Threshold & Token Optimality",
+    description:
+      "Grid search proving whether the shipped evidence-score threshold and abstractive token budget are optimal. Decision metric: macro ROUGE-1 F1 with a fixed denominator, coverage reported alongside so a tighter setting can't fake a gain by answering fewer instances.",
+  },
   workflow: {
     eyebrow: "Method walkthrough",
     title: "Pipeline Workflow",
