@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-22T18:00:50.213630+00:00",
+  "generated_at": "2026-06-24T14:30:00.256547+00:00",
   "decision_metric": "macro ROUGE-1 F1, split=all, fixed denominator",
   "method_meta": {
     "m1": {
@@ -46,6 +46,53 @@
     }
   },
   "datasets": {
+    "hasos": {
+      "threshold": {
+        "methods": {
+          "m2": {
+            "default": 0.005,
+            "best": 0.005,
+            "points": [
+              {
+                "value": 0.005,
+                "rouge1": 0.196612515625,
+                "rouge2": 0.037202021875,
+                "rougeL": 0.13542128125,
+                "coverage": 0.9822,
+                "n_aspects": 4,
+                "is_default": true,
+                "is_best": true
+              }
+            ],
+            "verdict": {
+              "status": "default_optimal",
+              "default": 0.005,
+              "best": 0.005,
+              "best_r1": 0.196612515625,
+              "default_r1": 0.196612515625,
+              "delta": 0.0
+            }
+          },
+          "m3": {
+            "default": 0.005,
+            "best": 0.0,
+            "points": [
+              {
+                "value": 0.0,
+                "rouge1": 0.08293925,
+                "rouge2": 0.015190450000000001,
+                "rougeL": 0.062583425,
+                "coverage": 0.4725,
+                "n_aspects": 4,
+                "is_default": false,
+                "is_best": true
+              }
+            ],
+            "verdict": null
+          }
+        }
+      }
+    },
     "space": {
       "threshold": {
         "methods": {
