@@ -1,4 +1,4 @@
-// Types + metadata for the SPACE 4-method export produced by
+﻿// Types + metadata for the SPACE 4-method export produced by
 // scripts/export_space_4method_web_data.py. Consumed by the Explore view
 // (SpaceExplore.tsx) and the Results view (ResultsView.tsx).
 
@@ -102,25 +102,25 @@ export const METRIC_LABEL: Record<string, string> = {
 // Fallback method metadata if the export omits it.
 export const METHOD_META: Record<MethodId, MethodMeta> = {
   m1: {
-    label: "M1 — Extractive (SemAE)",
+    label: "M1 - Extractive (SemAE)",
     short: "M1",
     desc: "Raw top-ranked SemAE sentences, joined as-is.",
     color: "slate",
   },
   m2: {
-    label: "M2 — Abstractive (no sentiment)",
+    label: "M2 - Abstractive (no sentiment)",
     short: "M2",
     desc: "FLAN-T5 rewrites the selected evidence; no sentiment split.",
     color: "sky",
   },
   m3: {
-    label: "M3 — Sentiment split · Keyword",
+    label: "M3 - Sentiment split: Keyword",
     short: "M3",
     desc: "Keyword sentiment split, then FLAN-T5 rewrites each polarity.",
     color: "emerald",
   },
   m4: {
-    label: "M4 — Sentiment split · BERT-ABSA",
+    label: "M4 - Sentiment split: BERT-ABSA",
     short: "M4",
     desc: "BERT-ABSA sentiment split, then FLAN-T5 rewrites each polarity.",
     color: "violet",
@@ -208,3 +208,4 @@ export function anonymizePropertyText(
   }
   return output;
 }
+

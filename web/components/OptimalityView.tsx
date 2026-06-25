@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { COLOR_BAR, COLOR_TEXT, METHOD_IDS, type MethodId } from "@/lib/space";
@@ -41,6 +41,8 @@ function MethodBlock({
 }) {
   const meta = METHOD_META_LOOKUP[method];
   const verdict = sweep.verdict;
+  const defR1 = sweep.points.find((x) => x.is_default)?.rouge1;
+
   return (
     <div className="rounded-xl border border-[var(--outline-variant)] bg-[var(--surface-bright)] p-4 shadow-[var(--shadow-soft)]">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -70,12 +72,11 @@ function MethodBlock({
               <th className="py-2 pr-3 text-right font-semibold">R2</th>
               <th className="py-2 pr-3 text-right font-semibold">RL</th>
               <th className="py-2 pr-3 text-right font-semibold">Coverage</th>
-              <th className="py-2 text-right font-semibold">ΔR1 vs default</th>
+              <th className="py-2 text-right font-semibold">Delta R1 vs default</th>
             </tr>
           </thead>
           <tbody>
             {sweep.points.map((p: SweepPoint) => {
-              const defR1 = sweep.points.find((x) => x.is_default)?.rouge1;
               const delta =
                 defR1 !== undefined && !p.is_default
                   ? p.rouge1 - defR1
@@ -166,13 +167,13 @@ function MethodBlock({
           {verdict.status === "default_optimal" ? (
             <>
               Default <strong>{fmtValue(verdict.default)}</strong> has the
-              highest macro ROUGE-1 ({fmt(verdict.default_r1, 5)}) in the grid —
+              highest macro ROUGE-1 ({fmt(verdict.default_r1, 5)}) in the grid -
               no swept value beats it.
             </>
           ) : verdict.status === "switch" ? (
             <>
               <strong>{fmtValue(verdict.best)}</strong> beats default{" "}
-              <strong>{fmtValue(verdict.default)}</strong> by ΔR1{" "}
+              <strong>{fmtValue(verdict.default)}</strong> by Delta R1{" "}
               {verdict.delta >= 0 ? "+" : ""}
               {verdict.delta.toFixed(5)} at equal coverage (
               {verdict.best_cov === null || verdict.best_cov === undefined
@@ -183,7 +184,7 @@ function MethodBlock({
               verdict.default_cov === undefined
                 ? "-"
                 : `${(verdict.default_cov * 100).toFixed(0)}%`}
-              ) → recommend switching.
+              ) - recommend switching.
             </>
           ) : (
             <>
@@ -197,7 +198,7 @@ function MethodBlock({
               verdict.default_cov === undefined
                 ? "-"
                 : `${(verdict.default_cov * 100).toFixed(0)}%`}
-              ) → the gain is a coverage artifact, keep default{" "}
+              ) - the gain is a coverage artifact, keep default{" "}
               <strong>{fmtValue(verdict.default)}</strong>.
             </>
           )}
@@ -209,10 +210,10 @@ function MethodBlock({
 
 // Local lookup so this component does not depend on METHOD_META export shape.
 const METHOD_META_LOOKUP: Record<MethodId, { label: string; color: string }> = {
-  m1: { label: "M1 — Extractive (SemAE)", color: "slate" },
-  m2: { label: "M2 — Abstractive (no sentiment)", color: "sky" },
-  m3: { label: "M3 — Sentiment split · Keyword", color: "emerald" },
-  m4: { label: "M4 — Sentiment split · BERT-ABSA", color: "violet" },
+  m1: { label: "M1 - Extractive (SemAE)", color: "slate" },
+  m2: { label: "M2 - Abstractive (no sentiment)", color: "sky" },
+  m3: { label: "M3 - Sentiment split: Keyword", color: "emerald" },
+  m4: { label: "M4 - Sentiment split: BERT-ABSA", color: "violet" },
 };
 
 export function OptimalityView() {
@@ -326,7 +327,9 @@ export function OptimalityView() {
 
           {availableMethods.length === 0 ? (
             <div className="rounded-md border border-[var(--outline-variant)] bg-[var(--surface-bright)] px-4 py-6 text-center text-sm text-[var(--on-surface-variant)]">
-              No sweep cells for this dataset/parameter yet.
+              {phase === "tokabs"
+                ? "No token-budget cells have been run yet; the current evidence-backed claim covers threshold optimality only."
+                : "No sweep cells for this dataset/parameter yet."}
             </div>
           ) : (
             <div className="space-y-4">
@@ -345,3 +348,5 @@ export function OptimalityView() {
     </div>
   );
 }
+
+

@@ -1,10 +1,10 @@
 import { AppShell } from "@/components/AppShell";
-import { HotelNarrativeDashboard } from "@/components/HotelNarrativeDashboard";
+import { ResearchPaperView } from "@/components/ResearchPaperView";
 
 export default function Page() {
   return (
     <AppShell page="explore">
-      <HotelNarrativeDashboard />
+      <ResearchPaperView />
     </AppShell>
   );
 }

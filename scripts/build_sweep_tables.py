@@ -1,11 +1,11 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 r"""Aggregate the per-cell sweep JSONs written by sweep_params.py into markdown
 tables, mark the best value per metric, show the delta vs the current default,
 and emit an optimality conclusion for each dataset.
 
 Crucially, every row shows COVERAGE next to ROUGE. A threshold/token value that
 scores higher only because it answered fewer (aspect, entity) instances is NOT
-better — the fixed-denominator scorer already penalises empties with 0, and the
+better - the fixed-denominator scorer already penalises empties with 0, and the
 coverage column makes any remaining sparsity visible.
 
 Reads:  reports/sweep/rouge_<method>_<dataset>_<phase>_<valuetag>.json
@@ -93,7 +93,7 @@ def load_cells():
 
 
 def fmt(x, nd=5):
-    return f"{x:.{nd}f}" if isinstance(x, (int, float)) else "—"
+    return f"{x:.{nd}f}" if isinstance(x, (int, float)) else "-"
 
 
 def best_value(series, metric="rouge1"):
@@ -119,7 +119,7 @@ def build_phase_table(cells, dataset, phase):
         best = best_value(series, "rouge1")
         lines.append(f"\n**{METHOD_LABEL[method]}** "
                      f"(default {PHASE_LABEL[phase]} = {default_val})\n")
-        lines.append("| value | R1 | R2 | RL | coverage | n_asp | ΔR1 vs default |")
+        lines.append("| value | R1 | R2 | RL | coverage | n_asp | Delta R1 vs default |")
         lines.append("| ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
         default_r1 = None
         if default_val in series:
@@ -136,9 +136,9 @@ def build_phase_table(cells, dataset, phase):
             delta = ""
             if default_r1 is not None and r1 is not None:
                 d = r1 - default_r1
-                delta = f"{d:+.5f}" + (" ✓" if val == best and d > 0 else "")
+                delta = f"{d:+.5f}" + (" ok" if val == best and d > 0 else "")
             cov = cell.get("coverage")
-            cov_s = f"{cov:.2f}" if cov is not None else "—"
+            cov_s = f"{cov:.2f}" if cov is not None else "-"
             best_tag = " **(best)**" if val == best else ""
             lines.append(
                 f"| {label}{best_tag} | {fmt(r1)} | {fmt(cell.get('rouge2'))} | "
@@ -149,7 +149,7 @@ def build_phase_table(cells, dataset, phase):
 
 def write_threshold_table(cells):
     out = [
-        "# Threshold sweep — macro ROUGE F1 (split=all), fixed denominator\n",
+        "# Threshold sweep - macro ROUGE F1 (split=all), fixed denominator\n",
         "Every value scores the SAME (split, entity) universe; instances with no "
         "generated summary count as ROUGE 0. So a stricter threshold that drops "
         "evidence is penalised through both ROUGE and the coverage column. "
@@ -170,10 +170,11 @@ def write_threshold_table(cells):
 
 def write_token_table(cells):
     out = [
-        "# Token-budget sweep — macro ROUGE F1 (split=all), fixed denominator\n",
-        "Abstractive `--max_new_tokens` (M2/M3/M4). Threshold held at the default. "
-        "Token budget does not drop entities, so coverage stays flat here and the "
-        "comparison is clean. `*` = current default (192).\n",
+        "# Token-budget sweep - macro ROUGE F1 (split=all), fixed denominator\n",
+        "Abstractive `--max_new_tokens` (M2/M3/M4). Each series holds the "
+        "evidence threshold fixed at that method's selected threshold for the "
+        "cell set. `*` = current code default (192). ROUGE-1 is the decision "
+        "metric.\n",
     ]
     for dataset in ("space", "hasos"):
         out.append(f"\n## {dataset.upper()}\n")
@@ -194,7 +195,7 @@ def conclude(cells):
            "For each swept parameter, the value with the highest macro ROUGE-1 "
            "(fixed-denominator, split=all) is compared against the current code "
            "default. A non-default winner is only reported as an improvement when "
-           "its coverage is within 0.02 of the default's — otherwise the gain is a "
+           "its coverage is within 0.02 of the default's - otherwise the gain is a "
            "coverage artifact and the default is kept.\n"]
     for dataset in ("space", "hasos"):
         out.append(f"\n## {dataset.upper()}\n")
@@ -210,7 +211,6 @@ def conclude(cells):
                 def_cell = series.get(default_val)
                 def_r1 = def_cell.get("rouge1") if def_cell else None
                 def_cov = def_cell.get("coverage") if def_cell else None
-                verdict = ""
                 if def_r1 is None:
                     verdict = (f"default {default_val} not in grid; best={best} "
                                f"R1={fmt(best_r1)}")
@@ -222,15 +222,15 @@ def conclude(cells):
                     gain = best_r1 - def_r1 if (best_r1 and def_r1) else 0
                     if cov_ok and gain > 0:
                         verdict = (f"**{best} beats default {default_val}** "
-                                   f"by ΔR1={gain:+.5f} at equal coverage "
+                                   f"by Delta R1={gain:+.5f} at equal coverage "
                                    f"(cov {best_cov:.2f} vs {def_cov:.2f}) "
-                                   f"→ recommend switching")
+                                   f"-> recommend switching")
                     else:
                         verdict = (f"best={best} R1={fmt(best_r1)} but cov "
                                    f"{best_cov if best_cov is None else round(best_cov,2)} "
                                    f"vs default cov "
                                    f"{def_cov if def_cov is None else round(def_cov,2)} "
-                                   f"→ gain is a coverage artifact, **keep default "
+                                   f"-> gain is a coverage artifact, **keep default "
                                    f"{default_val}** (R1={fmt(def_r1)})")
                 out.append(f"- **{PHASE_LABEL[phase]} / {METHOD_LABEL[method]}**: "
                            f"{verdict}")
@@ -238,7 +238,6 @@ def conclude(cells):
     with io.open(path, "w", encoding="utf-8") as f:
         f.write("\n".join(out) + "\n")
     return path
-
 
 def main():
     cells = load_cells()
@@ -256,3 +255,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

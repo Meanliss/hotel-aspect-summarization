@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-06-24T14:30:00.256547+00:00",
+  "generated_at": "2026-06-25T19:52:54.077255+00:00",
   "decision_metric": "macro ROUGE-1 F1, split=all, fixed denominator",
   "method_meta": {
     "m1": {
       "short": "M1",
-      "label": "M1 — Extractive (SemAE)",
+      "label": "M1 - Extractive (SemAE)",
       "color": "slate"
     },
     "m2": {
       "short": "M2",
-      "label": "M2 — Abstractive (no sentiment)",
+      "label": "M2 - Abstractive (no sentiment)",
       "color": "sky"
     },
     "m3": {
       "short": "M3",
-      "label": "M3 — Sentiment split · Keyword",
+      "label": "M3 - Sentiment split: Keyword",
       "color": "emerald"
     },
     "m4": {
       "short": "M4",
-      "label": "M4 — Sentiment split · BERT-ABSA",
+      "label": "M4 - Sentiment split: BERT-ABSA",
       "color": "violet"
     }
   },
@@ -27,12 +27,12 @@
     "threshold": {
       "label": "Evidence score threshold",
       "param": "--evidence_score_threshold",
-      "note": "SemAE KL cutoff deciding how much evidence feeds the abstractive stage (M2/M3/M4; M1 is independent). Tightening it drops sentences, so aspects/entities can produce no summary — those count as ROUGE 0 here (fixed denominator) and the coverage column makes the collapse visible."
+      "note": "SemAE KL cutoff deciding how much evidence feeds the abstractive stage (M2/M3/M4; M1 is independent). Tightening it drops sentences, so aspects/entities can produce no summary - those count as ROUGE 0 here (fixed denominator) and the coverage column makes the collapse visible."
     },
     "tokabs": {
       "label": "Abstractive token budget",
       "param": "--max_new_tokens",
-      "note": "FLAN-T5 output length for M2/M3/M4 (threshold held at default). Token budget does not drop entities, so coverage stays ~full and the comparison is clean."
+      "note": "FLAN-T5 output length for M2/M3/M4 (threshold held at default). No token-budget cells have been run yet; this schema is ready for that phase but the current evidence-backed claim covers threshold optimality only."
     }
   },
   "dataset_meta": {
@@ -51,8 +51,38 @@
         "methods": {
           "m2": {
             "default": 0.005,
-            "best": 0.005,
+            "best": 0.0075,
             "points": [
+              {
+                "value": 0.0,
+                "rouge1": 0.15999233124999998,
+                "rouge2": 0.02476870625,
+                "rougeL": 0.11506516250000001,
+                "coverage": 0.8653,
+                "n_aspects": 4,
+                "is_default": false,
+                "is_best": false
+              },
+              {
+                "value": 0.0025,
+                "rouge1": 0.190452775,
+                "rouge2": 0.032824515625,
+                "rougeL": 0.13086413437500002,
+                "coverage": 0.9259,
+                "n_aspects": 4,
+                "is_default": false,
+                "is_best": false
+              },
+              {
+                "value": 0.004,
+                "rouge1": 0.1962388625,
+                "rouge2": 0.036235500000000004,
+                "rougeL": 0.13511253750000002,
+                "coverage": 0.9644,
+                "n_aspects": 4,
+                "is_default": false,
+                "is_best": false
+              },
               {
                 "value": 0.005,
                 "rouge1": 0.196612515625,
@@ -61,21 +91,63 @@
                 "coverage": 0.9822,
                 "n_aspects": 4,
                 "is_default": true,
+                "is_best": false
+              },
+              {
+                "value": 0.006,
+                "rouge1": 0.2248725,
+                "rouge2": 0.0458075,
+                "rougeL": 0.14759499999999998,
+                "coverage": 1.0,
+                "n_aspects": 4,
+                "is_default": false,
+                "is_best": false
+              },
+              {
+                "value": 0.00675,
+                "rouge1": 0.2209975,
+                "rouge2": 0.044525,
+                "rougeL": 0.14133500000000002,
+                "coverage": 1.0,
+                "n_aspects": 4,
+                "is_default": false,
+                "is_best": false
+              },
+              {
+                "value": 0.0075,
+                "rouge1": 0.2277,
+                "rouge2": 0.04430750000000001,
+                "rougeL": 0.144725,
+                "coverage": 1.0,
+                "n_aspects": 4,
+                "is_default": false,
                 "is_best": true
+              },
+              {
+                "value": 0.01,
+                "rouge1": 0.2256875,
+                "rouge2": 0.0444525,
+                "rougeL": 0.1430975,
+                "coverage": 1.0,
+                "n_aspects": 4,
+                "is_default": false,
+                "is_best": false
               }
             ],
             "verdict": {
-              "status": "default_optimal",
+              "status": "switch",
               "default": 0.005,
-              "best": 0.005,
-              "best_r1": 0.196612515625,
+              "best": 0.0075,
+              "best_r1": 0.2277,
               "default_r1": 0.196612515625,
-              "delta": 0.0
+              "best_cov": 1.0,
+              "default_cov": 0.9822,
+              "delta": 0.03109
             }
           },
           "m3": {
             "default": 0.005,
-            "best": 0.0,
+            "best": 0.0055,
             "points": [
               {
                 "value": 0.0,
@@ -85,10 +157,335 @@
                 "coverage": 0.4725,
                 "n_aspects": 4,
                 "is_default": false,
+                "is_best": false
+              },
+              {
+                "value": 0.0025,
+                "rouge1": 0.1114954375,
+                "rouge2": 0.023067543749999996,
+                "rougeL": 0.08169086875,
+                "coverage": 0.5681,
+                "n_aspects": 4,
+                "is_default": false,
+                "is_best": false
+              },
+              {
+                "value": 0.004,
+                "rouge1": 0.14421808125,
+                "rouge2": 0.031493496875,
+                "rougeL": 0.10289875625,
+                "coverage": 0.6815,
+                "n_aspects": 4,
+                "is_default": false,
+                "is_best": false
+              },
+              {
+                "value": 0.005,
+                "rouge1": 0.15582,
+                "rouge2": 0.03505435,
+                "rougeL": 0.11219235625,
+                "coverage": 0.7294,
+                "n_aspects": 4,
+                "is_default": true,
+                "is_best": false
+              },
+              {
+                "value": 0.0055,
+                "rouge1": 0.26135305,
+                "rouge2": 0.07107975,
+                "rougeL": 0.1679643,
+                "coverage": 0.995,
+                "n_aspects": 4,
+                "is_default": false,
                 "is_best": true
+              },
+              {
+                "value": 0.006,
+                "rouge1": 0.25444780000000006,
+                "rouge2": 0.071121,
+                "rougeL": 0.16252675,
+                "coverage": 0.995,
+                "n_aspects": 4,
+                "is_default": false,
+                "is_best": false
+              },
+              {
+                "value": 0.0065,
+                "rouge1": 0.24547209999999997,
+                "rouge2": 0.06974425000000001,
+                "rougeL": 0.15646315,
+                "coverage": 0.995,
+                "n_aspects": 4,
+                "is_default": false,
+                "is_best": false
+              },
+              {
+                "value": 0.0075,
+                "rouge1": 0.228245,
+                "rouge2": 0.06604249999999999,
+                "rougeL": 0.14555500000000002,
+                "coverage": 1.0,
+                "n_aspects": 4,
+                "is_default": false,
+                "is_best": false
               }
             ],
-            "verdict": null
+            "verdict": {
+              "status": "keep_default_coverage_artifact",
+              "default": 0.005,
+              "best": 0.0055,
+              "best_r1": 0.26135305,
+              "default_r1": 0.15582,
+              "best_cov": 0.995,
+              "default_cov": 0.7294,
+              "delta": 0.10553
+            }
+          },
+          "m4": {
+            "default": 0.005,
+            "best": 0.005,
+            "points": [
+              {
+                "value": 0.0,
+                "rouge1": 0.16231027499999998,
+                "rouge2": 0.026213406249999998,
+                "rougeL": 0.1149280875,
+                "coverage": 0.8453,
+                "n_aspects": 4,
+                "is_default": false,
+                "is_best": false
+              },
+              {
+                "value": 0.0025,
+                "rouge1": 0.19051351874999997,
+                "rouge2": 0.03193180625,
+                "rougeL": 0.12867131874999999,
+                "coverage": 0.9209,
+                "n_aspects": 4,
+                "is_default": false,
+                "is_best": false
+              },
+              {
+                "value": 0.004,
+                "rouge1": 0.20707685624999997,
+                "rouge2": 0.03817500625,
+                "rougeL": 0.13607115625,
+                "coverage": 0.9594,
+                "n_aspects": 4,
+                "is_default": false,
+                "is_best": false
+              },
+              {
+                "value": 0.005,
+                "rouge1": 0.208377640625,
+                "rouge2": 0.03986556875,
+                "rougeL": 0.13633864375,
+                "coverage": 0.9772,
+                "n_aspects": 4,
+                "is_default": true,
+                "is_best": true
+              },
+              {
+                "value": 0.006,
+                "rouge1": 0.163385,
+                "rouge2": 0.049350000000000005,
+                "rougeL": 0.10116750000000001,
+                "coverage": 1.0,
+                "n_aspects": 4,
+                "is_default": false,
+                "is_best": false
+              },
+              {
+                "value": 0.0075,
+                "rouge1": 0.1427125,
+                "rouge2": 0.0450075,
+                "rougeL": 0.09127249999999999,
+                "coverage": 1.0,
+                "n_aspects": 4,
+                "is_default": false,
+                "is_best": false
+              }
+            ],
+            "verdict": {
+              "status": "default_optimal",
+              "default": 0.005,
+              "best": 0.005,
+              "best_r1": 0.208377640625,
+              "default_r1": 0.208377640625,
+              "delta": 0.0
+            }
+          }
+        }
+      },
+      "tokabs": {
+        "methods": {
+          "m2": {
+            "default": 192,
+            "best": 128,
+            "points": [
+              {
+                "value": 96,
+                "rouge1": 0.23092500000000002,
+                "rouge2": 0.0426175,
+                "rougeL": 0.15231000000000003,
+                "coverage": 1.0,
+                "n_aspects": 4,
+                "is_default": false,
+                "is_best": false
+              },
+              {
+                "value": 128,
+                "rouge1": 0.2324175,
+                "rouge2": 0.0440575,
+                "rougeL": 0.15033,
+                "coverage": 1.0,
+                "n_aspects": 4,
+                "is_default": false,
+                "is_best": true
+              },
+              {
+                "value": 192,
+                "rouge1": 0.2277,
+                "rouge2": 0.04430750000000001,
+                "rougeL": 0.144725,
+                "coverage": 1.0,
+                "n_aspects": 4,
+                "is_default": true,
+                "is_best": false
+              },
+              {
+                "value": 256,
+                "rouge1": 0.22427249999999999,
+                "rouge2": 0.044199999999999996,
+                "rougeL": 0.1418325,
+                "coverage": 1.0,
+                "n_aspects": 4,
+                "is_default": false,
+                "is_best": false
+              }
+            ],
+            "verdict": {
+              "status": "switch",
+              "default": 192,
+              "best": 128,
+              "best_r1": 0.2324175,
+              "default_r1": 0.2277,
+              "best_cov": 1.0,
+              "default_cov": 1.0,
+              "delta": 0.00472
+            }
+          },
+          "m3": {
+            "default": 192,
+            "best": 96,
+            "points": [
+              {
+                "value": 96,
+                "rouge1": 0.26200534999999997,
+                "rouge2": 0.0712361,
+                "rougeL": 0.168383,
+                "coverage": 0.995,
+                "n_aspects": 4,
+                "is_default": false,
+                "is_best": true
+              },
+              {
+                "value": 128,
+                "rouge1": 0.2616249,
+                "rouge2": 0.0711643,
+                "rougeL": 0.16809655,
+                "coverage": 0.995,
+                "n_aspects": 4,
+                "is_default": false,
+                "is_best": false
+              },
+              {
+                "value": 192,
+                "rouge1": 0.26135305,
+                "rouge2": 0.07107975,
+                "rougeL": 0.1679643,
+                "coverage": 0.995,
+                "n_aspects": 4,
+                "is_default": true,
+                "is_best": false
+              },
+              {
+                "value": 256,
+                "rouge1": 0.26131555,
+                "rouge2": 0.07106725,
+                "rougeL": 0.1679443,
+                "coverage": 0.995,
+                "n_aspects": 4,
+                "is_default": false,
+                "is_best": false
+              }
+            ],
+            "verdict": {
+              "status": "switch",
+              "default": 192,
+              "best": 96,
+              "best_r1": 0.26200534999999997,
+              "default_r1": 0.26135305,
+              "best_cov": 0.995,
+              "default_cov": 0.995,
+              "delta": 0.00065
+            }
+          },
+          "m4": {
+            "default": 192,
+            "best": 96,
+            "points": [
+              {
+                "value": 96,
+                "rouge1": 0.208895490625,
+                "rouge2": 0.04004076875,
+                "rougeL": 0.13676549375000002,
+                "coverage": 0.9772,
+                "n_aspects": 4,
+                "is_default": false,
+                "is_best": true
+              },
+              {
+                "value": 128,
+                "rouge1": 0.20866899062500002,
+                "rouge2": 0.03997136875,
+                "rougeL": 0.13654774375,
+                "coverage": 0.9772,
+                "n_aspects": 4,
+                "is_default": false,
+                "is_best": false
+              },
+              {
+                "value": 192,
+                "rouge1": 0.208377640625,
+                "rouge2": 0.03986556875,
+                "rougeL": 0.13633864375,
+                "coverage": 0.9772,
+                "n_aspects": 4,
+                "is_default": true,
+                "is_best": false
+              },
+              {
+                "value": 256,
+                "rouge1": 0.20836564062500001,
+                "rouge2": 0.03986316875,
+                "rougeL": 0.13633624374999997,
+                "coverage": 0.9772,
+                "n_aspects": 4,
+                "is_default": false,
+                "is_best": false
+              }
+            ],
+            "verdict": {
+              "status": "switch",
+              "default": 192,
+              "best": 96,
+              "best_r1": 0.208895490625,
+              "default_r1": 0.208377640625,
+              "best_cov": 0.9772,
+              "default_cov": 0.9772,
+              "delta": 0.00052
+            }
           }
         }
       }

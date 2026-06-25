@@ -1,0 +1,14 @@
+{
+  "dataset": "hasos",
+  "phase": "threshold",
+  "threshold": 0.0055,
+  "rows": [
+    {
+      "method": "m3",
+      "value": 0.0055,
+      "rouge1": 0.26135305,
+      "rouge2": 0.07107975,
+      "rougeL": 0.1679643
+    }
+  ]
+}

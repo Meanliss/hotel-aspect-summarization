@@ -411,7 +411,7 @@ export function HotelNarrativeDashboard() {
             {SENTIMENTS.map((key) => (
               <div key={key} className={`rounded-md border p-3 ${SENTIMENT_COLOR[key].split(" ").slice(2).join(" ")}`}>
                 <div className={`text-xs font-bold uppercase tracking-[0.1em] ${SENTIMENT_COLOR[key].split(" ")[1]}`}>
-                  {SENTIMENT_LABEL[key]} · {formatNumber(activeSummary.counts[key])}
+                  {SENTIMENT_LABEL[key]} - {formatNumber(activeSummary.counts[key])}
                 </div>
                 <p className="mt-2 text-sm leading-6 text-[var(--on-surface-variant)]">{shortText(activeSummary[key] || "No extracted text.", 210)}</p>
               </div>
@@ -444,7 +444,7 @@ export function HotelNarrativeDashboard() {
           <div className="mx-auto max-w-4xl rounded-xl bg-white p-5 shadow-2xl">
             <div className="flex items-start justify-between gap-4 border-b border-[var(--outline-variant)] pb-4">
               <div>
-                <h2 className="text-2xl font-bold text-[var(--primary)]">Full summary · {aspectLabel(selectedAspect)}</h2>
+                <h2 className="text-2xl font-bold text-[var(--primary)]">Full summary - {aspectLabel(selectedAspect)}</h2>
                 <p className="mt-1 text-sm text-[var(--on-surface-variant)]">Hotel {selectedHotel.hotel_id}</p>
               </div>
               <button onClick={() => setDetailsOpen(false)} className="rounded-md border border-[var(--outline-variant)] px-3 py-1.5 text-sm font-semibold">

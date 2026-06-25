@@ -2,12 +2,14 @@
 // scripts/export_sweep_web_data.py. Consumed by the Optimality view
 // (OptimalityView.tsx).
 //
-// The sweep proves whether the shipped evidence_score_threshold and abstractive
-// token budget are optimal. The decision metric is macro ROUGE-1 F1 (split=all)
-// scored with a FIXED denominator: every gold-bearing (aspect, entity) stays in
-// the mean and empty system outputs count as ROUGE 0, so a tighter threshold
-// that simply answers fewer instances is penalised, not flattered. Coverage is
-// reported next to every point so any sparsity is visible.
+// Types + metadata for available sweep cells. Threshold cells currently prove
+// whether the shipped evidence_score_threshold is optimal. Token-budget support
+// exists in the schema, but the repository currently has no token cells.
+// The decision metric is macro ROUGE-1 F1 (split=all) scored with a FIXED
+// denominator: every gold-bearing (aspect, entity) stays in the mean and empty
+// system outputs count as ROUGE 0, so a tighter threshold that simply answers
+// fewer instances is penalised, not flattered. Coverage is reported next to
+// every point so any sparsity is visible.
 
 import type { MethodId } from "@/lib/space";
 

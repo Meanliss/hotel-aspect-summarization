@@ -1,0 +1,20 @@
+{
+  "dataset": "hasos",
+  "phase": "token_abstractive",
+  "grid": "256",
+  "thresholds": {
+    "m2": 0.0075,
+    "m3": 0.0055,
+    "m4": 0.005
+  },
+  "rows": [
+    {
+      "method": "m2",
+      "value": 256,
+      "threshold": 0.0075,
+      "rouge1": 0.22427249999999999,
+      "rouge2": 0.044199999999999996,
+      "rougeL": 0.1418325
+    }
+  ]
+}

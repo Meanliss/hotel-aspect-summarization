@@ -926,7 +926,7 @@ function MethodGallery({
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <div className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--secondary-fixed)]">
-            M1 → M4 outputs
+            M1 to M4 outputs
           </div>
           <h2 className="mt-2 text-xl font-bold">Compare the final shape</h2>
         </div>

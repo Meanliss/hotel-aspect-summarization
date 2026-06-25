@@ -3,6 +3,24 @@
 This repository contains the SemAE training/inference code used to run the
 SPACE-trained epoch-20 checkpoint on the HASOS hotel review benchmark.
 
+## Current state
+
+The current analysis has moved beyond the original reference-free HASOS-only
+run described below. The repo now contains two evaluation views:
+
+- Original SemAE compatibility: SPACE can be evaluated with the upstream
+  pyrouge layout. HASOS still does not have a `data/hasos/gold/<aspect>/`
+  directory in the original SemAE format.
+- Current paper/web analysis: HASOS is scored against references in
+  `data/hasos/hasos_summ.json`, with the 29 child aspects aggregated to the
+  four parent aspects that have gold coverage. Branding and Loyalty remain out
+  of the HASOS ROUGE denominator because they do not have parent gold.
+
+The threshold sweep has been completed for SPACE and HASOS M2/M3/M4. In the
+tested grid, the production defaults are optimal: SPACE `T=0.0082` and HASOS
+`T=0.005`. Token-budget sweep cells have not been run yet; they are not part of
+the current paper claim.
+
 Latest evaluated run:
 
 ```text
@@ -16,8 +34,10 @@ metrics: reference-free metrics + BERTScore
 ## Status
 
 The reference-free scoring run is complete. The original SemAE ROUGE evaluation
-is not available for this HASOS run yet because the current HASOS source has
-reviews but no human gold/reference summaries.
+layout is not available for this HASOS run because `data/hasos/` does not have
+`gold/<aspect>/#ID#_[012].txt` files. Separate current reports score HASOS
+against `data/hasos/hasos_summ.json` after aggregating child aspects to the
+available parent references.
 
 Validation shape:
 
@@ -94,8 +114,8 @@ output:           outputs/eval_<run_id>.txt
 ```
 
 That is the official SemAE comparison path. It cannot be computed on the
-current HASOS file because `data/hasos/` contains taxonomy and review JSON only,
-not gold summaries:
+current HASOS files because `data/hasos/` contains taxonomy and review JSON /
+summary references, but not the upstream pyrouge directory layout:
 
 ```text
 data/hasos/hasos_summ.json
@@ -105,7 +125,8 @@ data/hasos/aspect_taxonomy.json
 
 To compare exactly like the original repo, add HASOS gold summaries in pyrouge
 format under `data/hasos/gold/<aspect>/`, then rerun aspect inference without
-`--no_eval` and point `--gold_data` to `data/hasos/gold`.
+`--no_eval` and point `--gold_data` to `data/hasos/gold`. For the current paper
+view, see `reports/rouge_comparison_hasos.md` and `reports/sweep/`.
 
 The old/original SPACE baseline was rerun as `space_old_aspects_e20` with the
 six original SPACE aspects and official ROUGE:
@@ -118,9 +139,9 @@ six original SPACE aspects and official ROUGE:
 
 ## Reference-free Macro Metrics
 
-HASOS does not provide human reference summaries, so ROUGE is not meaningful for
-this run. The scoring uses reference-free extractive-summary metrics plus
-BERTScore.
+The original HASOS adaptation run below was evaluated with reference-free
+extractive-summary metrics plus BERTScore. Newer reports also include parent
+ROUGE based on `data/hasos/hasos_summ.json`.
 
 | Metric | Value | Interpretation |
 | --- | ---: | --- |

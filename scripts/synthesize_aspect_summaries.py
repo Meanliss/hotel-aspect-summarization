@@ -1126,6 +1126,8 @@ def main() -> None:
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--hierarchical", action="store_true",
                         help="also generate 6 parent aspect summaries and entity overall summaries")
+    parser.add_argument("--skip_entity_summary", action="store_true",
+                        help="with --hierarchical, stop after parent summaries")
     parser.add_argument("--split_sentiment", action="store_true",
                         help="generate separate positive and negative summaries "
                              "per sub-aspect (uses sentiment_label in the evidence "
@@ -1217,27 +1219,28 @@ def main() -> None:
             "copied_from_evidence", "status", "output_path", "source_path",
         ])
 
-        entity_tasks = build_entity_tasks(
-            entity_source_rows, args.output_run_id, args.run_id,
-            entity_parent_order)
-        if args.limit is not None:
-            entity_tasks = entity_tasks[:args.limit]
-        original_max_new_tokens = args.max_new_tokens
-        args.max_new_tokens = args.entity_max_new_tokens
-        entity_rows = generate_rows_for_tasks(
-            entity_tasks, taxonomy, args, args.entity_model_name,
-            f"{args.run_id}_entity_synthesis",
-            OUTPUTS_DIR / f"{args.run_id}_entity_synthesis_cache.jsonl")
-        args.max_new_tokens = original_max_new_tokens
-        entity_jsonl = OUTPUTS_DIR / f"{args.run_id}_entity_synthesis_lines.jsonl"
-        entity_tsv = OUTPUTS_DIR / f"{args.run_id}_entity_synthesis_lines.tsv"
-        write_jsonl(entity_jsonl, entity_rows)
-        write_tsv(entity_tsv, entity_rows, [
-            "run_id", "source_run_id", "model_name", "level", "aspect", "parent_aspect",
-            "sentiment", "split",
-            "entity_id", "summary", "evidence_count", "evidence_used",
-            "copied_from_evidence", "status", "output_path", "source_path",
-        ])
+        if not args.skip_entity_summary:
+            entity_tasks = build_entity_tasks(
+                entity_source_rows, args.output_run_id, args.run_id,
+                entity_parent_order)
+            if args.limit is not None:
+                entity_tasks = entity_tasks[:args.limit]
+            original_max_new_tokens = args.max_new_tokens
+            args.max_new_tokens = args.entity_max_new_tokens
+            entity_rows = generate_rows_for_tasks(
+                entity_tasks, taxonomy, args, args.entity_model_name,
+                f"{args.run_id}_entity_synthesis",
+                OUTPUTS_DIR / f"{args.run_id}_entity_synthesis_cache.jsonl")
+            args.max_new_tokens = original_max_new_tokens
+            entity_jsonl = OUTPUTS_DIR / f"{args.run_id}_entity_synthesis_lines.jsonl"
+            entity_tsv = OUTPUTS_DIR / f"{args.run_id}_entity_synthesis_lines.tsv"
+            write_jsonl(entity_jsonl, entity_rows)
+            write_tsv(entity_tsv, entity_rows, [
+                "run_id", "source_run_id", "model_name", "level", "aspect", "parent_aspect",
+                "sentiment", "split",
+                "entity_id", "summary", "evidence_count", "evidence_used",
+                "copied_from_evidence", "status", "output_path", "source_path",
+            ])
         write_hierarchical_summary(
             OUTPUTS_DIR / f"{args.run_id}_hierarchical_summary.json",
             rows, parent_rows, entity_rows)

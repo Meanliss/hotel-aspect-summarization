@@ -1,16 +1,18 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 r"""Export the hyperparameter-sweep results into one JSON for the web app.
 
 Reads the per-cell ROUGE JSONs that sweep_params.py / score_rouge_compare.py
 write under reports/sweep/ (rouge_<method>_<dataset>_<phase>_<valuetag>.json) and
 collapses each to its macro ROUGE F1 (split=all, fixed denominator) plus mean
-coverage. The web Optimality view renders the threshold/token curves, marks the
-best value per (dataset, phase, method), and shows the current code default so a
-reader can see at a glance whether the shipped value is optimal.
+coverage. The web Optimality view renders the threshold/token curves that are
+available, marks the best value per (dataset, phase, method), and shows the
+current code default so a reader can see at a glance whether the shipped value
+is optimal. The schema supports token-budget cells, but token cells are absent
+until that phase is explicitly run.
 
 Crucially, every cell carries COVERAGE next to ROUGE. A tighter threshold that
 scores higher only because it answered fewer (aspect, entity) instances is NOT
-better — the fixed-denominator scorer already penalises empties with 0, and the
+better - the fixed-denominator scorer already penalises empties with 0, and the
 coverage field makes any remaining sparsity visible to the reader.
 
 Output: web/public/data/sweep.json (shape consumed by the Optimality view).
@@ -39,12 +41,12 @@ DEFAULTS = {
 }
 
 METHOD_META = {
-    "m1": {"short": "M1", "label": "M1 — Extractive (SemAE)", "color": "slate"},
-    "m2": {"short": "M2", "label": "M2 — Abstractive (no sentiment)",
+    "m1": {"short": "M1", "label": "M1 - Extractive (SemAE)", "color": "slate"},
+    "m2": {"short": "M2", "label": "M2 - Abstractive (no sentiment)",
            "color": "sky"},
-    "m3": {"short": "M3", "label": "M3 — Sentiment split · Keyword",
+    "m3": {"short": "M3", "label": "M3 - Sentiment split: Keyword",
            "color": "emerald"},
-    "m4": {"short": "M4", "label": "M4 — Sentiment split · BERT-ABSA",
+    "m4": {"short": "M4", "label": "M4 - Sentiment split: BERT-ABSA",
            "color": "violet"},
 }
 
@@ -54,7 +56,7 @@ PHASE_META = {
         "param": "--evidence_score_threshold",
         "note": "SemAE KL cutoff deciding how much evidence feeds the "
                 "abstractive stage (M2/M3/M4; M1 is independent). Tightening it "
-                "drops sentences, so aspects/entities can produce no summary — "
+                "drops sentences, so aspects/entities can produce no summary - "
                 "those count as ROUGE 0 here (fixed denominator) and the "
                 "coverage column makes the collapse visible.",
     },
@@ -62,8 +64,9 @@ PHASE_META = {
         "label": "Abstractive token budget",
         "param": "--max_new_tokens",
         "note": "FLAN-T5 output length for M2/M3/M4 (threshold held at default). "
-                "Token budget does not drop entities, so coverage stays ~full "
-                "and the comparison is clean.",
+                "No token-budget cells have been run yet; this schema is ready "
+                "for that phase but the current evidence-backed claim covers "
+                "threshold optimality only.",
     },
 }
 
@@ -221,3 +224,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

@@ -5,22 +5,22 @@ const PAGE_COPY: Record<
   { eyebrow: string; title: string; description: string }
 > = {
   explore: {
-    eyebrow: "Hotel review pipeline · aspect intelligence",
-    title: "Hotel Aspect Analytics",
+    eyebrow: "Research article",
+    title: "Hotel Review Summarization Report",
     description:
-      "Turn long AI summaries into a decision dashboard: aspect scores, sentiment signals, topics, representative evidence, and management recommendations.",
+      "A paper-style presentation of the SPACE and HASOS experiments, with method results, threshold optimality, coverage checks, and the current evidence-backed conclusion.",
   },
   results: {
     eyebrow: "Evaluation layer",
     title: "ROUGE Method Results",
     description:
-      "Compare extractive, abstractive, keyword-split, and BERT-ABSA sentiment-split methods across SPACE hotel summaries.",
+      "Compare extractive, abstractive, keyword-split, and BERT-ABSA sentiment-split methods across SPACE and HASOS.",
   },
   optimality: {
     eyebrow: "Hyperparameter study",
-    title: "Threshold & Token Optimality",
+    title: "Threshold Optimality",
     description:
-      "Grid search proving whether the shipped evidence-score threshold and abstractive token budget are optimal. Decision metric: macro ROUGE-1 F1 with a fixed denominator, coverage reported alongside so a tighter setting can't fake a gain by answering fewer instances.",
+      "Grid-search evidence for the shipped evidence thresholds. Token-budget scaffolding is present, but no token cells have been run yet.",
   },
   workflow: {
     eyebrow: "Method walkthrough",
@@ -46,41 +46,33 @@ export function AppShell({
   const copy = PAGE_COPY[page];
   return (
     <>
-      <nav className="sticky top-0 z-50 border-b border-[var(--outline-variant)] bg-[var(--surface-bright)]/95 backdrop-blur">
+      <nav className="sticky top-0 z-50 border-b border-[var(--rule)] bg-[var(--paper)]/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-4 md:px-6">
           <div className="flex items-center gap-8">
-            <div className="font-headline text-xl font-bold text-[var(--primary)]">
-              HotelInsight
+            <div className="font-headline text-xl font-bold text-[var(--ink)]">
+              HotelSumm
             </div>
             <div className="hidden md:block">
               <TabNav compact />
             </div>
           </div>
-          <div className="hidden items-center rounded-full border border-[var(--outline-variant)] bg-[var(--surface-container)] px-4 py-2 sm:flex">
-            <span
-              aria-hidden="true"
-              className="mr-2 text-[15px] text-[var(--on-surface-variant)]"
-            >
-              &#8981;
-            </span>
-            <input
-              className="w-36 border-none bg-transparent p-0 font-body text-sm text-[var(--on-surface)] placeholder:text-[var(--on-surface-variant)] focus:ring-0 md:w-52"
-              placeholder="Search hotel ID..."
-              type="text"
-            />
+          <div className="hidden items-center gap-2 border-l border-[var(--rule)] pl-4 text-xs text-[var(--muted)] sm:flex">
+            <span>SPACE</span>
+            <span aria-hidden="true">/</span>
+            <span>HASOS</span>
           </div>
         </div>
       </nav>
 
       <main className="mx-auto max-w-[1200px] px-4 py-8 md:px-6 md:py-10">
-        <header className="mb-10">
-          <div className="mb-3 font-body text-xs font-semibold uppercase tracking-[0.18em] text-[var(--secondary)]">
+        <header className="mb-8 border-b border-[var(--rule)] pb-6">
+          <div className="mb-3 font-body text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
             {copy.eyebrow}
           </div>
-          <h1 className="font-headline text-4xl font-bold leading-tight text-[var(--primary)] md:text-5xl">
+          <h1 className="font-headline text-4xl font-bold leading-tight text-[var(--ink)] md:text-5xl">
             {copy.title}
           </h1>
-          <p className="mt-4 max-w-3xl font-body text-lg leading-relaxed text-[var(--on-surface-variant)]">
+          <p className="mt-4 max-w-3xl font-body text-lg leading-relaxed text-[var(--muted)]">
             {copy.description}
           </p>
         </header>
@@ -88,9 +80,7 @@ export function AppShell({
         <div className="mb-6 md:hidden">
           <TabNav />
         </div>
-        <section className="rounded-xl bg-[var(--surface-container-low)] p-3 md:p-4">
-          {children}
-        </section>
+        {children}
       </main>
     </>
   );

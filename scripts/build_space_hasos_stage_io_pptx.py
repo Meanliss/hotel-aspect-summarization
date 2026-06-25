@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Build a stage-by-stage input/output deck for SPACE -> HASOS SemAE."""
 
 from __future__ import annotations
@@ -164,7 +164,7 @@ def build_slides(run_id: str) -> list[str]:
         slide_xml("SPACE -> HASOS SemAE: input/output từng stage", run_id, [
             {"text": "Deck này mô tả dữ liệu đi vào và artifact đi ra ở từng stage. Nó không phải deck metric thuần túy.", "x": 0.75, "y": 1.45, "w": 6.3, "h": 1.1, "font_size": 1500},
             {"text": f"Run đã xử lý\nentities: {len(data)}\naspects: 29\naspect files: {aspect_files}\nsentiment files: {sentiment_files}", "x": 7.35, "y": 1.45, "w": 4.75, "h": 1.85, "font_size": 1300, "fill": "FFFFFF", "line": "D8DEE9"},
-            {"text": "Cảnh báo so sánh\nRepo gốc SemAE chấm bằng ROUGE + gold summaries. HASOS hiện không có gold summaries, nên chưa có điểm ROUGE official để so sánh trực tiếp.", "x": 0.75, "y": 4.0, "w": 11.35, "h": 1.05, "font_size": 1250, "fill": "FFF7ED", "line": "FDBA74"},
+            {"text": "Cảnh báo so sánh\nRepo gốc SemAE chấm bằng ROUGE + gold summaries. HASOS không có layout gold theo SemAE gốc, nhưng báo cáo hiện tại có thể chấm ROUGE ở cấp parent từ data/hasos/hasos_summ.json.", "x": 0.75, "y": 4.0, "w": 11.35, "h": 1.05, "font_size": 1250, "fill": "FFF7ED", "line": "FDBA74"},
         ]),
         slide_xml("SemAE gốc chấm điểm như thế nào", "Original Metric Contract", [
             {"text": "Input cần có\n1. system summaries trong outputs/<run_id>/\n2. gold summaries trong data/<dataset>/gold/<aspect>/\n3. pyrouge + ROUGE data setup", "x": 0.75, "y": 1.35, "w": 5.2, "h": 1.95, "font_size": 1200, "fill": "FFFFFF", "line": "D8DEE9"},
@@ -239,3 +239,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

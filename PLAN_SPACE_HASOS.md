@@ -1,4 +1,12 @@
-# Plan: SPACE training + HASOS-aspect inference + sentiment split
+﻿# Plan: SPACE training + HASOS-aspect inference + sentiment split
+
+> Historical note: this was a resume plan from an earlier phase. It is retained
+> for reproducibility, but it is no longer the current project status. The
+> current paper/web analysis has completed the SPACE and HASOS threshold sweep
+> for M2/M3/M4. In the tested grid, SPACE `T=0.0082` and HASOS `T=0.005` are
+> optimal. Token-budget sweep cells have not been run yet. HASOS ROUGE in the
+> current reports uses `data/hasos/hasos_summ.json` aggregated to parent aspects;
+> the original SemAE `data/hasos/gold/<aspect>/` pyrouge layout is still absent.
 
 Standalone execution plan for resuming this work on another machine. All paths
 are workspace-relative to `SemAE/`.
@@ -16,12 +24,15 @@ are workspace-relative to `SemAE/`.
 4. Score everything with the 8 reference-free metrics + BERTScore, then commit & push.
 
 > SPACE = training only. HASOS = the actual target (29 aspects × 50 entities).
-> No ROUGE (HASOS has no gold). Result directly comparable to existing
-> `outputs/hasos_aspects_run1/` baseline.
+> Historical note from the original plan: no upstream SemAE pyrouge layout was available for HASOS. Current reports now compute parent-aspect HASOS ROUGE from `data/hasos/hasos_summ.json`.
 
 ---
 
 ## Current status (resume point)
+
+This table is historical. See `reports/sweep/KNOWN_ISSUES.md`,
+`reports/sweep/optimality_summary.md`, and `web/public/data/sweep.json` for the
+current sweep status.
 
 | Phase | Status | Notes |
 | --- | --- | --- |
@@ -360,5 +371,7 @@ git push origin main
 - Sentiment: cardiffnlp/twitter-roberta-base-sentiment-latest, top-1 label, no threshold.
 - Output: two parallel trees (mixed + sentiment-split).
 - `--sample_sentences` ON (per paper).
-- No ROUGE (HASOS has no gold).
+- Historical note: no upstream SemAE pyrouge layout was available for HASOS. Current reports can compute parent-aspect HASOS ROUGE from `data/hasos/hasos_summ.json`.
 - Excluded: SPACE 6-aspect inference, hyperparameter search, multi-GPU, Amazon.
+
+

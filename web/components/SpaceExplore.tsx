@@ -38,7 +38,7 @@ function GoldPanel({ entity }: { entity: SpaceEntity }) {
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-medium text-amber-800"
       >
-        <span>Human gold — overall ({overall.length} references)</span>
+        <span>Human gold - overall ({overall.length} references)</span>
         <span className="text-xs text-amber-600">{open ? "hide" : "show"}</span>
       </button>
       {open ? (
@@ -212,7 +212,7 @@ export function SpaceExplore() {
             >
               <div className="truncate">{sampleLabel(index)}</div>
               <div className="text-[11px] text-slate-400">
-                Anonymous group · {e.split}
+                Anonymous group - {e.split}
               </div>
             </button>
             );
@@ -231,7 +231,7 @@ export function SpaceExplore() {
                 {sampleLabel(Math.max(0, entities.findIndex((item) => item.entity_id === entity.entity_id)))}
               </h2>
               <p className="text-xs text-slate-500">
-                Anonymous benchmark group · {entity.split}
+                Anonymous benchmark group - {entity.split}
               </p>
             </div>
 

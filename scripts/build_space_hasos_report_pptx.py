@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Build a lightweight PPTX report for the SPACE->HASOS SemAE pipeline.
 
 This intentionally uses only the Python standard library so the reporting step
@@ -563,13 +563,12 @@ def build_slides(run_id: str) -> list[str]:
     slides = []
     if failure:
         slides.append(
-            slide_xml("Run status: pipeline đang bị chặn ở tokenizer gate", "Status", [
-                {"text": "Đã chạy xong\nprepare_hasos: OK\nvalidate_hasos: OK\nmodel epoch 10: OK\nHASOS stats: 50 entities / 5,000 reviews / 45,529 sentences / 29 aspects", "x": 0.75, "y": 1.35, "w": 5.75, "h": 2.3, "font_size": 1150, "fill": "ECFDF5", "line": "99F6E4"},
-                {"text": f"Hard gate chưa qua\n{failure_reason}\n\nThiếu exact tokenizer:\ndata/sentencepiece/space_unigram_32k.model", "x": 6.85, "y": 1.35, "w": 5.55, "h": 2.3, "font_size": 1150, "fill": "FFF7ED", "line": "FDBA74"},
-                {"text": "Quyết định kỹ thuật\nKhông chạy inference bằng tokenizer regenerate vì token-id mapping có thể sai so với checkpoint. Khi restore đúng tokenizer, rerun scripts/run_space_hasos_after_model.py; deck sẽ được build lại với sample output và metrics thật.", "x": 0.75, "y": 4.05, "w": 11.65, "h": 1.05, "font_size": 1150, "fill": "FFFFFF", "line": "D8DEE9"},
+            slide_xml("Run status: pipeline gate did not pass", "Status", [
+                {"text": "Completed before gate\nprepare_hasos: OK\nvalidate_hasos: OK\nmodel artifact: checked\nHASOS stats: 50 entities / 5,000 reviews / 45,529 sentences / 29 aspects", "x": 0.75, "y": 1.35, "w": 5.75, "h": 2.3, "font_size": 1150, "fill": "ECFDF5", "line": "99F6E4"},
+                {"text": f"Gate failure\n{failure_reason}\n\nInspect logs/<run_id>_pipeline_trace.md for the exact failed stage.", "x": 6.85, "y": 1.35, "w": 5.55, "h": 2.3, "font_size": 1150, "fill": "FFF7ED", "line": "FDBA74"},
+                {"text": "Technical decision\nDo not present a blocked run as final evidence. Restore or rerun the failed artifact, then rebuild this deck from the completed trace, samples, and metrics.", "x": 0.75, "y": 4.05, "w": 11.65, "h": 1.05, "font_size": 1150, "fill": "FFFFFF", "line": "D8DEE9"},
             ])
         )
-
     slides.extend([
         slide_xml("SPACE-trained SemAE cho HASOS aspect/sentiment summary", run_id, [
             {"text": f"Deck này ghi lại pipeline sau training: {model_label} được dùng để rank câu theo {aspect_count} HASOS aspects. Bản mới giữ mọi evidence có score <= 0.005 rồi synthesize theo 3 tầng bằng FLAN.", "x": 0.75, "y": 1.45, "w": 6.2, "h": 1.1, "font_size": 1450},
@@ -599,7 +598,7 @@ def build_slides(run_id: str) -> list[str]:
             {"text": "Bản cũ dùng đúng SPACE benchmark và 6 aspect gốc: building, cleanliness, food, location, rooms, service. Run này chạy without --no_eval nên điểm dưới đây là pyrouge official, khác với HASOS reference-free metrics.", "x": 0.75, "y": 1.35, "w": 11.35, "h": 0.95, "font_size": 1120, "fill": "FFF7ED", "line": "FDBA74"},
             {"text": "Macro F1 by split\n" + ("\n".join(old_macro_rows) if old_macro_rows else "missing"), "x": 0.85, "y": 2.65, "w": 4.95, "h": 1.65, "font_size": 1250, "fill": "FFFFFF", "line": "D8DEE9"},
             {"text": "ALL split by aspect\nR1 / R2 / RL\n" + old_aspect_rows, "x": 6.15, "y": 2.45, "w": 5.95, "h": 2.65, "font_size": 850, "fill": "ECFDF5", "line": "99F6E4"},
-            {"text": "Kết luận so sánh: HASOS 29 aspects là adaptation/inference mới không có gold summary; SPACE original 6 aspects là baseline có gold và có thể so sánh bằng ROUGE.", "x": 0.85, "y": 5.35, "w": 11.15, "h": 0.55, "font_size": 1050, "fill": "EEF6FF", "line": "BFDBFE"},
+            {"text": "Kết luận so sánh: HASOS 29 aspects là adaptation/inference mới. Báo cáo hiện tại chấm ROUGE ở cấp parent từ hasos_summ.json; SPACE original 6 aspects vẫn là baseline pyrouge gốc.", "x": 0.85, "y": 5.35, "w": 11.15, "h": 0.55, "font_size": 1050, "fill": "EEF6FF", "line": "BFDBFE"},
         ]),
         slide_xml("Từ extractive sang abstractive", "Output correction", [
             {"text": "Vấn đề bạn thấy là đúng\nOutput SemAE gốc trong run này là extractive: chọn câu source rồi nối lại. Với max_tokens=40, câu cuối có thể bị cắt cụt như `Each room is named... and one of`.", "x": 0.75, "y": 1.35, "w": 5.5, "h": 1.65, "font_size": 1200, "fill": "FFF7ED", "line": "FDBA74"},
@@ -619,7 +618,7 @@ def build_slides(run_id: str) -> list[str]:
         ]),
         slide_xml("Metrics và health checks", "Quality", [
             {"text": f"source_fidelity: {macro.get('source_fidelity', 'n/a')}\nsource_fidelity_excl_truncated: {macro.get('source_fidelity_excl_truncated', 'n/a')}\naspect_purity: {macro.get('aspect_purity', 'n/a')}\ndistinct_2: {macro.get('distinct_2', 'n/a')}\nself_bleu4: {macro.get('self_bleu4', 'n/a')}", "x": 0.85, "y": 1.45, "w": 5.15, "h": 2.25, "font_size": 1250, "fill": "FFFFFF", "line": "D8DEE9"},
-            {"text": "HASOS không có gold summary nên dùng reference-free metrics: fidelity, purity, diversity, compression. BERTScore có thể chạy thêm nếu dependency/model tải được.", "x": 6.1, "y": 1.45, "w": 6.0, "h": 1.25, "font_size": 1250, "fill": "FFFFFF", "line": "D8DEE9"},
+            {"text": "HASOS có parent-reference ROUGE trong báo cáo hiện tại; reference-free metrics vẫn được giữ để audit fidelity, purity, diversity, compression. BERTScore có thể chạy thêm nếu dependency/model tải được.", "x": 6.1, "y": 1.45, "w": 6.0, "h": 1.25, "font_size": 1250, "fill": "FFFFFF", "line": "D8DEE9"},
         ]),
         slide_xml("Limitations và quyết định kỹ thuật", "Caveats", [
             {"text": "1. Sentiment là keyword post-processing, không phải sentiment-aware ranking.\n2. Abstractive summary không còn verbatim traceable như extractive output, nhưng mỗi row giữ threshold evidence provenance.\n3. Tokenizer là artifact bắt buộc và phải sync cùng checkpoint.\n4. Không dùng output đã truncate làm input synthesis.", "x": 0.85, "y": 1.45, "w": 11.3, "h": 2.4, "font_size": 1250, "fill": "FFFFFF", "line": "D8DEE9"},
@@ -675,3 +674,7 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+
+
