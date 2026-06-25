@@ -194,9 +194,10 @@ def conclude(cells):
     out = ["# Optimality summary\n",
            "For each swept parameter, the value with the highest macro ROUGE-1 "
            "(fixed-denominator, split=all) is compared against the current code "
-           "default. A non-default winner is only reported as an improvement when "
-           "its coverage is within 0.02 of the default's - otherwise the gain is a "
-           "coverage artifact and the default is kept.\n"]
+           "default. A non-default winner is reported as an improvement when it "
+           "does not lose more than 0.02 coverage versus the default; otherwise "
+           "the gain is treated as a low-coverage artifact and the default is "
+           "kept.\n"]
     for dataset in ("space", "hasos"):
         out.append(f"\n## {dataset.upper()}\n")
         for phase in ("threshold", "tokabs"):
@@ -217,8 +218,11 @@ def conclude(cells):
                 elif best == default_val:
                     verdict = f"**default {default_val} is optimal** (R1={fmt(def_r1)})"
                 else:
-                    cov_ok = (best_cov is not None and def_cov is not None
-                              and abs(best_cov - def_cov) <= 0.02)
+                    cov_ok = (
+                        best_cov is not None
+                        and def_cov is not None
+                        and best_cov + 0.02 >= def_cov
+                    )
                     gain = best_r1 - def_r1 if (best_r1 and def_r1) else 0
                     if cov_ok and gain > 0:
                         verdict = (f"**{best} beats default {default_val}** "
@@ -230,7 +234,7 @@ def conclude(cells):
                                    f"{best_cov if best_cov is None else round(best_cov,2)} "
                                    f"vs default cov "
                                    f"{def_cov if def_cov is None else round(def_cov,2)} "
-                                   f"-> gain is a coverage artifact, **keep default "
+                                   f"-> gain is a low-coverage artifact, **keep default "
                                    f"{default_val}** (R1={fmt(def_r1)})")
                 out.append(f"- **{PHASE_LABEL[phase]} / {METHOD_LABEL[method]}**: "
                            f"{verdict}")

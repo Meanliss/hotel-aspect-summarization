@@ -2,9 +2,8 @@
 // scripts/export_sweep_web_data.py. Consumed by the Optimality view
 // (OptimalityView.tsx).
 //
-// Types + metadata for available sweep cells. Threshold cells currently prove
-// whether the shipped evidence_score_threshold is optimal. Token-budget support
-// exists in the schema, but the repository currently has no token cells.
+// Types + metadata for available sweep cells. Threshold and token-budget cells
+// identify the recommended value while still showing the previous code default.
 // The decision metric is macro ROUGE-1 F1 (split=all) scored with a FIXED
 // denominator: every gold-bearing (aspect, entity) stays in the mean and empty
 // system outputs count as ROUGE 0, so a tighter threshold that simply answers
@@ -84,6 +83,6 @@ export interface SweepData {
 
 export const VERDICT_LABEL: Record<VerdictStatus, string> = {
   default_optimal: "Default is optimal",
-  switch: "A better value exists",
-  keep_default_coverage_artifact: "Keep default (coverage artifact)",
+  switch: "Use recommended value",
+  keep_default_coverage_artifact: "Keep default (low coverage)",
 };

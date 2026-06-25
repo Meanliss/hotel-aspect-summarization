@@ -2,10 +2,11 @@
 
 > Historical note: this was a resume plan from an earlier phase. It is retained
 > for reproducibility, but it is no longer the current project status. The
-> current paper/web analysis has completed the SPACE and HASOS threshold sweep
-> for M2/M3/M4. In the tested grid, SPACE `T=0.0082` and HASOS `T=0.005` are
-> optimal. Token-budget sweep cells have not been run yet. HASOS ROUGE in the
-> current reports uses `data/hasos/hasos_summ.json` aggregated to parent aspects;
+> current paper/web analysis has completed the SPACE/HASOS threshold sweep and
+> the HASOS abstractive token-budget sweep for M2/M3/M4. SPACE keeps `T=0.0082`;
+> the current HASOS base is M2 `T=0.0075, B=128`, M3 `T=0.0055, B=96`, and M4
+> `T=0.005, B=96`. HASOS ROUGE in the current reports uses
+> `data/hasos/hasos_summ.json` aggregated to parent aspects;
 > the original SemAE `data/hasos/gold/<aspect>/` pyrouge layout is still absent.
 
 Standalone execution plan for resuming this work on another machine. All paths

@@ -164,7 +164,7 @@ function MethodBlock({
 
       {verdict ? (
         <p className="mt-3 text-[11px] leading-snug text-[var(--on-surface-variant)]">
-          {verdict.status === "default_optimal" ? (
+              {verdict.status === "default_optimal" ? (
             <>
               Default <strong>{fmtValue(verdict.default)}</strong> has the
               highest macro ROUGE-1 ({fmt(verdict.default_r1, 5)}) in the grid -
@@ -186,9 +186,9 @@ function MethodBlock({
                 : `${(verdict.default_cov * 100).toFixed(0)}%`}
               ) - recommend switching.
             </>
-          ) : (
-            <>
-              {fmtValue(verdict.best)} scores higher raw, but only by dropping
+              ) : (
+                <>
+              {fmtValue(verdict.best)} scores higher raw, but with lower
               coverage (
               {verdict.best_cov === null || verdict.best_cov === undefined
                 ? "-"
@@ -198,7 +198,7 @@ function MethodBlock({
               verdict.default_cov === undefined
                 ? "-"
                 : `${(verdict.default_cov * 100).toFixed(0)}%`}
-              ) - the gain is a coverage artifact, keep default{" "}
+              ) - the gain is treated as a low-coverage artifact, keep default{" "}
               <strong>{fmtValue(verdict.default)}</strong>.
             </>
           )}
@@ -328,7 +328,7 @@ export function OptimalityView() {
           {availableMethods.length === 0 ? (
             <div className="rounded-md border border-[var(--outline-variant)] bg-[var(--surface-bright)] px-4 py-6 text-center text-sm text-[var(--on-surface-variant)]">
               {phase === "tokabs"
-                ? "No token-budget cells have been run yet; the current evidence-backed claim covers threshold optimality only."
+                ? "No token-budget cells for this dataset yet."
                 : "No sweep cells for this dataset/parameter yet."}
             </div>
           ) : (

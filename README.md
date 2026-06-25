@@ -16,10 +16,10 @@ run described below. The repo now contains two evaluation views:
   four parent aspects that have gold coverage. Branding and Loyalty remain out
   of the HASOS ROUGE denominator because they do not have parent gold.
 
-The threshold sweep has been completed for SPACE and HASOS M2/M3/M4. In the
-tested grid, the production defaults are optimal: SPACE `T=0.0082` and HASOS
-`T=0.005`. Token-budget sweep cells have not been run yet; they are not part of
-the current paper claim.
+The threshold and abstractive token-budget sweeps have been completed for HASOS
+M2/M3/M4. SPACE keeps the original `T=0.0082`; the current HASOS base is
+method-specific: M2 uses `T=0.0075, B=128`, M3 uses `T=0.0055, B=96`, and M4
+uses `T=0.005, B=96`.
 
 Latest evaluated run:
 

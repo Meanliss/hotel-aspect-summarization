@@ -53,6 +53,10 @@ function thresholdSweep(dataset: Dataset, method: MethodId): MethodSweep | null 
   return sweep.datasets?.[dataset]?.threshold?.methods?.[method] ?? null;
 }
 
+function tokenSweep(dataset: Dataset, method: MethodId): MethodSweep | null {
+  return sweep.datasets?.[dataset]?.tokabs?.methods?.[method] ?? null;
+}
+
 function bestPoint(methodSweep: MethodSweep | null): SweepPoint | null {
   return methodSweep?.points.find((point) => point.is_best) ?? null;
 }
@@ -76,6 +80,17 @@ function bestBaseline(dataset: Dataset) {
     }
   }
   return { method: winner, rouge1: best };
+}
+
+function recommendedPoint(methodSweep: MethodSweep | null): SweepPoint | null {
+  if (!methodSweep) return null;
+  if (
+    methodSweep.verdict?.status === "switch" ||
+    methodSweep.verdict?.status === "default_optimal"
+  ) {
+    return bestPoint(methodSweep);
+  }
+  return defaultPoint(methodSweep) ?? bestPoint(methodSweep);
 }
 
 function FigureBar({
@@ -181,6 +196,44 @@ function BaselineTable() {
   );
 }
 
+function OptimizedHasosTable() {
+  const methods: MethodId[] = ["m2", "m3", "m4"];
+  return (
+    <div className="overflow-x-auto">
+      <table className="paper-table">
+        <thead>
+          <tr>
+            <th>Method</th>
+            <th>Base T</th>
+            <th>Base token budget</th>
+            <th>Macro R1</th>
+            <th>Macro R2</th>
+            <th>Macro RL</th>
+            <th>Coverage</th>
+          </tr>
+        </thead>
+        <tbody>
+          {methods.map((method) => {
+            const threshold = recommendedPoint(thresholdSweep("hasos", method));
+            const token = recommendedPoint(tokenSweep("hasos", method));
+            return (
+              <tr key={`hasos-optimized-${method}`}>
+                <td>{methodName(method)}</td>
+                <td className="mono-cell">{labelValue(threshold?.value)}</td>
+                <td className="mono-cell">{labelValue(token?.value)}</td>
+                <td className="mono-cell">{fmt(token?.rouge1)}</td>
+                <td className="mono-cell">{fmt(token?.rouge2)}</td>
+                <td className="mono-cell">{fmt(token?.rougeL)}</td>
+                <td className="mono-cell">{pct(token?.coverage)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function OptimalityTable() {
   return (
     <div className="overflow-x-auto">
@@ -215,7 +268,9 @@ function OptimalityTable() {
                   <td>
                     {block?.verdict?.status === "default_optimal"
                       ? "Default is optimal in the tested grid"
-                      : "Review required"}
+                      : block?.verdict?.status === "switch"
+                        ? "Switch to best value"
+                        : "Keep default: lower-coverage artifact"}
                   </td>
                 </tr>
               );
@@ -253,10 +308,11 @@ export function ResearchPaperView() {
           The project compares four summarization variants for hotel-review aspect
           summaries: extractive SemAE evidence, flat abstractive rewriting, keyword
           sentiment splitting, and BERT-ABSA sentiment splitting. The latest sweep
-          verifies that the production evidence thresholds remain optimal in the
-          tested grids: SPACE uses T=0.0082 and HASOS uses T=0.005 for M2-M4.
-          Coverage is reported beside ROUGE because stricter thresholds can otherwise
-          look cleaner by answering fewer aspect-entity instances.
+          verifies method-specific HASOS settings rather than a single inherited
+          default. The updated HASOS base uses M2 T=0.0075 with B=128, M3 T=0.0055
+          with B=96, and M4 T=0.005 with B=96. Coverage is reported beside ROUGE
+          because stricter thresholds can otherwise look cleaner by answering fewer
+          aspect-entity instances.
         </p>
       </section>
 
@@ -289,11 +345,22 @@ export function ResearchPaperView() {
       </section>
 
       <section className="paper-section">
-        <h2>3. Threshold Optimality</h2>
+        <h2>3. Optimized HASOS Base</h2>
         <p className="section-lede">
-          The threshold grid now includes the HASOS default for M3 and M4. After the
-          missing cells were run, every tested threshold series selects the current
-          default as the best ROUGE-1 point.
+          The web base below uses the completed exact-threshold and token-budget
+          sweeps. Scores are from the token-budget cell at the selected threshold,
+          so this is the current recommended HASOS configuration, not the old
+          shared default.
+        </p>
+        <OptimizedHasosTable />
+      </section>
+
+      <section className="paper-section">
+        <h2>4. Threshold Optimality</h2>
+        <p className="section-lede">
+          The threshold grid now includes exact HASOS cells above 0.005. SPACE keeps
+          T=0.0082; HASOS switches to M2 T=0.0075 and M3 T=0.0055, while M4 keeps
+          T=0.005.
         </p>
         <OptimalityTable />
         <div className="figure-grid">
@@ -307,12 +374,12 @@ export function ResearchPaperView() {
       </section>
 
       <section className="paper-section">
-        <h2>4. Interpretation</h2>
+        <h2>5. Interpretation</h2>
         <div className="finding-list">
           <p>
-            <strong>Thresholds are not arbitrary.</strong> Both datasets show monotonic
-            recovery as T approaches the production default, with coverage rising at
-            the same time.
+            <strong>Thresholds are not arbitrary.</strong> HASOS needed exact higher-T
+            runs: M2 and M3 improve over the old shared threshold, while M4 stays at
+            the old default.
           </p>
           <p>
             <strong>HASOS M2 needs hierarchical scoring.</strong> The M2 HASOS cells
@@ -321,9 +388,9 @@ export function ResearchPaperView() {
             EXPERIENCE.
           </p>
           <p>
-            <strong>Coverage guards the claim.</strong> Low thresholds can collapse
-            coverage sharply; the fixed-denominator scorer prevents those sparse
-            outputs from being mistaken for genuine improvements.
+            <strong>Token budget is now part of the base.</strong> M2 prefers 128 new
+            tokens, while M3 and M4 prefer 96. The old 192-token setting is no longer
+            the HASOS base for abstractive methods.
           </p>
         </div>
       </section>

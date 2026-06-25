@@ -6,9 +6,7 @@ write under reports/sweep/ (rouge_<method>_<dataset>_<phase>_<valuetag>.json) an
 collapses each to its macro ROUGE F1 (split=all, fixed denominator) plus mean
 coverage. The web Optimality view renders the threshold/token curves that are
 available, marks the best value per (dataset, phase, method), and shows the
-current code default so a reader can see at a glance whether the shipped value
-is optimal. The schema supports token-budget cells, but token cells are absent
-until that phase is explicitly run.
+current code default alongside the recommended value.
 
 Crucially, every cell carries COVERAGE next to ROUGE. A tighter threshold that
 scores higher only because it answered fewer (aspect, entity) instances is NOT
@@ -63,10 +61,9 @@ PHASE_META = {
     "tokabs": {
         "label": "Abstractive token budget",
         "param": "--max_new_tokens",
-        "note": "FLAN-T5 output length for M2/M3/M4 (threshold held at default). "
-                "No token-budget cells have been run yet; this schema is ready "
-                "for that phase but the current evidence-backed claim covers "
-                "threshold optimality only.",
+        "note": "FLAN-T5 output length for M2/M3/M4. Each token-budget series "
+                "holds evidence threshold fixed at the selected method-specific "
+                "threshold used for that cell set.",
     },
 }
 
@@ -168,8 +165,11 @@ def build_payload(cells):
                 }
             else:
                 bc, dc = best_cell.get("coverage"), def_cell.get("coverage")
-                cov_ok = (bc is not None and dc is not None
-                          and abs(bc - dc) <= 0.02)
+                cov_ok = (
+                    bc is not None
+                    and dc is not None
+                    and bc + 0.02 >= dc
+                )
                 gain = best_cell["rouge1"] - def_cell["rouge1"]
                 verdict = {
                     "status": "switch" if (cov_ok and gain > 0)

@@ -12,9 +12,9 @@ references. The original SemAE `data/hasos/gold/<aspect>/#ID#_[012].txt`
 pyrouge layout is still absent, so upstream-style SemAE evaluation remains a
 separate compatibility task.
 
-The completed threshold sweep shows the current production defaults are optimal
-inside the tested grid: SPACE `T=0.0082` and HASOS `T=0.005`. Token-budget sweep
-cells have not been run yet.
+The completed threshold and abstractive token-budget sweeps now define a
+method-specific HASOS base: M2 uses `T=0.0075, B=128`, M3 uses `T=0.0055,
+B=96`, and M4 uses `T=0.005, B=96`. SPACE keeps `T=0.0082` in the tested grid.
 
 ## Prepared Inputs
 

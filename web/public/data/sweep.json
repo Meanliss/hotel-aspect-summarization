@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-25T19:52:54.077255+00:00",
+  "generated_at": "2026-06-25T20:07:34.206445+00:00",
   "decision_metric": "macro ROUGE-1 F1, split=all, fixed denominator",
   "method_meta": {
     "m1": {
@@ -32,7 +32,7 @@
     "tokabs": {
       "label": "Abstractive token budget",
       "param": "--max_new_tokens",
-      "note": "FLAN-T5 output length for M2/M3/M4 (threshold held at default). No token-budget cells have been run yet; this schema is ready for that phase but the current evidence-backed claim covers threshold optimality only."
+      "note": "FLAN-T5 output length for M2/M3/M4. Each token-budget series holds evidence threshold fixed at the selected method-specific threshold used for that cell set."
     }
   },
   "dataset_meta": {
@@ -231,7 +231,7 @@
               }
             ],
             "verdict": {
-              "status": "keep_default_coverage_artifact",
+              "status": "switch",
               "default": 0.005,
               "best": 0.0055,
               "best_r1": 0.26135305,
