@@ -55,3 +55,6 @@ outputs/**
 Thumbs.db
 .vscode/
 .idea/
+
+# LLM judge request cache (kept local for resume/audit)
+reports/metrics/judge_cache/

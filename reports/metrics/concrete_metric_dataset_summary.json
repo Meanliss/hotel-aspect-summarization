@@ -1,0 +1,55 @@
+{
+  "by_method": {
+    "m2": {
+      "aspects": 29,
+      "avg_evidence_count": 18.389212827988338,
+      "avg_summary_words": 51.965014577259474,
+      "method_label": "M2 abstractive",
+      "rows": 1372,
+      "sentiments": [
+        ""
+      ],
+      "statuses": {
+        "fallback_generic": 497,
+        "fallback_prompt_echo": 11,
+        "generated": 864
+      }
+    },
+    "m3": {
+      "aspects": 28,
+      "avg_evidence_count": 2.8335170893054022,
+      "avg_summary_words": 32.50275633958103,
+      "method_label": "M3 kw-sentiment",
+      "rows": 907,
+      "sentiments": [
+        "neg",
+        "pos"
+      ],
+      "statuses": {
+        "fallback_generic": 335,
+        "fallback_prompt_echo": 38,
+        "generated": 534
+      }
+    },
+    "m4": {
+      "aspects": 28,
+      "avg_evidence_count": 1.9191542288557213,
+      "avg_summary_words": 30.95646766169154,
+      "method_label": "M4 bert-sentiment",
+      "rows": 804,
+      "sentiments": [
+        "neg",
+        "pos"
+      ],
+      "statuses": {
+        "fallback_generic": 342,
+        "fallback_prompt_echo": 45,
+        "generated": 417
+      }
+    }
+  },
+  "dataset": "hasos",
+  "judge_evidence_k": 5,
+  "rubric_version": "concrete-v1",
+  "total_rows": 3083
+}
