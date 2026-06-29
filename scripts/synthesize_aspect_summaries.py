@@ -386,12 +386,25 @@ def build_prompt(task: SummaryTask, taxonomy: dict[str, dict[str, str]],
     return (
         f"You are summarizing hotel reviews for one aspect: {aspect_name} "
         f"({task.aspect}).{desc}{polarity}\n"
-        "Use only the evidence below. Write a detailed 2-4 sentence English "
+        "Use ONLY the evidence below. Write a detailed 2-4 sentence English "
         "summary that preserves concrete facts, amenities, complaints, and "
         "tradeoffs from the reviews. Merge repeated ideas instead of listing "
         "duplicates. Do not collapse the answer into generic wording such as "
         "'good hotel' or 'bad hotel'. Do not mention ranks, evidence, instructions, "
         "or aspect codes.\n"
+        "Faithfulness rules (strict):\n"
+        "- Every fact in the summary MUST be a paraphrase of at least one "
+        "evidence sentence. If a detail is not in the evidence, omit it.\n"
+        "- Do not invent amenities, prices, names, dates, or numbers.\n"
+        "- If the evidence is thin or contradictory, write a shorter summary "
+        "rather than filling gaps with guesses.\n"
+        "- Keep the same polarity as the evidence; do not flip complaints into "
+        "praise or vice versa.\n"
+        "Example evidence: 'The room was small but clean. The bathroom had a "
+        "strange smell. Staff brought a new towel quickly.'\n"
+        "Good summary: 'Rooms are compact but clean; a few guests noted an odd "
+        "bathroom smell, though staff responded promptly when asked for fresh "
+        "towels.'\n"
         f"Evidence:\n{evidence_lines}\n"
         "Final summary:"
     )
@@ -467,13 +480,37 @@ def strip_level_prefix(sentence: str) -> str:
     return norm_text(out)
 
 
+def _dedupe_evidence(evidence: list[str], sim_threshold: float = 0.82) -> list[str]:
+    """Drop near-duplicate evidence sentences, keeping the first occurrence.
+
+    Uses the existing `lexical_similarity` helper so the fallback summary does
+    not repeat the same idea twice when the generator failed and we splice raw
+    evidence in. This lowers `copied_from_evidence` artifacts and repetition.
+    """
+    kept: list[str] = []
+    for sent in evidence:
+        sent = norm_text(sent)
+        if not sent:
+            continue
+        if any(lexical_similarity(sent, k) >= sim_threshold for k in kept):
+            continue
+        kept.append(sent)
+    return kept
+
+
 def fallback_detailed_summary(task: SummaryTask, max_input_sentences: int) -> str:
     evidence = evidence_limit(task.evidence, max_input_sentences)
     if task.level in ("entity", "parent"):
         cleaned = [strip_level_prefix(sent) for sent in evidence]
+        cleaned = _dedupe_evidence(cleaned)
         max_sentences = 6 if task.level == "entity" else 5
         return fallback_evidence_summary(cleaned, max_sentences=max_sentences)
-    return fallback_evidence_summary(evidence, max_sentences=4)
+    # For sentiment-split (M3/M4) only keep evidence whose lexicon polarity
+    # matches the target bucket, so the fallback never introduces a flip.
+    if task.sentiment in {"pos", "neg"}:
+        evidence = polarity_filter_evidence(evidence, task.sentiment)
+    deduped = _dedupe_evidence(evidence)
+    return fallback_evidence_summary(deduped, max_sentences=4)
 
 
 def load_cache(path: Path) -> dict[tuple[str, str, str, str, str], dict]:
@@ -889,6 +926,174 @@ def prepare_rows_from_cache(tasks: list[SummaryTask], cache: dict,
     return rows, rows_by_key
 
 
+# Faithfulness post-filter (Lever 3) and sentiment consistency (Lever 4).
+# A generated sentence is "supported" if it has enough lexical overlap with at
+# least one evidence sentence. Unsupported sentences are replaced by the
+# highest-ranked evidence sentence that is not already used, so the summary
+# stays faithful instead of carrying hallucinated facts.
+SUPPORT_SIM_THRESHOLD = 0.30
+
+# Stopwords excluded from the support-overlap check so that common function
+# words ("the", "was", "a") do not make an unrelated sentence look "supported".
+_SUPPORT_STOPWORDS = {
+    "the", "a", "an", "is", "was", "were", "are", "be", "been", "being",
+    "and", "or", "but", "of", "to", "in", "on", "at", "for", "with", "by",
+    "it", "this", "that", "these", "those", "i", "we", "they", "he", "she",
+    "had", "have", "has", "do", "did", "does", "as", "so", "very", "too",
+}
+
+_POS_LEXICON = {
+    "good", "great", "excellent", "nice", "friendly", "clean", "comfortable",
+    "spacious", "helpful", "loved", "enjoyed", "pleasant", "amazing",
+    "wonderful", "fantastic", "best", "perfect", "recommend", "recommendation",
+    "praise", "liked", "superb", "outstanding", "convenient", "quiet",
+}
+_NEG_LEXICON = {
+    "bad", "terrible", "dirty", "noisy", "broken", "rude", "slow", "small",
+    "smell", "stained", "uncomfortable", "poor", "worst", "awful", "disappointed",
+    "complaint", "problem", "issues", "loud", "cold", "overpriced", "bland",
+    "stained", "leaked", "failed", "missing", "worst", "horrible", "bugs",
+}
+
+
+def summary_polarity(summary: str) -> str:
+    """Coarse lexicon-based polarity for a summary. Returns 'pos', 'neg', or ''."""
+    tokens = re.findall(r"[a-z]+", (summary or "").lower())
+    if not tokens:
+        return ""
+    pos = sum(1 for t in tokens if t in _POS_LEXICON)
+    neg = sum(1 for t in tokens if t in _NEG_LEXICON)
+    if pos > neg:
+        return "pos"
+    if neg > pos:
+        return "neg"
+    return ""
+
+
+def _content_tokens(text: str) -> set[str]:
+    """Content word tokens, lower-cased, stopwords/short tokens removed, with
+    simple plural normalization so 'rooms' matches 'room'."""
+    tokens = set()
+    for t in re.findall(r"[a-z]+", (text or "").lower()):
+        if len(t) <= 2 or t in _SUPPORT_STOPWORDS:
+            continue
+        if t.endswith("s") and len(t) > 3:
+            t = t[:-1]
+        tokens.add(t)
+    return tokens
+
+
+def _content_overlap(left: str, right: str) -> float:
+    """Content-word overlap coefficient (intersection / min side), ignoring
+    stopwords and with plural normalization. Overlap coefficient is used
+    instead of Jaccard so that a short evidence sentence matching part of a
+    longer paraphrase still scores high enough to count as support."""
+    left_tokens = _content_tokens(left)
+    right_tokens = _content_tokens(right)
+    if not left_tokens or not right_tokens:
+        return 0.0
+    return len(left_tokens & right_tokens) / min(len(left_tokens), len(right_tokens))
+
+
+_SENT_SPLIT_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z])")
+
+
+def _split_into_sentences(text: str) -> list[str]:
+    """Split a summary into sentences on sentence-final punctuation. Unlike
+    `split_summary` (which splits on tabs/newlines), this splits on periods,
+    exclamation and question marks so the faithfulness filter can check each
+    generated sentence individually."""
+    text = norm_text(text)
+    if not text:
+        return []
+    return [s.strip() for s in _SENT_SPLIT_RE.split(text) if s.strip()]
+
+
+def polarity_filter_evidence(evidence: list[str], target_sentiment: str) -> list[str]:
+    """Keep only evidence whose lexicon polarity matches the target bucket.
+
+    Used for M3/M4 sentiment-split fallback/splice so we never introduce a
+    sentence of the opposite polarity into a pos/neg summary, which the judge
+    flags as sentiment_flip. Neutral-polarity evidence (no clear lexicon signal)
+    is kept because it is safe for either bucket.
+    """
+    if target_sentiment not in {"pos", "neg"}:
+        return list(evidence)
+    kept = []
+    for sent in evidence:
+        pol = summary_polarity(sent)
+        if pol == "" or pol == target_sentiment:
+            kept.append(sent)
+    return kept or list(evidence)
+
+
+def filter_unsupported_sentences(summary: str, evidence: list[str],
+                                 threshold: float = SUPPORT_SIM_THRESHOLD,
+                                 target_sentiment: str = "") -> str:
+    """Replace generated sentences without evidence support by top-ranked evidence.
+
+    Each generated sentence is checked against every evidence sentence using
+    content-word overlap coefficient (stopwords excluded, plural-normalized).
+    If the best overlap is below `threshold`, the sentence is dropped and the
+    first not-yet-used evidence sentence is spliced in instead, so the final
+    summary stays grounded in the provided evidence.
+
+    When `target_sentiment` is 'pos' or 'neg' (M3/M4 sentiment-split mode), the
+    splice only uses evidence whose lexicon polarity matches the target bucket,
+    so the filter never introduces a polarity reversal.
+    """
+    summary = norm_text(summary)
+    if not summary or not evidence:
+        return summary
+    sentences = _split_into_sentences(summary)
+    if not sentences:
+        return summary
+    # Candidate evidence for splice, polarity-filtered for sentiment-split mode.
+    splice_pool = evidence
+    if target_sentiment in {"pos", "neg"}:
+        splice_pool = polarity_filter_evidence(evidence, target_sentiment)
+    # Map splice_pool items back to their indices in `evidence` for claiming.
+    used_evidence: set[int] = set()
+    # First, claim evidence indices that a generated sentence already closely
+    # matches, so the replacements do not duplicate them.
+    for sent in sentences:
+        best_idx, best_score = -1, 0.0
+        for idx, ev in enumerate(evidence):
+            score = _content_overlap(sent, ev)
+            if score > best_score:
+                best_score = score
+                best_idx = idx
+        if best_idx >= 0 and best_score >= threshold:
+            used_evidence.add(best_idx)
+    out: list[str] = []
+    replaced = 0
+    for sent in sentences:
+        best_score = max(
+            (_content_overlap(sent, ev) for ev in evidence), default=0.0)
+        if best_score >= threshold:
+            out.append(sent)
+            continue
+        # Unsupported: splice in the next unused, polarity-matching evidence.
+        replacement = None
+        for idx in range(len(evidence)):
+            if idx in used_evidence:
+                continue
+            ev = evidence[idx]
+            if target_sentiment in {"pos", "neg"}:
+                pol = summary_polarity(ev)
+                if pol and pol != target_sentiment:
+                    continue
+            replacement = norm_text(ev)
+            used_evidence.add(idx)
+            break
+        if replacement:
+            out.append(replacement)
+            replaced += 1
+        # If no unused polarity-matching evidence remains, drop the unsupported
+        # sentence silently rather than risk a polarity flip.
+    return norm_text(" ".join(out))
+
+
 def validate_generated_summary(summary: str, task: SummaryTask,
                                max_input_sentences: int) -> tuple[str, str]:
     status = "generated"
@@ -899,6 +1104,21 @@ def validate_generated_summary(summary: str, task: SummaryTask,
         return fallback_detailed_summary(task, max_input_sentences), "fallback_prompt_echo"
     if looks_too_generic(summary):
         return fallback_detailed_summary(task, max_input_sentences), "fallback_generic"
+    # Lever 3: drop hallucinated/unsupported sentences and splice evidence in.
+    if evidence:
+        filtered = filter_unsupported_sentences(
+            summary, evidence, target_sentiment=task.sentiment)
+        if filtered.strip() and filtered.strip() != summary.strip():
+            summary = filtered
+            status = "generated_filtered"
+    # Lever 4: sentiment consistency for polarity-split summaries (M3/M4).
+    if task.sentiment in {"pos", "neg"} and evidence:
+        polarity = summary_polarity(summary)
+        if polarity and polarity != task.sentiment:
+            # Polarity contradicts the target bucket; fall back to grounded
+            # evidence of the correct bucket rather than shipping a flipped
+            # summary that the judge will flag as sentiment_flip.
+            return fallback_detailed_summary(task, max_input_sentences), "fallback_sentiment_flip"
     return summary, status
 
 

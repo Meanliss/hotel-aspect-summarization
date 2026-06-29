@@ -1,0 +1,70 @@
+{
+  "by_method": {
+    "m1": {
+      "aspects": 29,
+      "avg_evidence_count": 2.613138686131387,
+      "avg_summary_words": 40.0,
+      "method_label": "M1 extractive",
+      "rows": 1370,
+      "sentiments": [
+        ""
+      ],
+      "statuses": {
+        "extractive": 1370
+      }
+    },
+    "m2": {
+      "aspects": 29,
+      "avg_evidence_count": 18.389212827988338,
+      "avg_summary_words": 45.54373177842566,
+      "method_label": "M2 abstractive",
+      "rows": 1372,
+      "sentiments": [
+        ""
+      ],
+      "statuses": {
+        "fallback_generic": 452,
+        "generated": 771,
+        "generated_filtered": 149
+      }
+    },
+    "m3": {
+      "aspects": 28,
+      "avg_evidence_count": 2.8335170893054022,
+      "avg_summary_words": 34.02756339581036,
+      "method_label": "M3 kw-sentiment",
+      "rows": 907,
+      "sentiments": [
+        "neg",
+        "pos"
+      ],
+      "statuses": {
+        "fallback_generic": 347,
+        "fallback_sentiment_flip": 58,
+        "generated": 382,
+        "generated_filtered": 120
+      }
+    },
+    "m4": {
+      "aspects": 28,
+      "avg_evidence_count": 1.9191542288557213,
+      "avg_summary_words": 32.76865671641791,
+      "method_label": "M4 bert-sentiment",
+      "rows": 804,
+      "sentiments": [
+        "neg",
+        "pos"
+      ],
+      "statuses": {
+        "fallback_generic": 390,
+        "fallback_sentiment_flip": 34,
+        "generated": 271,
+        "generated_filtered": 109
+      }
+    }
+  },
+  "dataset": "hasos",
+  "judge_evidence_k": 5,
+  "rubric_version": "concrete-v1",
+  "total_rows": 4453
+}

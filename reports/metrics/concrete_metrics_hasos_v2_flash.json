@@ -1,0 +1,296 @@
+{
+  "dataset": "hasos",
+  "deepseek_pricing_usd_per_1m": {
+    "by_model": {
+      "deepseek-chat": {
+        "input": 0.14,
+        "output": 0.28
+      },
+      "deepseek-v4-flash": {
+        "input": 0.14,
+        "output": 0.28
+      },
+      "deepseek-v4-pro": {
+        "input": 0.435,
+        "output": 0.87
+      }
+    },
+    "default_input": 0.435,
+    "default_output": 0.87
+  },
+  "deepseek_usage": {
+    "by_model": {
+      "deepseek-v4-flash": {
+        "completion_tokens": 5616073,
+        "estimated_usd": 2.013820480000001,
+        "prompt_tokens": 3152286,
+        "total_tokens": 8768359
+      }
+    },
+    "completion_tokens": 5616073,
+    "estimated_usd": 2.013820480000001,
+    "prompt_tokens": 3152286,
+    "total_tokens": 8768359
+  },
+  "judged_rows": 4453,
+  "methods": {
+    "m1": {
+      "automatic": {
+        "aspects": 29,
+        "avg_compression_ratio": 1.0,
+        "avg_evidence_count": 2.613138686131387,
+        "avg_evidence_topk_count": 2.565693430656934,
+        "avg_summary_words": 40.0,
+        "copied_from_evidence_rate": 1.0,
+        "fallback_rate": null,
+        "generated_rate": null,
+        "method_label": "M1 extractive",
+        "rows": 1370,
+        "sentiments": [
+          ""
+        ],
+        "status_counts": {
+          "extractive": 1370
+        },
+        "topk_duplicate_rate": 0.0
+      },
+      "judge": {
+        "aspect_mismatch_rate": 0.12335766423357664,
+        "avg_scores": {
+          "aspect_correctness": 4.5175182481751825,
+          "coverage": 4.623357664233577,
+          "evidence_support": 4.842335766423358,
+          "sentiment_alignment": 4.835036496350365,
+          "specificity": 4.673722627737226,
+          "usefulness": 4.28978102189781
+        },
+        "cross_aspect_leakage_rate": 0.13342816500711238,
+        "evidence_p_at_5": 0.8773826458036984,
+        "evidence_support_at_5": 0.9650071123755334,
+        "generic_summary_rate": 0.013868613138686132,
+        "judged_rows": 1370,
+        "major_theme_missing_rate": 0.042335766423357665,
+        "major_theme_recall": 0.9576642335766423,
+        "pass_rate": 0.8343065693430657,
+        "sentiment_flip_rate": 0.014598540145985401,
+        "sentiment_leakage_rate": 0.020199146514935987,
+        "unsupported_claim_rate": 0.031386861313868614,
+        "verdict_counts": {
+          "fail": 114,
+          "pass": 1122,
+          "warn": 134
+        }
+      },
+      "rouge": {
+        "mean_coverage": null,
+        "rouge1": 0.20347750000000003,
+        "rouge2": 0.054975,
+        "rougeL": 0.122255,
+        "source": "reports\\rouge_m1_hasos.json"
+      }
+    },
+    "m2": {
+      "automatic": {
+        "aspects": 29,
+        "avg_compression_ratio": 0.49108559120320777,
+        "avg_evidence_count": 18.389212827988338,
+        "avg_evidence_topk_count": 4.532798833819242,
+        "avg_summary_words": 45.54373177842566,
+        "copied_from_evidence_rate": 0.18513119533527697,
+        "fallback_rate": 0.3294460641399417,
+        "generated_rate": 0.5619533527696793,
+        "method_label": "M2 abstractive",
+        "rows": 1372,
+        "sentiments": [
+          ""
+        ],
+        "status_counts": {
+          "fallback_generic": 452,
+          "generated": 771,
+          "generated_filtered": 149
+        },
+        "topk_duplicate_rate": 0.0
+      },
+      "judge": {
+        "aspect_mismatch_rate": 0.12536443148688048,
+        "avg_scores": {
+          "aspect_correctness": 4.446793002915452,
+          "coverage": 3.7543731778425657,
+          "evidence_support": 4.4358600583090375,
+          "sentiment_alignment": 4.602769679300292,
+          "specificity": 4.348396501457726,
+          "usefulness": 4.069241982507289
+        },
+        "cross_aspect_leakage_rate": 0.10001607975558771,
+        "evidence_p_at_5": 0.9220131853995819,
+        "evidence_support_at_5": 0.7401511497025245,
+        "generic_summary_rate": 0.061224489795918366,
+        "judged_rows": 1372,
+        "major_theme_missing_rate": 0.18002915451895043,
+        "major_theme_recall": 0.8199708454810496,
+        "pass_rate": 0.6960641399416909,
+        "sentiment_flip_rate": 0.04664723032069971,
+        "sentiment_leakage_rate": 0.0237980382698183,
+        "unsupported_claim_rate": 0.15743440233236153,
+        "verdict_counts": {
+          "fail": 208,
+          "pass": 930,
+          "warn": 234
+        }
+      },
+      "rouge": {
+        "mean_coverage": 1.0,
+        "rouge1": 0.2324175,
+        "rouge2": 0.0440575,
+        "rougeL": 0.15033,
+        "source": "reports\\sweep\\rouge_m2_hasos_tokabs_128.json"
+      }
+    },
+    "m3": {
+      "automatic": {
+        "aspects": 28,
+        "avg_compression_ratio": 0.7506835084272586,
+        "avg_evidence_count": 2.8335170893054022,
+        "avg_evidence_topk_count": 2.338478500551268,
+        "avg_summary_words": 34.02756339581036,
+        "copied_from_evidence_rate": 0.5413450937155457,
+        "fallback_rate": 0.44652701212789414,
+        "generated_rate": 0.4211686879823594,
+        "method_label": "M3 kw-sentiment",
+        "rows": 907,
+        "sentiments": [
+          "neg",
+          "pos"
+        ],
+        "status_counts": {
+          "fallback_generic": 347,
+          "fallback_sentiment_flip": 58,
+          "generated": 382,
+          "generated_filtered": 120
+        },
+        "topk_duplicate_rate": 0.0
+      },
+      "judge": {
+        "aspect_mismatch_rate": 0.10584343991179714,
+        "avg_scores": {
+          "aspect_correctness": 4.50606394707828,
+          "coverage": 4.3109151047409044,
+          "evidence_support": 4.6361631753031975,
+          "sentiment_alignment": 4.299889746416759,
+          "specificity": 4.514884233737597,
+          "usefulness": 4.141124586549063
+        },
+        "cross_aspect_leakage_rate": 0.14945780292314945,
+        "evidence_p_at_5": 0.9504950495049505,
+        "evidence_support_at_5": 0.8981612446958982,
+        "generic_summary_rate": 0.037486218302094816,
+        "judged_rows": 907,
+        "major_theme_missing_rate": 0.10253583241455347,
+        "major_theme_recall": 0.8974641675854466,
+        "pass_rate": 0.6846747519294377,
+        "sentiment_flip_rate": 0.15214994487320838,
+        "sentiment_leakage_rate": 0.056577086280056574,
+        "unsupported_claim_rate": 0.09812568908489526,
+        "verdict_counts": {
+          "fail": 188,
+          "pass": 620,
+          "warn": 99
+        }
+      },
+      "rouge": {
+        "mean_coverage": 0.995,
+        "rouge1": 0.26200534999999997,
+        "rouge2": 0.0712361,
+        "rougeL": 0.168383,
+        "source": "reports\\sweep\\rouge_m3_hasos_tokabs_96.json"
+      }
+    },
+    "m4": {
+      "automatic": {
+        "aspects": 28,
+        "avg_compression_ratio": 0.8302292965902903,
+        "avg_evidence_count": 1.9191542288557213,
+        "avg_evidence_topk_count": 1.8830845771144278,
+        "avg_summary_words": 32.76865671641791,
+        "copied_from_evidence_rate": 0.6318407960199005,
+        "fallback_rate": 0.527363184079602,
+        "generated_rate": 0.3370646766169154,
+        "method_label": "M4 bert-sentiment",
+        "rows": 804,
+        "sentiments": [
+          "neg",
+          "pos"
+        ],
+        "status_counts": {
+          "fallback_generic": 390,
+          "fallback_sentiment_flip": 34,
+          "generated": 271,
+          "generated_filtered": 109
+        },
+        "topk_duplicate_rate": 0.0
+      },
+      "judge": {
+        "aspect_mismatch_rate": 0.11318407960199005,
+        "avg_scores": {
+          "aspect_correctness": 4.485074626865671,
+          "coverage": 4.436567164179104,
+          "evidence_support": 4.681592039800995,
+          "sentiment_alignment": 4.606965174129353,
+          "specificity": 4.593283582089552,
+          "usefulness": 4.312189054726368
+        },
+        "cross_aspect_leakage_rate": 0.1287978863936592,
+        "evidence_p_at_5": 0.9372523117569352,
+        "evidence_support_at_5": 0.9220607661822986,
+        "generic_summary_rate": 0.043532338308457715,
+        "judged_rows": 804,
+        "major_theme_missing_rate": 0.10199004975124377,
+        "major_theme_recall": 0.8980099502487562,
+        "pass_rate": 0.75,
+        "sentiment_flip_rate": 0.07587064676616916,
+        "sentiment_leakage_rate": 0.031704095112285335,
+        "unsupported_claim_rate": 0.08582089552238806,
+        "verdict_counts": {
+          "fail": 129,
+          "pass": 605,
+          "warn": 70
+        }
+      },
+      "rouge": {
+        "mean_coverage": 0.9772,
+        "rouge1": 0.208895490625,
+        "rouge2": 0.04004076875,
+        "rougeL": 0.13676549375000002,
+        "source": "reports\\sweep\\rouge_m4_hasos_tokabs_96.json"
+      }
+    }
+  },
+  "rubric_version": "concrete-v1",
+  "source_rows": 4453,
+  "space_rouge_appendix": {
+    "m1": {
+      "method": "m1_extractive",
+      "rouge1": 0.30411666666666665,
+      "rouge2": 0.08684166666666666,
+      "rougeL": 0.22179166666666664
+    },
+    "m2": {
+      "method": "m2_abstractive",
+      "rouge1": 0.30676166666666665,
+      "rouge2": 0.08601833333333332,
+      "rougeL": 0.234645
+    },
+    "m3": {
+      "method": "m3_kw",
+      "rouge1": 0.3093966666666666,
+      "rouge2": 0.08858666666666666,
+      "rougeL": 0.23983166666666667
+    },
+    "m4": {
+      "method": "m4_bert",
+      "rouge1": 0.30800333333333335,
+      "rouge2": 0.08855833333333334,
+      "rougeL": 0.23930500000000002
+    }
+  }
+}

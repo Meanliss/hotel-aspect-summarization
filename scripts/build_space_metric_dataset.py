@@ -54,6 +54,9 @@ SYNTHESIS_RUNS = [
     },
 ]
 
+V2_SUFFIX = "_v2_faithful"
+V3_SUFFIX = "_v3_polarity"
+
 WORD_RE = re.compile(r"\S+")
 
 
@@ -215,14 +218,36 @@ def normalize_synthesis_row(raw: dict[str, Any], run: dict[str, Any], evidence_l
     return finalize_row(row)
 
 
-def build_dataset(evidence_limit: int) -> list[dict[str, Any]]:
+def _variant_synthesis_runs(variant: str) -> list[dict[str, Any]]:
+    """Return synthesis-run list for the requested variant.
+
+    `v2_faithful` points at the re-synthesized outputs that apply the 5
+    faithfulness levers. `v3_polarity` additionally polarity-filters the
+    M3/M4 fallback/splice evidence."""
+    runs: list[dict[str, Any]] = []
+    for run in SYNTHESIS_RUNS:
+        run = dict(run)
+        if variant in {"v2_faithful", "v3_polarity"}:
+            if variant == "v3_polarity" and run["method"] == "m2":
+                suffix = V2_SUFFIX
+            else:
+                suffix = V2_SUFFIX if variant == "v2_faithful" else V3_SUFFIX
+            p = Path(run["path"])
+            run["path"] = p.with_name(
+                p.name.replace("_synthesis_lines.jsonl",
+                               f"{suffix}_synthesis_lines.jsonl"))
+        runs.append(run)
+    return runs
+
+
+def build_dataset(evidence_limit: int, variant: str = "original") -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     seen: set[str] = set()
     for row in build_m1_rows(evidence_limit):
         if row["item_id"] not in seen:
             seen.add(row["item_id"])
             rows.append(row)
-    for run in SYNTHESIS_RUNS:
+    for run in _variant_synthesis_runs(variant):
         path = Path(run["path"])
         if not path.exists():
             raise SystemExit(f"missing synthesis file: {path}")
@@ -299,21 +324,27 @@ def write_summary(path: Path, rows: list[dict[str, Any]]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--out", default=str(OUT_DIR / "space_metric_dataset.jsonl"))
-    parser.add_argument("--summary-out", default=str(OUT_DIR / "space_metric_dataset_summary.json"))
+    parser.add_argument("--out", default=None)
+    parser.add_argument("--summary-out", default=None)
     parser.add_argument("--evidence-limit", type=int, default=5)
+    parser.add_argument("--variant", choices=["original", "v2_faithful", "v3_polarity"],
+                        default="original",
+                        help="Which synthesis outputs to package for judging.")
     args = parser.parse_args()
 
     if args.evidence_limit < 1:
         raise SystemExit("--evidence-limit must be >= 1")
 
-    out = Path(args.out)
-    summary_out = Path(args.summary_out)
+    suffix_map = {"v2_faithful": V2_SUFFIX, "v3_polarity": V3_SUFFIX}
+    suffix = suffix_map.get(args.variant, "")
+    out = Path(args.out) if args.out else OUT_DIR / f"space_metric_dataset{suffix}.jsonl"
+    summary_out = (Path(args.summary_out) if args.summary_out
+                   else OUT_DIR / f"space_metric_dataset{suffix}_summary.json")
     out.parent.mkdir(parents=True, exist_ok=True)
-    rows = build_dataset(args.evidence_limit)
+    rows = build_dataset(args.evidence_limit, args.variant)
     write_jsonl(out, rows)
     write_summary(summary_out, rows)
-    print(f"written {len(rows)} rows -> {out.relative_to(REPO)}")
+    print(f"variant={args.variant} written {len(rows)} rows -> {out.relative_to(REPO)}")
     print(f"written summary -> {summary_out.relative_to(REPO)}")
 
 

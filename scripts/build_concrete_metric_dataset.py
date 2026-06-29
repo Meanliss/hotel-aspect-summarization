@@ -63,6 +63,9 @@ OPTIMIZED_SYNTHESIS_RUNS = [
     },
 ]
 
+V2_SUFFIX = "_v2_faithful"
+V3_SUFFIX = "_v3_polarity"
+
 TAXONOMY_PATH = REPO / "data" / "hasos" / "aspect_taxonomy.json"
 
 WORD_RE = re.compile(r"\S+")
@@ -278,7 +281,35 @@ def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
     tmp.replace(path)
 
 
-def build_dataset(evidence_limit: int) -> list[dict[str, Any]]:
+def _variant_synthesis_runs(variant: str) -> list[dict[str, Any]]:
+    """Return the synthesis-run list for the requested variant.
+
+    `original` keeps the historical sweep outputs. `v2_faithful` points at the
+    re-synthesized outputs that apply the 5 faithfulness levers (evidence
+    alignment, faithfulness prompt, consistency filter, sentiment consistency,
+    deduped fallback). `v3_polarity` additionally polarity-filters the
+    evidence used for splicing/fallback in M3/M4 sentiment-split mode so the
+    fallback never introduces a polarity reversal.
+    """
+    runs: list[dict[str, Any]] = []
+    for run in OPTIMIZED_SYNTHESIS_RUNS:
+        run = dict(run)
+        if variant in {"v2_faithful", "v3_polarity"}:
+            # M2 has no sentiment split, so the v3 polarity filter does not
+            # apply to it; reuse the v2_faithful output for M2 under v3.
+            if variant == "v3_polarity" and run["method"] == "m2":
+                suffix = V2_SUFFIX
+            else:
+                suffix = V2_SUFFIX if variant == "v2_faithful" else V3_SUFFIX
+            p = Path(run["path"])
+            run["path"] = p.with_name(
+                p.name.replace("_synthesis_lines.jsonl",
+                               f"{suffix}_synthesis_lines.jsonl"))
+        runs.append(run)
+    return runs
+
+
+def build_dataset(evidence_limit: int, variant: str = "original") -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     seen: set[str] = set()
     for row in build_m1_rows(evidence_limit):
@@ -286,7 +317,7 @@ def build_dataset(evidence_limit: int) -> list[dict[str, Any]]:
             continue
         seen.add(row["item_id"])
         rows.append(row)
-    for run in OPTIMIZED_SYNTHESIS_RUNS:
+    for run in _variant_synthesis_runs(variant):
         path = Path(run["path"])
         if not path.exists():
             raise SystemExit(f"missing optimized synthesis file: {path}")
@@ -350,21 +381,27 @@ def write_summary(path: Path, rows: list[dict[str, Any]]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--out", default=str(OUT_DIR / "concrete_metric_dataset.jsonl"))
-    parser.add_argument("--summary-out", default=str(OUT_DIR / "concrete_metric_dataset_summary.json"))
+    parser.add_argument("--out", default=None)
+    parser.add_argument("--summary-out", default=None)
     parser.add_argument("--evidence-limit", type=int, default=5)
+    parser.add_argument("--variant", choices=["original", "v2_faithful", "v3_polarity"],
+                        default="original",
+                        help="Which synthesis outputs to package for judging.")
     args = parser.parse_args()
 
     if args.evidence_limit < 1:
         raise SystemExit("--evidence-limit must be >= 1")
 
-    out = Path(args.out)
-    summary_out = Path(args.summary_out)
+    suffix_map = {"v2_faithful": V2_SUFFIX, "v3_polarity": V3_SUFFIX}
+    suffix = suffix_map.get(args.variant, "")
+    out = Path(args.out) if args.out else OUT_DIR / f"concrete_metric_dataset{suffix}.jsonl"
+    summary_out = (Path(args.summary_out) if args.summary_out
+                   else OUT_DIR / f"concrete_metric_dataset{suffix}_summary.json")
     out.parent.mkdir(parents=True, exist_ok=True)
-    rows = build_dataset(args.evidence_limit)
+    rows = build_dataset(args.evidence_limit, args.variant)
     write_jsonl(out, rows)
     write_summary(summary_out, rows)
-    print(f"written {len(rows)} rows -> {out.relative_to(REPO)}")
+    print(f"variant={args.variant} written {len(rows)} rows -> {out.relative_to(REPO)}")
     print(f"written summary -> {summary_out.relative_to(REPO)}")
 
 
