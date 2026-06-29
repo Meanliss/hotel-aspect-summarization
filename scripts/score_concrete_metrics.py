@@ -189,6 +189,7 @@ def automatic_metrics(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
                 duplicate_ratios.append(1.0 - unique / len(normalized))
 
         fallback_n = sum(v for k, v in status_counts.items() if k.startswith("fallback"))
+        generated_n = status_counts.get("generated", 0) + status_counts.get("cached_existing_output", 0)
         is_extractive = method == "m1" or status_counts.get("extractive", 0) == n
         result[method] = {
             "method_label": bucket[0].get("method_label", method),
@@ -196,7 +197,7 @@ def automatic_metrics(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
             "aspects": len({r.get("aspect") for r in bucket}),
             "sentiments": sorted({r.get("sentiment", "") for r in bucket}),
             "status_counts": dict(sorted(status_counts.items())),
-            "generated_rate": None if is_extractive else rate(status_counts.get("generated", 0), n),
+            "generated_rate": None if is_extractive else rate(generated_n, n),
             "fallback_rate": None if is_extractive else rate(fallback_n, n),
             "copied_from_evidence_rate": rate(copied, n),
             "avg_evidence_count": mean(evidence_counts),
