@@ -58,3 +58,6 @@ Thumbs.db
 
 # LLM judge request cache (kept local for resume/audit)
 reports/metrics/judge_cache/
+
+# Local dev-server logs
+reports/sweep/_web_dev*.log

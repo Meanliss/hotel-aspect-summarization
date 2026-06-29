@@ -1,5 +1,18 @@
 {
   "by_method": {
+    "m1": {
+      "aspects": 29,
+      "avg_evidence_count": 2.613138686131387,
+      "avg_summary_words": 40.0,
+      "method_label": "M1 extractive",
+      "rows": 1370,
+      "sentiments": [
+        ""
+      ],
+      "statuses": {
+        "extractive": 1370
+      }
+    },
     "m2": {
       "aspects": 29,
       "avg_evidence_count": 18.389212827988338,
@@ -51,5 +64,5 @@
   "dataset": "hasos",
   "judge_evidence_k": 5,
   "rubric_version": "concrete-v1",
-  "total_rows": 3083
+  "total_rows": 4453
 }

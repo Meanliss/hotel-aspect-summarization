@@ -1,0 +1,8 @@
+{
+  "run_id": "sweep_hasos_m1_tok_96",
+  "budget_words": 96,
+  "source_lines": "outputs\\space_hasos_threshold_full_lines.jsonl",
+  "groups_written": 1372,
+  "avg_words_per_group": 96.0,
+  "note": "Replay of M1 extractive truncation from stored B=120 ranked lines."
+}

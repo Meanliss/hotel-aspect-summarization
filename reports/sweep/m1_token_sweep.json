@@ -1,0 +1,56 @@
+{
+  "source": "outputs\\space_hasos_threshold_full_lines.jsonl",
+  "budgets": [
+    40,
+    64,
+    80,
+    96,
+    120
+  ],
+  "rows": [
+    {
+      "B": 40,
+      "rouge1": 0.20779000000000003,
+      "rouge2": 0.0590775,
+      "rougeL": 0.12453750000000001
+    },
+    {
+      "B": 64,
+      "rouge1": 0.1591575,
+      "rouge2": 0.052445,
+      "rougeL": 0.0985775
+    },
+    {
+      "B": 80,
+      "rouge1": 0.13741,
+      "rouge2": 0.047905,
+      "rougeL": 0.0868675
+    },
+    {
+      "B": 96,
+      "rouge1": 0.12100499999999999,
+      "rouge2": 0.04475,
+      "rougeL": 0.0781225
+    },
+    {
+      "B": 120,
+      "rouge1": 0.10307250000000001,
+      "rouge2": 0.040317500000000006,
+      "rougeL": 0.06802749999999999
+    }
+  ],
+  "best_by_rouge1": {
+    "B": 40,
+    "rouge1": 0.20779000000000003,
+    "rouge2": 0.0590775,
+    "rougeL": 0.12453750000000001
+  },
+  "official_m1_baseline": {
+    "run_id": "space_hasos_full_e20",
+    "B": 40,
+    "rouge1": 0.20347750000000003,
+    "rouge2": 0.054975,
+    "rougeL": 0.122255
+  },
+  "limitation": "Replay rows use the space_hasos_threshold_full B=120 sentence log. They are a budget sensitivity check, not a replacement for the official M1 baseline scored from space_hasos_full_e20."
+}

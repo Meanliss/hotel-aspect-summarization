@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Build the normalized HASOS metric-judge dataset.
 
-The input synthesis JSONL files already contain the optimized HASOS outputs and
-their ranked evidence. This script converts them into a stable, compact JSONL
-contract for automatic metrics and LLM judging.
+The abstractive synthesis JSONL files already contain the optimized HASOS
+outputs and their ranked evidence. The M1 extractive baseline is stored as
+sentence-level SemAE outputs, so this script groups those sentences into the
+same compact JSONL contract used for automatic metrics and LLM judging.
 
 Usage:
     python scripts/build_concrete_metric_dataset.py
@@ -22,7 +23,17 @@ from typing import Any
 REPO = Path(__file__).resolve().parents[1]
 OUT_DIR = REPO / "reports" / "metrics"
 
-OPTIMIZED_RUNS = [
+M1_RUN = {
+    "method": "m1",
+    "method_label": "M1 extractive",
+    "threshold": None,
+    "max_tokens": 40,
+    "run_id": "space_hasos_full_e20",
+    "lines_path": REPO / "outputs" / "space_hasos_full_e20_lines.jsonl",
+    "provenance_path": REPO / "outputs" / "space_hasos_full_e20_provenance.jsonl",
+}
+
+OPTIMIZED_SYNTHESIS_RUNS = [
     {
         "method": "m2",
         "method_label": "M2 abstractive",
@@ -51,6 +62,8 @@ OPTIMIZED_RUNS = [
         / "sweep_hasos_m4_tokabs_96_thr_0p005_synthesis_lines.jsonl",
     },
 ]
+
+TAXONOMY_PATH = REPO / "data" / "hasos" / "aspect_taxonomy.json"
 
 WORD_RE = re.compile(r"\S+")
 
@@ -86,6 +99,14 @@ def compact_evidence(raw: list[dict[str, Any]], limit: int) -> list[dict[str, An
     return evidence
 
 
+def load_parent_aspects() -> dict[str, str]:
+    if not TAXONOMY_PATH.exists():
+        return {}
+    with io.open(TAXONOMY_PATH, encoding="utf-8") as f:
+        data = json.load(f)
+    return {row["code"]: row.get("group", "") for row in data.get("aspects", [])}
+
+
 def normalize_row(raw: dict[str, Any], run: dict[str, Any], evidence_limit: int) -> dict[str, Any]:
     summary = clean_text(raw.get("summary", ""))
     evidence = compact_evidence(raw.get("evidence") or [], evidence_limit)
@@ -108,6 +129,7 @@ def normalize_row(raw: dict[str, Any], run: dict[str, Any], evidence_limit: int)
         "method": run["method"],
         "method_label": run["method_label"],
         "optimized_threshold": run["threshold"],
+        "optimized_max_tokens": None,
         "optimized_max_new_tokens": run["max_new_tokens"],
         "source_run_id": raw.get("source_run_id") or raw.get("run_id"),
         "run_id": raw.get("run_id"),
@@ -128,6 +150,7 @@ def normalize_row(raw: dict[str, Any], run: dict[str, Any], evidence_limit: int)
         "source_file": os.path.relpath(str(run["path"]), str(REPO)),
         "summary_word_count": word_count(summary),
         "evidence_topk_word_count": word_count(evidence_text),
+        "compression_evidence_word_count": word_count(evidence_text),
         "judge_evidence_k": evidence_limit,
     }
 
@@ -144,6 +167,109 @@ def iter_jsonl(path: Path):
                 raise SystemExit(f"{path}:{lineno}: invalid JSON: {exc}") from exc
 
 
+def m1_group_key(row: dict[str, Any]) -> tuple[str, str, str]:
+    return (row.get("split", ""), str(row.get("entity_id", "")), row.get("aspect", ""))
+
+
+def sort_m1_lines(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return sorted(
+        rows,
+        key=lambda r: (
+            int(r.get("sentence_index") or r.get("summary_sentence_index") or 0),
+            int(r.get("rank") or 0),
+            clean_text(r.get("sentence", "")),
+        ),
+    )
+
+
+def normalize_m1_group(
+    key: tuple[str, str, str],
+    line_rows: list[dict[str, Any]],
+    provenance_rows: list[dict[str, Any]],
+    parent_aspects: dict[str, str],
+    evidence_limit: int,
+) -> dict[str, Any]:
+    split, entity_id, aspect = key
+    line_rows = sort_m1_lines(line_rows)
+    provenance_rows = sort_m1_lines(provenance_rows or line_rows)
+    summary = clean_text(" ".join(row.get("sentence", "") for row in line_rows))
+    evidence = compact_evidence(provenance_rows, evidence_limit)
+    evidence_text = " ".join(row.get("sentence", "") for row in provenance_rows)
+    summary_words = word_count(summary)
+    identity = {
+        "method": M1_RUN["method"],
+        "entity_id": entity_id,
+        "split": split,
+        "aspect": aspect,
+        "sentiment": "",
+        "summary": summary,
+        "evidence": evidence,
+        "rubric_version": "concrete-v1",
+    }
+    item_id = stable_hash(identity)[:24]
+    first = line_rows[0] if line_rows else {}
+    return {
+        "item_id": item_id,
+        "rubric_version": "concrete-v1",
+        "dataset": "hasos",
+        "method": M1_RUN["method"],
+        "method_label": M1_RUN["method_label"],
+        "optimized_threshold": M1_RUN["threshold"],
+        "optimized_max_tokens": M1_RUN["max_tokens"],
+        "optimized_max_new_tokens": None,
+        "source_run_id": M1_RUN["run_id"],
+        "run_id": M1_RUN["run_id"],
+        "split": split,
+        "entity_id": entity_id,
+        "level": "child",
+        "aspect": aspect,
+        "parent_aspect": parent_aspects.get(aspect, ""),
+        "sentiment": "",
+        "summary": summary,
+        "evidence": evidence,
+        "evidence_count": len(provenance_rows),
+        "evidence_used": len(provenance_rows),
+        "status": "extractive",
+        "copied_from_evidence": True,
+        "selection_mode": "semae_ranked_extractive",
+        "output_path": first.get("output_path") or "",
+        "source_file": os.path.relpath(str(M1_RUN["lines_path"]), str(REPO)),
+        "source_provenance_file": os.path.relpath(str(M1_RUN["provenance_path"]), str(REPO)),
+        "summary_word_count": summary_words,
+        "evidence_topk_word_count": word_count(" ".join(ev["sentence"] for ev in evidence)),
+        # M1 is itself the selected extractive evidence, so compression is 1.0.
+        "compression_evidence_word_count": summary_words,
+        "judge_evidence_k": evidence_limit,
+    }
+
+
+def build_m1_rows(evidence_limit: int) -> list[dict[str, Any]]:
+    lines_path = Path(M1_RUN["lines_path"])
+    provenance_path = Path(M1_RUN["provenance_path"])
+    if not lines_path.exists():
+        raise SystemExit(f"missing M1 lines file: {lines_path}")
+    if not provenance_path.exists():
+        raise SystemExit(f"missing M1 provenance file: {provenance_path}")
+
+    line_groups: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+    provenance_groups: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+    for _lineno, row in iter_jsonl(lines_path):
+        if not clean_text(row.get("sentence", "")):
+            continue
+        line_groups.setdefault(m1_group_key(row), []).append(row)
+    for _lineno, row in iter_jsonl(provenance_path):
+        if not clean_text(row.get("sentence", "")):
+            continue
+        provenance_groups.setdefault(m1_group_key(row), []).append(row)
+
+    parent_aspects = load_parent_aspects()
+    rows = [
+        normalize_m1_group(key, line_groups[key], provenance_groups.get(key, []), parent_aspects, evidence_limit)
+        for key in sorted(line_groups)
+    ]
+    return rows
+
+
 def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
     tmp = path.with_suffix(path.suffix + ".tmp")
     with io.open(tmp, "w", encoding="utf-8", newline="\n") as f:
@@ -155,7 +281,12 @@ def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
 def build_dataset(evidence_limit: int) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     seen: set[str] = set()
-    for run in OPTIMIZED_RUNS:
+    for row in build_m1_rows(evidence_limit):
+        if row["item_id"] in seen:
+            continue
+        seen.add(row["item_id"])
+        rows.append(row)
+    for run in OPTIMIZED_SYNTHESIS_RUNS:
         path = Path(run["path"])
         if not path.exists():
             raise SystemExit(f"missing optimized synthesis file: {path}")

@@ -30,14 +30,20 @@ DEFAULT_MD = METRICS_DIR / "concrete_metrics_hasos.md"
 DEFAULT_TABLES = METRICS_DIR / "paper_tables.md"
 
 HASOS_ROUGE = {
+    "m1": REPO / "reports" / "rouge_m1_hasos.json",
     "m2": REPO / "reports" / "sweep" / "rouge_m2_hasos_tokabs_128.json",
     "m3": REPO / "reports" / "sweep" / "rouge_m3_hasos_tokabs_96.json",
     "m4": REPO / "reports" / "sweep" / "rouge_m4_hasos_tokabs_96.json",
 }
 SPACE_ROUGE = REPO / "reports" / "rouge_comparison_space.json"
 
-PRICE_INPUT_PER_1M = 0.435
-PRICE_OUTPUT_PER_1M = 0.87
+DEFAULT_PRICE_INPUT_PER_1M = 0.435
+DEFAULT_PRICE_OUTPUT_PER_1M = 0.87
+MODEL_PRICING_USD_PER_1M = {
+    "deepseek-v4-pro": (0.435, 0.87),
+    "deepseek-v4-flash": (0.14, 0.28),
+    "deepseek-chat": (0.14, 0.28),
+}
 WORD_RE = re.compile(r"\S+")
 
 
@@ -169,7 +175,11 @@ def automatic_metrics(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
             evidence = row.get("evidence") or []
             evidence_topk_counts.append(float(len(evidence)))
             sw = float(row.get("summary_word_count") or word_count(row.get("summary", "")))
-            ew = float(row.get("evidence_topk_word_count") or word_count(" ".join(e.get("sentence", "") for e in evidence)))
+            ew = float(
+                row.get("compression_evidence_word_count")
+                or row.get("evidence_topk_word_count")
+                or word_count(" ".join(e.get("sentence", "") for e in evidence))
+            )
             summary_words.append(sw)
             if ew > 0:
                 compression_ratios.append(sw / ew)
@@ -179,14 +189,15 @@ def automatic_metrics(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
                 duplicate_ratios.append(1.0 - unique / len(normalized))
 
         fallback_n = sum(v for k, v in status_counts.items() if k.startswith("fallback"))
+        is_extractive = method == "m1" or status_counts.get("extractive", 0) == n
         result[method] = {
             "method_label": bucket[0].get("method_label", method),
             "rows": n,
             "aspects": len({r.get("aspect") for r in bucket}),
             "sentiments": sorted({r.get("sentiment", "") for r in bucket}),
             "status_counts": dict(sorted(status_counts.items())),
-            "generated_rate": rate(status_counts.get("generated", 0), n),
-            "fallback_rate": rate(fallback_n, n),
+            "generated_rate": None if is_extractive else rate(status_counts.get("generated", 0), n),
+            "fallback_rate": None if is_extractive else rate(fallback_n, n),
             "copied_from_evidence_rate": rate(copied, n),
             "avg_evidence_count": mean(evidence_counts),
             "avg_evidence_topk_count": mean(evidence_topk_counts),
@@ -221,18 +232,34 @@ def judge_metrics(judgments: list[dict[str, Any]]) -> tuple[dict[str, dict[str, 
         "completion_tokens": 0,
         "total_tokens": 0,
         "estimated_usd": 0.0,
+        "by_model": {},
     }
     for row in judgments:
         usage = row.get("usage") or {}
         prompt = int(usage.get("prompt_tokens") or 0)
         completion = int(usage.get("completion_tokens") or 0)
+        model = row.get("model") or "unknown"
+        input_price, output_price = MODEL_PRICING_USD_PER_1M.get(
+            model, (DEFAULT_PRICE_INPUT_PER_1M, DEFAULT_PRICE_OUTPUT_PER_1M)
+        )
+        estimated = prompt / 1_000_000 * input_price + completion / 1_000_000 * output_price
         usage_totals["prompt_tokens"] += prompt
         usage_totals["completion_tokens"] += completion
         usage_totals["total_tokens"] += int(usage.get("total_tokens") or prompt + completion)
-    usage_totals["estimated_usd"] = (
-        usage_totals["prompt_tokens"] / 1_000_000 * PRICE_INPUT_PER_1M
-        + usage_totals["completion_tokens"] / 1_000_000 * PRICE_OUTPUT_PER_1M
-    )
+        usage_totals["estimated_usd"] += estimated
+        by_model = usage_totals["by_model"].setdefault(
+            model,
+            {
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+                "total_tokens": 0,
+                "estimated_usd": 0.0,
+            },
+        )
+        by_model["prompt_tokens"] += prompt
+        by_model["completion_tokens"] += completion
+        by_model["total_tokens"] += int(usage.get("total_tokens") or prompt + completion)
+        by_model["estimated_usd"] += estimated
 
     for method, bucket in sorted(by_method.items()):
         n = len(bucket)
@@ -358,6 +385,8 @@ def table_production(metrics: dict[str, dict[str, Any]], usage: dict[str, Any]) 
         )
     lines += [
         "",
+        "Generated/fallback rates are not applicable to M1 because it is an extractive SemAE baseline.",
+        "",
         f"DeepSeek usage: prompt tokens `{usage.get('prompt_tokens', 0)}`, "
         f"completion tokens `{usage.get('completion_tokens', 0)}`, "
         f"estimated cost `${usage.get('estimated_usd', 0.0):.4f}`.",
@@ -388,8 +417,10 @@ def build_markdown(payload: dict[str, Any], detailed: bool) -> str:
     lines = [
         "# Concrete Metric Suite - HASOS",
         "",
-        "Primary HASOS runs use the optimized base selected by the sweep: "
-        "M2 T=0.0075/B=128, M3 T=0.0055/B=96, M4 T=0.005/B=96.",
+        "Primary HASOS comparison uses M1 extractive baseline "
+        "(SemAE epoch-20, B=40 words; no generative decoder) and the optimized "
+        "synthesis bases selected by the sweep: M2 T=0.0075/B=128, M3 T=0.0055/B=96, "
+        "M4 T=0.005/B=96.",
         "",
     ]
     if payload["judged_rows"] == 0:
@@ -441,8 +472,12 @@ def main() -> None:
         "methods": methods,
         "deepseek_usage": usage,
         "deepseek_pricing_usd_per_1m": {
-            "input": PRICE_INPUT_PER_1M,
-            "output": PRICE_OUTPUT_PER_1M,
+            "default_input": DEFAULT_PRICE_INPUT_PER_1M,
+            "default_output": DEFAULT_PRICE_OUTPUT_PER_1M,
+            "by_model": {
+                model: {"input": prices[0], "output": prices[1]}
+                for model, prices in sorted(MODEL_PRICING_USD_PER_1M.items())
+            },
         },
         "space_rouge_appendix": space_rouge,
     }

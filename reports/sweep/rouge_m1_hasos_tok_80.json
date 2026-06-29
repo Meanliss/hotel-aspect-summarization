@@ -1,0 +1,124 @@
+{
+  "method": "m1_extractive",
+  "by_split": {
+    "dev": {
+      "facility": {
+        "rouge1": 0.24421,
+        "rouge2": 0.09358,
+        "rougeL": 0.13298,
+        "n": 24,
+        "eligible": 24,
+        "coverage": 1.0
+      },
+      "amenity": {
+        "rouge1": 0.13788,
+        "rouge2": 0.04311,
+        "rougeL": 0.08345,
+        "n": 24,
+        "eligible": 24,
+        "coverage": 1.0
+      },
+      "service": {
+        "rouge1": 0.14332,
+        "rouge2": 0.04785,
+        "rougeL": 0.10285,
+        "n": 24,
+        "eligible": 24,
+        "coverage": 1.0
+      },
+      "experience": {
+        "rouge1": 0.04332,
+        "rouge2": 0.00921,
+        "rougeL": 0.03479,
+        "n": 17,
+        "eligible": 17,
+        "coverage": 1.0
+      },
+      "MACRO": {
+        "rouge1": 0.14218250000000002,
+        "rouge2": 0.0484375,
+        "rougeL": 0.0885175
+      }
+    },
+    "test": {
+      "facility": {
+        "rouge1": 0.23839,
+        "rouge2": 0.09278,
+        "rougeL": 0.13235,
+        "n": 26,
+        "eligible": 26,
+        "coverage": 1.0
+      },
+      "amenity": {
+        "rouge1": 0.11721,
+        "rouge2": 0.03711,
+        "rougeL": 0.07514,
+        "n": 26,
+        "eligible": 26,
+        "coverage": 1.0
+      },
+      "service": {
+        "rouge1": 0.1272,
+        "rouge2": 0.05017,
+        "rougeL": 0.09806,
+        "n": 26,
+        "eligible": 26,
+        "coverage": 1.0
+      },
+      "experience": {
+        "rouge1": 0.05195,
+        "rouge2": 0.0113,
+        "rougeL": 0.03747,
+        "n": 15,
+        "eligible": 15,
+        "coverage": 1.0
+      },
+      "MACRO": {
+        "rouge1": 0.13368750000000001,
+        "rouge2": 0.04784,
+        "rougeL": 0.085755
+      }
+    },
+    "all": {
+      "facility": {
+        "rouge1": 0.24107,
+        "rouge2": 0.0932,
+        "rougeL": 0.13268,
+        "n": 50,
+        "eligible": 50,
+        "coverage": 1.0
+      },
+      "amenity": {
+        "rouge1": 0.1266,
+        "rouge2": 0.03971,
+        "rougeL": 0.07884,
+        "n": 50,
+        "eligible": 50,
+        "coverage": 1.0
+      },
+      "service": {
+        "rouge1": 0.13467,
+        "rouge2": 0.04852,
+        "rougeL": 0.1,
+        "n": 50,
+        "eligible": 50,
+        "coverage": 1.0
+      },
+      "experience": {
+        "rouge1": 0.0473,
+        "rouge2": 0.01019,
+        "rougeL": 0.03595,
+        "n": 32,
+        "eligible": 32,
+        "coverage": 1.0
+      },
+      "MACRO": {
+        "rouge1": 0.13741,
+        "rouge2": 0.047905,
+        "rougeL": 0.0868675
+      }
+    }
+  },
+  "coverage": {},
+  "fixed_denominator": false
+}

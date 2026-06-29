@@ -101,7 +101,7 @@ def stable_hash(payload: Any) -> str:
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
 
-def cache_key(row: dict[str, Any], model: str) -> str:
+def cache_key(row: dict[str, Any], model: str, thinking: str | None = None) -> str:
     payload = {
         "rubric_version": RUBRIC_VERSION,
         "model": model,
@@ -113,6 +113,8 @@ def cache_key(row: dict[str, Any], model: str) -> str:
         "summary": row["summary"],
         "evidence": row["evidence"],
     }
+    if thinking:
+        payload["thinking"] = thinking
     return stable_hash(payload)
 
 
@@ -133,6 +135,15 @@ def select_rows(rows: list[dict[str, Any]], limit: int | None, per_method: int |
     shuffled = list(rows)
     rng.shuffle(shuffled)
     return sorted(shuffled[:limit], key=lambda r: (r["method"], r["item_id"]))
+
+
+def filter_methods(rows: list[dict[str, Any]], methods: str | None) -> list[dict[str, Any]]:
+    if not methods:
+        return rows
+    wanted = {m.strip().lower() for m in methods.split(",") if m.strip()}
+    if not wanted:
+        return rows
+    return [row for row in rows if str(row.get("method", "")).lower() in wanted]
 
 
 def build_prompt(row: dict[str, Any]) -> list[dict[str, str]]:
@@ -285,6 +296,7 @@ def call_deepseek(
     messages: list[dict[str, str]],
     max_tokens: int,
     timeout: int,
+    thinking: str | None,
 ) -> dict[str, Any]:
     url = base_url.rstrip("/") + "/chat/completions"
     payload = {
@@ -294,6 +306,8 @@ def call_deepseek(
         "max_tokens": max_tokens,
         "response_format": {"type": "json_object"},
     }
+    if thinking:
+        payload["thinking"] = {"type": thinking}
     data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     req = urllib.request.Request(
         url,
@@ -320,8 +334,9 @@ def judge_one(
     max_retries: int,
     max_tokens: int,
     timeout: int,
+    thinking: str | None,
 ) -> dict[str, Any]:
-    key = cache_key(row, model)
+    key = cache_key(row, model, thinking)
     cache_path = cache_dir / f"{key}.json"
     if cache_path.exists():
         cached = json.load(io.open(cache_path, encoding="utf-8"))
@@ -340,6 +355,7 @@ def judge_one(
                 messages=messages,
                 max_tokens=max_tokens,
                 timeout=timeout,
+                thinking=thinking,
             )
             content = response["choices"][0]["message"]["content"]
             json_text = strip_json_text(content)
@@ -354,6 +370,7 @@ def judge_one(
                 "cache_key": key,
                 "rubric_version": RUBRIC_VERSION,
                 "model": model,
+                "thinking": thinking or "",
                 "dataset": row["dataset"],
                 "method": row["method"],
                 "method_label": row["method_label"],
@@ -388,8 +405,13 @@ def main() -> None:
     parser.add_argument("--cache-dir", default=str(DEFAULT_CACHE_DIR))
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--base-url", default=DEFAULT_BASE_URL)
+    parser.add_argument("--thinking", choices=["enabled", "disabled"],
+                        help="DeepSeek V4 thinking mode toggle.")
     parser.add_argument("--limit", type=int)
     parser.add_argument("--per-method", type=int, help="Sample N rows per method for smoke runs.")
+    parser.add_argument("--methods", help="Comma-separated method ids to judge, e.g. m1 or m1,m3.")
+    parser.add_argument("--preserve-existing", action="store_true",
+                        help="Keep existing judgments for unselected items in --out.")
     parser.add_argument("--seed", type=int, default=20260627)
     parser.add_argument("--concurrency", type=int, default=8)
     parser.add_argument("--max-retries", type=int, default=3)
@@ -403,8 +425,16 @@ def main() -> None:
     if args.concurrency < 1:
         raise SystemExit("--concurrency must be >= 1")
 
-    rows = read_jsonl(Path(args.input))
+    rows = filter_methods(read_jsonl(Path(args.input)), args.methods)
     selected = select_rows(rows, args.limit, args.per_method, args.seed)
+    selected_ids = {row["item_id"] for row in selected}
+    preserved_results: list[dict[str, Any]] = []
+    out_path = Path(args.out)
+    if args.preserve_existing and out_path.exists():
+        preserved_results = [
+            row for row in read_jsonl(out_path)
+            if row.get("item_id") not in selected_ids
+        ]
     cache_dir = Path(args.cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
     failures_path = Path(args.failures)
@@ -426,6 +456,7 @@ def main() -> None:
                 max_retries=args.max_retries,
                 max_tokens=args.max_tokens,
                 timeout=args.timeout,
+                thinking=args.thinking,
             ): row
             for row in selected
         }
@@ -451,10 +482,14 @@ def main() -> None:
                 print(f"judged {done_n}/{len(selected)} rows in {elapsed:.1f}s")
 
     results.sort(key=lambda r: (r["method"], r["item_id"]))
-    write_jsonl(Path(args.out), results)
+    output_rows = preserved_results + results
+    output_rows.sort(key=lambda r: (r["method"], r["item_id"]))
+    write_jsonl(out_path, output_rows)
     if failures:
         print(f"completed with {len(failures)} failures -> {display_path(failures_path)}")
-    print(f"written {len(results)} judgments -> {display_path(Path(args.out))}")
+    if preserved_results:
+        print(f"preserved {len(preserved_results)} existing judgments")
+    print(f"written {len(output_rows)} judgments -> {display_path(out_path)}")
 
 
 if __name__ == "__main__":

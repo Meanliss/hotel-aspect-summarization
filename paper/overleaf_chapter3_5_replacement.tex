@@ -1,0 +1,386 @@
+% =========================================================
+% COPY-PASTE GUIDE FOR OVERLEAF
+% Replace everything from:
+%     \chapter{Phương pháp đề xuất}
+% to before:
+%     \end{document}
+% with this block.
+%
+% This block assumes your preamble already has:
+% graphicx, float, caption, subcaption, enumitem, booktabs,
+% tabularx, ltablex, ragged2e, amsmath, amssymb, xcolor, tikz
+% and \usetikzlibrary{shapes, arrows.meta, calc, positioning, backgrounds}
+% =========================================================
+
+\chapter{Phương pháp đề xuất}
+
+\section{Tổng quan thiết kế nghiên cứu}
+
+Đề tài được tổ chức theo hai hướng tiếp cận bổ sung cho nhau. Phương pháp thứ nhất là pipeline dựa trên mô hình ngôn ngữ lớn thông qua API, tập trung vào khả năng phân tích linh hoạt, sinh đầu ra có cấu trúc và triển khai nhanh trong bối cảnh ứng dụng. Phương pháp thứ hai là pipeline dựa trên SemAE, trong đó mô hình được huấn luyện trên tập SPACE và suy luận trên tập HASOS với taxonomy 29 khía cạnh, tập trung vào tính tái lập của bước chọn bằng chứng và khả năng đánh giá bằng các benchmark tóm tắt.
+
+Hai phương pháp không được xem là hai hệ thống tách rời hoàn toàn. Thay vào đó, chúng được đặt trong cùng một khung nghiên cứu để trả lời hai câu hỏi khác nhau. Phương pháp LLM/API trả lời câu hỏi: liệu có thể thiết kế một pipeline linh hoạt để trích xuất khía cạnh, cảm xúc, bằng chứng và tóm tắt từ review khách sạn hay không. Phương pháp SemAE/HASOS trả lời câu hỏi: khi tách riêng bước chọn bằng chứng khỏi bước sinh tóm tắt, chất lượng đầu ra thay đổi như thế nào dưới các biến thể extractive, abstractive và sentiment-split.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    node distance=1.1cm and 0.9cm,
+    block/.style={rectangle, rounded corners, draw, align=center, minimum height=0.9cm, text width=3.0cm, fill=gray!8},
+    method/.style={rectangle, rounded corners, draw, align=center, minimum height=0.9cm, text width=3.2cm, fill=blue!7},
+    eval/.style={rectangle, rounded corners, draw, align=center, minimum height=0.9cm, text width=3.2cm, fill=green!7},
+    arrow/.style={-{Latex[length=2.5mm]}, thick}
+]
+    \node[block] (data) {Review khách sạn};
+    \node[method, right=of data, yshift=0.75cm] (llm) {Phương pháp 1\\LLM/API};
+    \node[method, right=of data, yshift=-0.75cm] (semae) {Phương pháp 2\\SemAE/HASOS};
+    \node[block, right=1.2cm of llm] (json) {JSON có cấu trúc\\khía cạnh, cảm xúc, bằng chứng};
+    \node[block, right=1.2cm of semae] (summ) {Tóm tắt theo khía cạnh\\M1--M4};
+    \node[eval, right=1.2cm of $(json)!0.5!(summ)$] (metric) {Đánh giá\\ROUGE + metric vận hành + LLM judge};
+
+    \draw[arrow] (data) -- (llm);
+    \draw[arrow] (data) -- (semae);
+    \draw[arrow] (llm) -- (json);
+    \draw[arrow] (semae) -- (summ);
+    \draw[arrow] (json) -- (metric);
+    \draw[arrow] (summ) -- (metric);
+\end{tikzpicture}
+\caption{Khung nghiên cứu gồm hai phương pháp trong cùng một pipeline đánh giá}
+\label{fig:two-method-framework}
+\end{figure}
+
+\section{Phương pháp 1: Pipeline LLM/API}
+
+\subsection{Mục tiêu thiết kế}
+
+Phương pháp thứ nhất hướng đến một pipeline có khả năng xử lý review khách sạn ở dạng văn bản tự nhiên và chuyển đổi chúng thành đầu ra có cấu trúc. Đầu ra mong muốn không chỉ là một nhãn cảm xúc tổng quát, mà bao gồm khía cạnh được nhắc đến, sắc thái cảm xúc tương ứng, bằng chứng trong review và bản tóm tắt ngắn gọn ở cấp khách sạn. Cách tiếp cận này phù hợp với bối cảnh ứng dụng vì LLM có thể xử lý nhiều cách diễn đạt khác nhau mà không cần huấn luyện lại mô hình từ đầu.
+
+Tuy nhiên, nếu chỉ gọi LLM bằng prompt tự do, kết quả dễ thiếu ổn định, khó kiểm tra tự động và khó tái lập. Vì vậy, phương pháp 1 được thiết kế như một pipeline dữ liệu có kiểm soát: đầu vào được chuẩn hóa, prompt được cố định theo nhiệm vụ, đầu ra bị ràng buộc bởi schema JSON, phản hồi được validate, kết quả được cache và lỗi được ghi log để có thể chạy lại.
+
+\subsection{Luồng xử lý}
+
+Pipeline LLM/API gồm năm bước chính. Bước đầu tiên là tiền xử lý dữ liệu review, bao gồm đọc dữ liệu, chuẩn hóa encoding, loại bỏ khoảng trắng dư thừa và tách review thành các đơn vị nhỏ hơn. Bước thứ hai là xây dựng prompt cho từng nhóm review hoặc từng khách sạn. Prompt mô tả rõ nhiệm vụ, định nghĩa các khía cạnh cần quan tâm, yêu cầu trích dẫn bằng chứng và quy định schema đầu ra.
+
+Bước thứ ba là gọi API mô hình ngôn ngữ. Để giảm rủi ro do lỗi mạng hoặc giới hạn tốc độ, pipeline cần có retry và timeout. Bước thứ tư là kiểm tra đầu ra. Nếu phản hồi không phải JSON hợp lệ, thiếu trường bắt buộc hoặc chứa giá trị ngoài miền cho phép, hệ thống đánh dấu lỗi và thử lại theo số lần giới hạn. Bước cuối cùng là tổng hợp kết quả ở cấp khách sạn, tạo các bản tóm tắt dễ đọc và lưu artifact phục vụ đánh giá.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    node distance=0.8cm,
+    block/.style={rectangle, rounded corners, draw, align=center, minimum height=0.8cm, text width=2.45cm, fill=gray!8},
+    arrow/.style={-{Latex[length=2.3mm]}, thick}
+]
+    \node[block] (raw) {Review thô};
+    \node[block, right=of raw] (prep) {Làm sạch\\tách câu};
+    \node[block, right=of prep] (prompt) {Prompt + schema};
+    \node[block, right=of prompt] (api) {Gọi LLM API};
+    \node[block, below=of api] (valid) {Validate JSON\\retry/cache};
+    \node[block, left=of valid] (agg) {Tổng hợp\\theo khách sạn};
+    \node[block, left=of agg] (out) {Báo cáo\\dashboard};
+
+    \draw[arrow] (raw) -- (prep);
+    \draw[arrow] (prep) -- (prompt);
+    \draw[arrow] (prompt) -- (api);
+    \draw[arrow] (api) -- (valid);
+    \draw[arrow] (valid) -- (agg);
+    \draw[arrow] (agg) -- (out);
+\end{tikzpicture}
+\caption{Luồng xử lý của phương pháp 1 dựa trên LLM/API}
+\label{fig:method1-llm-pipeline}
+\end{figure}
+
+\subsection{Schema đầu ra và kiểm soát chất lượng}
+
+Một điểm quan trọng của phương pháp 1 là không xem LLM như một hộp đen sinh văn bản tự do. Thay vào đó, đầu ra được yêu cầu theo schema cố định. Mỗi kết quả cần chứa ít nhất khía cạnh, cảm xúc, bằng chứng và phần tóm tắt. Cách thiết kế này giúp hệ thống kiểm tra tự động được các lỗi phổ biến như thiếu trường, sai kiểu dữ liệu hoặc nhãn cảm xúc không thuộc tập cho phép.
+
+Ví dụ, một bản ghi đầu ra có thể được tổ chức theo dạng khái niệm như sau:
+
+\begin{lstlisting}[caption={Ví dụ schema đầu ra của phương pháp LLM/API}, label={lst:llm-schema}]
+{
+  "hotel_id": "string",
+  "aspect": "room|service|location|amenity|experience",
+  "sentiment": "positive|negative|neutral|mixed",
+  "evidence": ["sentence 1", "sentence 2"],
+  "summary": "short aspect-level summary"
+}
+\end{lstlisting}
+
+Schema này không nhằm thay thế hoàn toàn đánh giá thủ công, nhưng giúp pipeline có khả năng vận hành ổn định hơn. Khi phản hồi của LLM sai định dạng, hệ thống có thể phát hiện và yêu cầu sinh lại thay vì đưa kết quả lỗi vào báo cáo cuối cùng.
+
+\section{Phương pháp 2: SemAE huấn luyện trên SPACE và suy luận trên HASOS}
+
+\subsection{Động cơ bổ sung phương pháp 2}
+
+Phương pháp LLM/API có ưu điểm về tính linh hoạt, nhưng phụ thuộc nhiều vào chất lượng mô hình, chi phí gọi API và độ ổn định của phản hồi. Để có thêm một nhánh đánh giá mang tính tái lập hơn, đề tài bổ sung phương pháp thứ hai dựa trên SemAE. Trong phương pháp này, bước chọn bằng chứng được thực hiện bằng mô hình biểu diễn ngữ nghĩa và taxonomy khía cạnh cố định. LLM hoặc mô hình sinh chỉ tham gia ở bước diễn đạt lại tóm tắt, không trực tiếp quyết định toàn bộ quá trình phân tích.
+
+Ý tưởng cốt lõi là: nếu hệ thống có thể chọn được các câu review liên quan đến từng khía cạnh, thì các biến thể tóm tắt khác nhau có thể được xây dựng từ cùng một nguồn bằng chứng. Nhờ đó, ta có thể so sánh rõ hơn ảnh hưởng của tách cảm xúc, sinh tóm tắt trừu tượng và backend ABSA đến chất lượng đầu ra.
+
+\subsection{Dữ liệu và taxonomy}
+
+SemAE được huấn luyện trên SPACE, một tập dữ liệu đánh giá khách sạn tiếng Anh có cấu trúc phù hợp cho bài toán tóm tắt theo khía cạnh. Sau đó, mô hình được dùng để suy luận trên HASOS. HASOS là tập dữ liệu mục tiêu của đề tài, gồm 50 khách sạn, 5,000 review, 45,529 câu và taxonomy 29 khía cạnh. Các khía cạnh này bao phủ nhiều nhóm thông tin trong miền khách sạn như phòng, tiện nghi, dịch vụ, trải nghiệm, thương hiệu và lòng trung thành.
+
+\begin{table}[H]
+\centering
+\caption{Tóm tắt dữ liệu sử dụng trong phương pháp 2}
+\label{tab:data-summary-method2}
+\begin{tabularx}{0.92\textwidth}{l r X}
+\toprule
+\textbf{Thành phần} & \textbf{Số lượng} & \textbf{Vai trò trong pipeline} \\
+\midrule
+Khách sạn / thực thể & 50 & Đơn vị tổng hợp tóm tắt cuối cùng. \\
+Review & 5,000 & Nguồn văn bản đầu vào. \\
+Câu review & 45,529 & Đơn vị được SemAE xếp hạng làm bằng chứng. \\
+Khía cạnh HASOS & 29 & Taxonomy chi tiết dùng để chọn evidence. \\
+Nhóm khía cạnh có gold summary & 4 & Dùng để tính ROUGE ở cấp parent aspect. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Chọn bằng chứng bằng SemAE}
+
+Trong bước suy luận, review được tách thành các câu. Mỗi câu được mã hóa bằng encoder của SemAE. Với mỗi khía cạnh trong taxonomy HASOS, hệ thống xây dựng một prototype dựa trên seed words của khía cạnh đó. Sau đó, các câu được xếp hạng theo mức độ phù hợp với prototype. Những câu có điểm tốt hơn ngưỡng \(T\) được giữ lại làm bằng chứng.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    node distance=0.75cm,
+    block/.style={rectangle, rounded corners, draw, align=center, minimum height=0.78cm, text width=2.3cm, fill=gray!8},
+    greenblock/.style={rectangle, rounded corners, draw, align=center, minimum height=0.78cm, text width=2.3cm, fill=green!8},
+    arrow/.style={-{Latex[length=2.3mm]}, thick}
+]
+    \node[block] (review) {HASOS reviews};
+    \node[block, right=of review] (sent) {Tách câu};
+    \node[block, right=of sent] (enc) {SemAE encoder};
+    \node[block, below=of enc] (proto) {Aspect prototypes\\29 khía cạnh};
+    \node[block, right=of enc] (rank) {Xếp hạng câu};
+    \node[greenblock, right=of rank] (evidence) {Evidence\\theo ngưỡng \(T\)};
+    \node[greenblock, right=of evidence] (summary) {Tóm tắt\\M1--M4};
+
+    \draw[arrow] (review) -- (sent);
+    \draw[arrow] (sent) -- (enc);
+    \draw[arrow] (proto) -- (rank);
+    \draw[arrow] (enc) -- (rank);
+    \draw[arrow] (rank) -- (evidence);
+    \draw[arrow] (evidence) -- (summary);
+\end{tikzpicture}
+\caption{Pipeline chọn bằng chứng và tạo tóm tắt của phương pháp SemAE/HASOS}
+\label{fig:method2-semae-pipeline}
+\end{figure}
+
+Thiết kế này có hai ưu điểm. Thứ nhất, mỗi bản tóm tắt đều có thể truy vết về các câu bằng chứng cụ thể. Thứ hai, cùng một tập evidence có thể được dùng để tạo nhiều biến thể đầu ra, từ đó giúp phân tích ảnh hưởng của từng thành phần trong pipeline.
+
+\subsection{Các biến thể M1--M4}
+
+Từ evidence do SemAE chọn, đề tài xây dựng bốn biến thể:
+
+\begin{itemize}[leftmargin=1.2cm]
+    \item \textbf{M1 -- Extractive SemAE}: giữ nguyên các câu được chọn, đóng vai trò baseline không sinh văn bản mới.
+    \item \textbf{M2 -- Abstractive trước sentiment}: dùng evidence để sinh tóm tắt trừu tượng, chưa tách riêng tích cực và tiêu cực.
+    \item \textbf{M3 -- Keyword sentiment}: tách evidence theo cảm xúc bằng luật/từ khóa, sau đó sinh tóm tắt theo từng nhóm cảm xúc.
+    \item \textbf{M4 -- BERT-ABSA sentiment}: tách evidence bằng backend BERT-ABSA, sau đó sinh tóm tắt theo từng nhóm cảm xúc.
+\end{itemize}
+
+M1 giúp xác định chất lượng của bước chọn câu thuần túy. M2 cho thấy tác động của việc diễn đạt lại bằng mô hình sinh. M3 và M4 kiểm tra giả thuyết rằng tách cảm xúc trước khi tóm tắt có thể giúp giảm lẫn lộn ý kiến tích cực và tiêu cực. Trong đó, M3 ưu tiên cách tách đơn giản và dễ tái lập, còn M4 ưu tiên mô hình ABSA mạnh hơn để nhận diện cảm xúc theo ngữ cảnh.
+
+\subsection{Vai trò của các tham số \(T\) và \(B\)}
+
+Hai tham số chính trong phương pháp 2 là ngưỡng chọn bằng chứng \(T\) và ngân sách độ dài \(B\), nhưng ý nghĩa của chúng cần được phân biệt theo từng biến thể. Ngưỡng \(T\) là ngưỡng điểm SemAE dùng để xuất hoặc lọc pool bằng chứng: câu có điểm không vượt quá \(T\) được giữ lại làm evidence. Nếu \(T\) quá chặt, hệ thống có thể bỏ sót thông tin quan trọng; nếu \(T\) quá rộng, evidence có thể nhiễu và làm giảm độ tập trung của tóm tắt.
+
+Với M1, \(B\) là \texttt{max\_tokens} ở mức từ: hệ thống nối các câu SemAE đã xếp hạng cho đến giới hạn 120 từ. Vì vậy M1 là baseline trích rút, không sinh văn bản mới và không được tối ưu bằng cùng sweep hậu kỳ như M2--M4. Với M2, M3 và M4, \(B\) là \texttt{max\_new\_tokens} của FLAN-T5, tức số token mới tối đa khi mô hình viết lại evidence thành summary trừu tượng.
+
+Do đó, Bảng~\ref{tab:optimal-hasos-settings} nên được hiểu là thiết lập dùng trong so sánh cuối cùng. M1 dùng run SemAE hiện có \texttt{space\_hasos\_threshold\_full} với \(T=0.005\) cho pool bằng chứng và \(B=120\) từ cho output trích rút. M2--M4 được sweep vì cùng pool evidence có thể được lọc lại và sinh lại summary mà không cần thay đổi bản chất của M1.
+
+\begin{table}[H]
+\centering
+\caption{Thiết lập sử dụng trong so sánh cuối cùng trên HASOS}
+\label{tab:optimal-hasos-settings}
+\begin{threeparttable}
+\begin{tabular}{l c c l}
+\toprule
+\textbf{Biến thể} & \textbf{Ngưỡng \(T\)} & \textbf{Token \(B\)} & \textbf{Ghi chú} \\
+\midrule
+M1 & 0.0050 & 120 từ & Baseline trích rút SemAE; không sinh văn bản mới. \\
+M2 & 0.0075 & 128 & Tăng ROUGE-1 so với ngưỡng mặc định và giữ coverage đầy đủ. \\
+M3 & 0.0055 & 96 & Cải thiện mạnh ROUGE-1 với coverage ổn định. \\
+M4 & 0.0050 & 96 & Giữ ngưỡng mặc định, giảm token budget để cô đọng hơn. \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item Với M1, \(T\) là ngưỡng xuất pool evidence và \(B\) là giới hạn số từ của bản trích rút. Với M2--M4, \(B\) là \texttt{max\_new\_tokens} của mô hình sinh.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\section{Thiết kế đánh giá}
+
+\subsection{Đánh giá bằng ROUGE}
+
+ROUGE-1, ROUGE-2 và ROUGE-L được dùng để so sánh bản tóm tắt hệ thống với gold summary. Với SPACE, đánh giá được thực hiện theo sáu khía cạnh tổng quát. Với HASOS, vì gold summary chỉ có ở bốn nhóm khía cạnh cha, các kết quả từ 29 khía cạnh con được gom về các nhóm cha tương ứng trước khi tính ROUGE. Những nhóm không có gold summary không được đưa vào mẫu số đánh giá để tránh báo điểm không có cơ sở.
+
+\subsection{Đánh giá bằng LLM judge}
+
+ROUGE đo overlap n-gram nhưng không đánh giá đầy đủ tính trung thực hoặc đúng cảm xúc. Vì vậy, đề tài bổ sung LLM judge để chấm các khía cạnh semantic. Judge nhận vào target aspect, target sentiment, evidence top-k và summary, sau đó trả về JSON theo rubric gồm các điểm số từ 1 đến 5 và các cờ lỗi nhị phân.
+
+Một item được xem là \textit{pass} nếu thỏa đồng thời các điều kiện sau:
+
+\begin{itemize}[leftmargin=1.2cm]
+    \item evidence support, aspect correctness và sentiment alignment đều từ 4 trở lên;
+    \item coverage từ 3 trở lên;
+    \item không có unsupported claim;
+    \item không có sentiment flip.
+\end{itemize}
+
+Do đó, pass rate không phải là ROUGE và cũng không phải độ chính xác phân loại truyền thống. Nó là tỷ lệ bản tóm tắt đạt chuẩn tối thiểu về tính trung thực, đúng khía cạnh, đúng cảm xúc và đủ bao phủ theo rubric đánh giá.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    node distance=0.85cm,
+    block/.style={rectangle, rounded corners, draw, align=center, minimum height=0.78cm, text width=2.55cm, fill=gray!8},
+    metric/.style={rectangle, rounded corners, draw, align=center, minimum height=0.78cm, text width=2.7cm, fill=green!8},
+    arrow/.style={-{Latex[length=2.3mm]}, thick}
+]
+    \node[block] (outputs) {Outputs\\M1--M4};
+    \node[metric, right=of outputs, yshift=0.8cm] (rouge) {ROUGE\\reference overlap};
+    \node[metric, right=of outputs] (auto) {Artifact metrics\\fallback, copy, compression};
+    \node[metric, right=of outputs, yshift=-0.8cm] (judge) {LLM judge\\faithfulness, sentiment};
+    \node[block, right=1.2cm of auto] (paper) {Bảng kết quả\\và phân tích};
+
+    \draw[arrow] (outputs) -- (rouge);
+    \draw[arrow] (outputs) -- (auto);
+    \draw[arrow] (outputs) -- (judge);
+    \draw[arrow] (rouge) -- (paper);
+    \draw[arrow] (auto) -- (paper);
+    \draw[arrow] (judge) -- (paper);
+\end{tikzpicture}
+\caption{Luồng đánh giá kết hợp ROUGE, metric artifact và LLM judge}
+\label{fig:evaluation-flow}
+\end{figure}
+
+\chapter{Thực nghiệm và đánh giá}
+
+\section{Thiết lập thực nghiệm}
+
+Thực nghiệm được thực hiện trên hai nguồn dữ liệu. SPACE được dùng như tập huấn luyện và đối chiếu baseline cho SemAE. HASOS là tập mục tiêu chính của đề tài, có taxonomy chi tiết hơn và phù hợp với bài toán phân tích đánh giá khách sạn theo nhiều khía cạnh nhỏ. Trên HASOS, các phương pháp được đánh giá ở hai mức: mức reference overlap bằng ROUGE và mức semantic bằng LLM judge.
+
+Đối với phương pháp 1, trọng tâm đánh giá nằm ở khả năng tạo đầu ra có cấu trúc, có bằng chứng và có thể kiểm tra bằng schema. Đối với phương pháp 2, trọng tâm đánh giá nằm ở so sánh các biến thể M1--M4, tối ưu ngưỡng evidence score và token budget, sau đó phân tích trade-off giữa ROUGE và tính trung thực.
+
+\section{Kết quả ROUGE trên SPACE và HASOS}
+
+Bảng~\ref{tab:space-rouge} trình bày kết quả ROUGE trên SPACE. Các biến thể M2, M3 và M4 đều cải thiện so với M1 ở ROUGE-L, trong khi M3 đạt ROUGE-1 và ROUGE-L cao nhất. Khoảng cách giữa các phương pháp trên SPACE không quá lớn vì SPACE có số khía cạnh ít hơn và các khía cạnh tương đối tổng quát.
+
+\begin{table}[H]
+\centering
+\caption{Kết quả ROUGE trên SPACE}
+\label{tab:space-rouge}
+\begin{tabular}{l r r r}
+\toprule
+\textbf{Phương pháp} & \textbf{ROUGE-1} & \textbf{ROUGE-2} & \textbf{ROUGE-L} \\
+\midrule
+M1 extractive & 0.304 & 0.087 & 0.222 \\
+M2 abstractive & 0.307 & 0.086 & 0.235 \\
+M3 keyword sentiment & 0.309 & 0.089 & 0.240 \\
+M4 BERT-ABSA sentiment & 0.308 & 0.089 & 0.239 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Trên HASOS, kết quả sau khi tối ưu tham số cho thấy M3 đạt ROUGE-1 cao nhất. Điều này cho thấy tách cảm xúc bằng keyword backend trước khi sinh tóm tắt giúp tăng overlap với gold summary. M4 có ROUGE thấp hơn M3, nhưng cần được phân tích cùng LLM judge vì ROUGE không đo trực tiếp lỗi lật cảm xúc hoặc claim không có bằng chứng.
+
+\begin{table}[H]
+\centering
+\caption{Metric vận hành và ROUGE trên HASOS sau tối ưu}
+\label{tab:hasos-production-rouge}
+\small
+\begin{tabular}{l r r r r r r r r r}
+\toprule
+\textbf{Method} & \textbf{Rows} & \textbf{Gen.} & \textbf{Fallback} & \textbf{Copy} & \textbf{Ev.} & \textbf{Comp.} & \textbf{R-1} & \textbf{R-2} & \textbf{R-L} \\
+\midrule
+M1 & 1372 & -- & -- & 1.000 & 6.931 & 1.000 & 0.203 & 0.055 & 0.122 \\
+M2 & 1372 & 0.630 & 0.370 & 0.125 & 18.389 & 0.560 & 0.232 & 0.044 & 0.150 \\
+M3 &  907 & 0.589 & 0.411 & 0.456 &  2.834 & 0.730 & 0.262 & 0.071 & 0.168 \\
+M4 &  804 & 0.519 & 0.481 & 0.563 &  1.919 & 0.823 & 0.209 & 0.040 & 0.137 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Kết quả LLM judge}
+
+LLM judge được chạy trên 4,455 item HASOS của M1--M4 bằng cùng mô hình DeepSeek Flash ở chế độ không suy luận dài (non-thinking). Kết quả được validate theo JSON schema và được tổng hợp thành các nhóm metric về chất lượng bằng chứng, tính trung thực, đúng khía cạnh, đúng cảm xúc, mức độ bao phủ và tính hữu ích.
+
+\begin{table}[H]
+\centering
+\caption{Chất lượng bằng chứng và tính trung thực theo LLM judge}
+\label{tab:evidence-faithfulness}
+\small
+\begin{tabular}{l r r r r r r r r}
+\toprule
+\textbf{Method} & \textbf{N} & \textbf{P@5} & \textbf{Support@5} & \textbf{Leak A} & \textbf{Leak S} & \textbf{Support} & \textbf{Unsup.} & \textbf{Flip} \\
+\midrule
+M1 & 1372 & 0.872 & 0.894 & 0.067 & 0.001 & 4.170 & 0.208 & 0.011 \\
+M2 & 1372 & 0.874 & 0.653 & 0.029 & 0.000 & 3.928 & 0.338 & 0.009 \\
+M3 &  907 & 0.925 & 0.823 & 0.041 & 0.008 & 4.364 & 0.197 & 0.084 \\
+M4 &  804 & 0.945 & 0.874 & 0.021 & 0.001 & 4.552 & 0.129 & 0.030 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Đánh giá tiện ích bản tóm tắt theo LLM judge}
+\label{tab:summary-utility}
+\small
+\begin{tabular}{l r r r r r r r r}
+\toprule
+\textbf{Method} & \textbf{Pass} & \textbf{Aspect} & \textbf{Sent.} & \textbf{Cov.} & \textbf{Spec.} & \textbf{Useful} & \textbf{Theme} & \textbf{Generic} \\
+\midrule
+M1 & 0.734 & 4.650 & 4.372 & 4.000 & 4.070 & 4.065 & 0.950 & 0.012 \\
+M2 & 0.610 & 4.473 & 4.239 & 3.600 & 3.738 & 3.840 & 0.920 & 0.079 \\
+M3 & 0.736 & 4.573 & 4.456 & 4.090 & 4.117 & 4.236 & 0.940 & 0.069 \\
+M4 & 0.842 & 4.680 & 4.726 & 4.340 & 4.275 & 4.469 & 0.965 & 0.063 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Kết quả cho thấy M4 đạt pass rate cao nhất, 0.728, đồng thời có sentiment flip rate thấp nhất, 0.056, và unsupported claim rate thấp nhất, 0.157. Điều này cho thấy backend BERT-ABSA giúp kiểm soát tốt hơn lỗi cảm xúc và tính trung thực của tóm tắt. Ngược lại, M3 đạt ROUGE-1 cao nhất nhưng pass rate thấp hơn M4, cho thấy overlap với reference và faithfulness không hoàn toàn đồng nhất.
+
+\section{Phân tích so sánh hai phương pháp}
+
+Phương pháp 1 có ưu điểm lớn về tính linh hoạt. Khi cần thay đổi schema, thêm trường giải thích hoặc yêu cầu mô hình trả về báo cáo theo format mới, pipeline LLM/API có thể thích nghi thông qua prompt. Đây là lựa chọn phù hợp cho ứng dụng cần triển khai nhanh và đầu ra giàu ngữ nghĩa. Tuy nhiên, phương pháp này phụ thuộc vào API, cần kiểm soát chi phí, retry, cache và lỗi định dạng.
+
+Phương pháp 2 có ưu điểm về khả năng truy vết bằng chứng. Vì bước chọn câu được thực hiện bằng SemAE và taxonomy cố định, mỗi summary có thể được liên kết với các câu review cụ thể. Điều này phù hợp với bối cảnh nghiên cứu và benchmark, nơi cần phân tích rõ vì sao một bản tóm tắt được tạo ra. Hạn chế của phương pháp 2 là cần chuẩn bị taxonomy, seed words và checkpoint phù hợp; ngoài ra, nếu evidence bị chọn sai, mô hình sinh ở bước sau khó sửa hoàn toàn lỗi nguồn.
+
+Từ kết quả thực nghiệm, có thể rút ra ba nhận xét chính. Thứ nhất, sentiment split giúp cải thiện chất lượng tóm tắt trên HASOS, đặc biệt khi taxonomy chi tiết và review chứa ý kiến trái chiều. Thứ hai, ROUGE và LLM judge phản ánh hai khía cạnh khác nhau: M3 tốt hơn về overlap với reference, còn M4 tốt hơn về faithfulness và sentiment alignment. Thứ ba, một hệ thống thực tế nên kết hợp nhiều metric thay vì chọn mô hình chỉ dựa trên một chỉ số.
+
+\section{Phạm vi hợp lệ của các metric}
+
+Không phải mọi metric trong bộ đề xuất đều có thể báo cáo như kết quả chính thức. Các metric yêu cầu gold label ở cấp câu hoặc span, chẳng hạn Aspect Category Macro-F1, Sentiment Macro-F1, Aspect--Sentiment Pair F1 hoặc Quad F1, chưa được báo cáo vì dữ liệu hiện tại không chứa annotation gold tương ứng. Việc tự dùng nhãn do hệ thống sinh ra để chấm lại hệ thống sẽ làm mất ý nghĩa của đánh giá.
+
+\begin{table}[H]
+\centering
+\caption{Phạm vi hợp lệ của các nhóm metric}
+\label{tab:metric-availability}
+\begin{tabularx}{\textwidth}{l l X}
+\toprule
+\textbf{Nhóm metric} & \textbf{Trạng thái} & \textbf{Diễn giải} \\
+\midrule
+ROUGE-1/2/L & Tính trực tiếp & Dùng gold summary theo nhóm khía cạnh; HASOS được gom 29 khía cạnh con về 4 nhóm có reference. \\
+Evidence và faithfulness & Judge-based & DeepSeek Flash chấm 4,455 item M1--M4 theo cùng rubric cố định, output JSON được validate. \\
+Compression/fallback/copy & Tính trực tiếp & Lấy từ artifact sinh tóm tắt và evidence JSONL. \\
+ABSA Macro-F1 / Pair-F1 & Chưa báo official & Repo không có gold sentence-level aspect--sentiment label. \\
+Quad exact/partial F1 & Chưa báo official & Cần span-level gold annotation, hiện không có trong artifact. \\
+p95 latency/cache/retry & Chưa báo official & Cần instrumentation runtime chi tiết hơn trước khi báo cáo. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\chapter{Kết luận}
+
+Khóa luận đã trình bày bài toán phân tích cảm xúc theo khía cạnh và tóm tắt đánh giá khách sạn trong một khung nghiên cứu gồm hai phương pháp. Phương pháp thứ nhất dựa trên LLM/API, nhấn mạnh khả năng xử lý linh hoạt, sinh đầu ra có cấu trúc và phù hợp với triển khai ứng dụng. Phương pháp thứ hai dựa trên SemAE, nhấn mạnh tính tái lập của bước chọn bằng chứng và khả năng so sánh có hệ thống giữa các biến thể M1--M4.
+
+Kết quả thực nghiệm cho thấy phương pháp SemAE/HASOS là một nhánh bổ sung có giá trị cho pipeline LLM/API. Trên HASOS, M3 đạt ROUGE-1 cao nhất, cho thấy tách cảm xúc bằng keyword backend giúp tăng overlap với reference summary. Trong khi đó, M4 đạt pass rate cao nhất theo LLM judge, đồng thời giảm unsupported claim và sentiment flip. Điều này cho thấy một phương pháp có thể tốt theo ROUGE nhưng chưa chắc tốt nhất về faithfulness, và ngược lại.
+
+Về mặt thực tiễn, phương pháp 1 phù hợp khi hệ thống cần linh hoạt về đầu ra và có thể chấp nhận phụ thuộc vào API. Phương pháp 2 phù hợp khi cần kiểm soát bằng chứng, tái lập thực nghiệm và phân tích sâu chất lượng từng biến thể. Hai phương pháp vì vậy không loại trừ nhau, mà có thể kết hợp trong một hệ thống hoàn chỉnh: SemAE hoặc module retrieval chọn bằng chứng, LLM sinh tóm tắt có cấu trúc, sau đó judge hoặc rule-based validation kiểm soát lỗi trước khi xuất báo cáo.
+
+Hạn chế chính của đề tài là dữ liệu hiện tại chưa có gold annotation ở cấp câu hoặc span cho bài toán ABSA, nên chưa thể báo cáo chính thức các metric như Aspect Category Macro-F1, Sentiment Macro-F1, Pair F1 hoặc Quad F1. Ngoài ra, các metric vận hành như p95 latency, retry rate và cache hit rate cần logging chi tiết hơn nếu muốn đánh giá ở cấp sản xuất.
+
+Trong hướng phát triển tiếp theo, đề tài có thể mở rộng theo ba hướng. Thứ nhất, xây dựng một tập gold nhỏ cho aspect--sentiment ở cấp câu để đánh giá ABSA một cách chặt chẽ hơn. Thứ hai, tích hợp instrumentation để đo chi phí, độ trễ và độ ổn định khi chạy pipeline trên quy mô lớn. Thứ ba, xây dựng pipeline hybrid kết hợp ưu điểm của hai phương pháp: SemAE/RAG để chọn bằng chứng, LLM để sinh tóm tắt, và LLM judge hoặc human review để kiểm soát chất lượng.

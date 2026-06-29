@@ -1,0 +1,636 @@
+\documentclass[12pt,a4paper]{report}
+
+% =========================
+% NGON NGU VA DINH DANG
+% =========================
+\usepackage[utf8]{inputenc}
+\usepackage[T5]{fontenc}
+\usepackage[vietnamese]{babel}
+\usepackage[
+    a4paper,
+    top=2.5cm,
+    bottom=2.5cm,
+    left=2.5cm,
+    right=2.5cm
+]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+\usepackage{microtype}
+
+% =========================
+% HINH, BANG, CONG THUC
+% =========================
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{threeparttable}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+% =========================
+% SO DO VA MAU
+% =========================
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, calc, shapes.geometric, fit, backgrounds}
+
+\definecolor{methodblue}{RGB}{48, 92, 160}
+\definecolor{methodgreen}{RGB}{52, 128, 96}
+\definecolor{softgray}{RGB}{245, 247, 250}
+\definecolor{linegray}{RGB}{90, 98, 110}
+
+\tikzset{
+    block/.style={
+        rectangle,
+        rounded corners=2pt,
+        draw=linegray,
+        fill=softgray,
+        align=center,
+        minimum height=1.0cm,
+        text width=3.0cm,
+        font=\small
+    },
+    smallblock/.style={
+        rectangle,
+        rounded corners=2pt,
+        draw=linegray,
+        fill=white,
+        align=center,
+        minimum height=0.78cm,
+        text width=2.35cm,
+        font=\footnotesize
+    },
+    arrow/.style={-{Latex[length=2.4mm]}, thick, draw=linegray}
+}
+
+% =========================
+% LINK
+% =========================
+\usepackage[hidelinks]{hyperref}
+
+% =========================
+% THONG TIN BAO CAO
+% =========================
+\newcommand{\universityname}{Trường Đại học Khoa học Tự nhiên -- ĐHQG TP.HCM}
+\newcommand{\facultyname}{Khoa Toán -- Tin học}
+\newcommand{\advisorname}{ThS. Đoàn Thị Trâm}
+\newcommand{\reporttitle}{Phân tích cảm xúc theo khía cạnh và tóm tắt đánh giá khách sạn}
+\newcommand{\cityname}{TP.HCM}
+\newcommand{\reportyear}{2026}
+
+\begin{document}
+
+% =========================
+% TRANG BIA
+% =========================
+\begin{titlepage}
+    \centering
+    {\Large \universityname \par}
+    \vspace{0.2cm}
+    {\Large \facultyname \par}
+
+    \vspace{2.0cm}
+    {\LARGE \bfseries KHÓA LUẬN TỐT NGHIỆP ĐẠI HỌC\par}
+
+    \vspace{1.0cm}
+    {\Huge \bfseries \reporttitle \par}
+
+    \vspace{0.8cm}
+    {\Large \bfseries Tích hợp pipeline LLM/API và SemAE trên dữ liệu HASOS\par}
+
+    \vspace{1.5cm}
+    {\Large \bfseries Giảng viên hướng dẫn: \advisorname \par}
+
+    \vspace{1.4cm}
+    {\Large \bfseries Thành viên thực hiện:\par}
+    \vspace{0.4cm}
+    {\large
+    \textbf{Đỗ Trần Sáng} \hspace{0.5cm} MSSV: 22280077\par
+    \vspace{0.2cm}
+    \textbf{Trần Kiết Tường} \hspace{0.5cm} MSSV: 22280102\par
+    }
+
+    \vfill
+    {\large \cityname, tháng 06 năm \reportyear \par}
+\end{titlepage}
+
+\tableofcontents
+\clearpage
+
+% =========================
+% LOI CAM ON
+% =========================
+\chapter*{Lời cảm ơn}
+\addcontentsline{toc}{chapter}{Lời cảm ơn}
+
+Trong quá trình thực hiện khóa luận, chúng em đã nhận được nhiều sự hỗ trợ từ quý Thầy Cô, gia đình và bạn bè. Chúng em xin gửi lời cảm ơn chân thành đến giảng viên hướng dẫn \textbf{\advisorname} đã định hướng đề tài, góp ý phương pháp nghiên cứu, hỗ trợ quá trình thực nghiệm và giúp chúng em hoàn thiện báo cáo theo hướng có cấu trúc hơn.
+
+Chúng em cũng xin cảm ơn quý Thầy Cô thuộc \textbf{\facultyname, \universityname} đã trang bị nền tảng kiến thức về lập trình, cơ sở dữ liệu, học máy, xử lý ngôn ngữ tự nhiên và xây dựng hệ thống phần mềm. Những kiến thức này là cơ sở quan trọng để chúng em triển khai một pipeline có khả năng xử lý dữ liệu đánh giá khách sạn, tạo đầu ra có cấu trúc và đánh giá kết quả theo nhiều góc nhìn.
+
+Mặc dù đã cố gắng kiểm tra số liệu và tổ chức lại nội dung báo cáo, khóa luận vẫn khó tránh khỏi hạn chế. Chúng em kính mong nhận được góp ý từ quý Thầy Cô để đề tài được cải thiện trong các phiên bản tiếp theo.
+
+\begin{flushright}
+\cityname, tháng 06 năm \reportyear\\
+\textbf{Sinh viên thực hiện}\\
+Đỗ Trần Sáng\\
+Trần Kiết Tường
+\end{flushright}
+
+\clearpage
+
+% =========================
+% LOI NOI DAU
+% =========================
+\chapter*{Lời nói đầu}
+\addcontentsline{toc}{chapter}{Lời nói đầu}
+
+Sự phát triển của các nền tảng du lịch trực tuyến tạo ra khối lượng lớn dữ liệu đánh giá khách sạn từ người dùng. Các đánh giá này chứa nhiều thông tin về phòng ở, vị trí, tiện nghi, vệ sinh, dịch vụ, giá cả và trải nghiệm tổng thể. Tuy nhiên, vì dữ liệu ở dạng văn bản tự nhiên, có độ dài không đồng nhất và thường chứa nhiều ý kiến trái chiều trong cùng một đánh giá, việc khai thác thủ công gặp nhiều khó khăn.
+
+Đề tài này tập trung vào bài toán phân tích cảm xúc theo khía cạnh và tóm tắt đánh giá khách sạn. Báo cáo trình bày hai hướng tiếp cận bổ sung cho nhau. Hướng thứ nhất xây dựng pipeline dựa trên mô hình ngôn ngữ lớn thông qua API, nhấn mạnh khả năng trích xuất thông tin có cấu trúc bằng prompt và schema JSON. Hướng thứ hai sử dụng mô hình SemAE được huấn luyện trên dữ liệu SPACE, sau đó suy luận trên tập HASOS với taxonomy 29 khía cạnh, nhằm tạo một baseline có tính tái lập cao hơn cho bước chọn bằng chứng và tóm tắt theo khía cạnh.
+
+Báo cáo gồm bốn chương chính. Chương 1 trình bày bối cảnh, mục tiêu và đóng góp của đề tài. Chương 2 hệ thống hóa cơ sở lý thuyết về xử lý ngôn ngữ tự nhiên, phân tích cảm xúc theo khía cạnh, mô hình ngôn ngữ lớn và pipeline dữ liệu. Chương 3 mô tả hai phương pháp đề xuất, trong đó phần mở rộng mới tập trung vào SemAE/HASOS và các biến thể M1--M4. Chương 4 trình bày thực nghiệm, đánh giá ROUGE, đánh giá bằng LLM judge và phân tích kết quả.
+
+\clearpage
+
+\chapter*{Danh sách ký hiệu}
+\addcontentsline{toc}{chapter}{Danh sách ký hiệu}
+
+Bảng dưới đây liệt kê các thuật ngữ viết tắt và ký hiệu được sử dụng xuyên suốt báo cáo. Các tên riêng (ROUGE, LLM, SemAE, \dots) được giữ nguyên theo thông lệ học thuật; các thuật ngữ kỹ thuật khác được Việt hóa kèm dạng tiếng Anh trong ngoặc ở lần xuất hiện đầu tiên.
+
+\renewcommand{\arraystretch}{1.25}
+\begin{longtable}{p{0.24\textwidth} p{0.66\textwidth}}
+\caption{Danh sách ký hiệu và thuật ngữ viết tắt}\label{tab:symbols}\\
+\toprule
+\textbf{Ký hiệu} & \textbf{Ý nghĩa} \\
+\midrule
+\endfirsthead
+\multicolumn{2}{c}{\textit{(Tiếp theo từ trang trước)}} \\
+\toprule
+\textbf{Ký hiệu} & \textbf{Ý nghĩa} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{2}{r}{\textit{(Tiếp tục ở trang sau)}} \\
+\endfoot
+\bottomrule
+\endlastfoot
+
+\multicolumn{2}{l}{\textit{\textbf{Tên riêng và viết tắt}}} \\
+\addlinespace[2pt]
+ABSA & Aspect-Based Sentiment Analysis, phân tích cảm xúc theo khía cạnh. \\
+NLP & Natural Language Processing, xử lý ngôn ngữ tự nhiên. \\
+LLM & Large Language Model, mô hình ngôn ngữ lớn. \\
+BERT & Bidirectional Encoder Representations from Transformers, mô hình mã hóa ngữ cảnh hai chiều. \\
+BERT-ABSA & Biến thể dùng mô hình dựa trên BERT cho nhiệm vụ phân tích cảm xúc theo khía cạnh. \\
+SemAE & Semantic AutoEncoder, mô hình biểu diễn ngữ nghĩa dùng để xếp hạng câu theo khía cạnh. \\
+SPACE & Tập dữ liệu đánh giá khách sạn tiếng Anh dùng để huấn luyện và đối chiếu baseline SemAE. \\
+HASOS & Tập dữ liệu đánh giá khách sạn mục tiêu, có taxonomy khía cạnh chi tiết (50 khách sạn, 5.000 đánh giá, 29 khía cạnh). \\
+API & Application Programming Interface, giao diện lập trình ứng dụng để gọi dịch vụ mô hình ngôn ngữ. \\
+JSON & JavaScript Object Notation, định dạng dữ liệu có cấu trúc dùng để ràng buộc đầu ra của pipeline. \\
+DeepSeek & Mô hình ngôn ngữ lớn được dùng làm bộ chấm tự động (LLM judge) trong thực nghiệm. \\
+\addlinespace[3pt]
+
+\multicolumn{2}{l}{\textit{\textbf{Biến thể phương pháp}}} \\
+\addlinespace[2pt]
+M1 & Biến thể trích rút (extractive) của SemAE, giữ nguyên các câu bằng chứng được chọn. \\
+M2 & Biến thể trừu tượng (abstractive) trước khi tách cảm xúc, sinh tóm tắt từ bằng chứng SemAE. \\
+M3 & Biến thể tách cảm xúc bằng luật/từ khóa (keyword) trước khi sinh tóm tắt. \\
+M4 & Biến thể tách cảm xúc bằng backend BERT-ABSA trước khi sinh tóm tắt. \\
+\addlinespace[3pt]
+
+\multicolumn{2}{l}{\textit{\textbf{Tham số}}} \\
+\addlinespace[2pt]
+$T$ & Ngưỡng chọn bằng chứng (evidence threshold); câu có điểm vượt ngưỡng được giữ làm bằng chứng. \\
+$B$ & Token budget, số token sinh mới tối đa, kiểm soát độ dài bản tóm tắt. \\
+\addlinespace[3pt]
+
+\multicolumn{2}{l}{\textit{\textbf{Chỉ số đánh giá và cờ lỗi}}} \\
+\addlinespace[2pt]
+ROUGE & Recall-Oriented Understudy for Gisting Evaluation, nhóm chỉ số so khớp n-gram giữa tóm tắt hệ thống và tóm tắt tham chiếu (báo cáo dùng ROUGE-1, ROUGE-2, ROUGE-L). \\
+P@5 & Precision at 5, tỷ lệ bằng chứng đúng trong năm câu bằng chứng đầu tiên. \\
+Support@5 & Tỷ lệ năm câu bằng chứng đầu thực sự hỗ trợ cho nhận định của bản tóm tắt. \\
+Bằng chứng (evidence) & Câu hoặc cụm từ trong đánh giá được chọn để hỗ trợ một khía cạnh hoặc một nhận định. \\
+Tỷ lệ dự phòng (fallback rate) & Tỷ lệ bản tóm tắt phải dùng cơ chế dự phòng thay vì sinh trừu tượng thành công. \\
+Tỷ lệ sao chép (copy rate) & Tỷ lệ nội dung tóm tắt được sao chép trực tiếp từ câu bằng chứng. \\
+Tỷ lệ nén (compression ratio) & Mức rút gọn của bản tóm tắt so với độ dài bằng chứng đầu vào. \\
+Tỷ lệ vượt chuẩn (pass rate) & Tỷ lệ bản tóm tắt đạt ngưỡng chất lượng tối thiểu theo rubric của LLM judge. \\
+Độ trung thực (faithfulness) & Mức độ bản tóm tắt phản ánh đúng nội dung bằng chứng, không bịa thêm thông tin. \\
+Độ bao phủ (coverage) & Mức độ bản tóm tắt bao quát các ý kiến quan trọng trong bằng chứng. \\
+Độ cụ thể (specificity) & Mức độ bản tóm tắt nêu chi tiết cụ thể thay vì nhận định chung chung. \\
+Độ hữu ích (usefulness) & Mức độ hữu ích của bản tóm tắt đối với người đọc. \\
+Khẳng định không căn cứ (unsupported claim) & Nhận định trong tóm tắt không được câu bằng chứng nào hỗ trợ. \\
+Lật cảm xúc (sentiment flip) & Lỗi bản tóm tắt diễn đạt cảm xúc trái ngược với bằng chứng hoặc nhãn mục tiêu. \\
+Rò rỉ khía cạnh/cảm xúc (aspect/sentiment leak) & Hiện tượng bằng chứng lẫn khía cạnh hoặc cảm xúc không thuộc mục tiêu đang xét. \\
+\end{longtable}
+\renewcommand{\arraystretch}{1.0}
+
+\clearpage
+
+% =========================
+% CHUONG 1
+% =========================
+\chapter{Giới thiệu}
+
+\section{Bối cảnh nghiên cứu và tính cấp thiết của đề tài}
+
+Trong những năm gần đây, đánh giá trực tuyến trở thành một nguồn dữ liệu quan trọng phản ánh trải nghiệm thực tế của khách hàng sau khi sử dụng dịch vụ lưu trú. Một khách sạn có thể nhận hàng trăm đến hàng nghìn đánh giá, trong đó mỗi đánh giá thường đề cập đồng thời nhiều khía cạnh như vị trí, phòng, nhân viên, bữa sáng, tiện nghi, vệ sinh hoặc giá cả. Nếu chỉ đọc điểm sao trung bình, nhà quản lý khó nhận biết nguyên nhân cụ thể tạo nên sự hài lòng hoặc không hài lòng của khách hàng.
+
+Việc phân tích tự động dữ liệu đánh giá khách sạn có ý nghĩa thực tiễn rõ rệt. Hệ thống có thể giúp phát hiện các vấn đề lặp lại, theo dõi thay đổi chất lượng dịch vụ theo thời gian, so sánh các chi nhánh và tạo báo cáo ngắn gọn cho người quản lý. Ở chiều ngược lại, người dùng mới cũng có thể được hỗ trợ bởi các bản tóm tắt tập trung vào những khía cạnh họ quan tâm thay vì phải đọc nhiều đánh giá dài.
+
+Tuy nhiên, dữ liệu đánh giá có nhiều đặc điểm gây khó cho các phương pháp xử lý tự động. Câu đánh giá thường ngắn hoặc thiếu cấu trúc, có cách diễn đạt đa dạng, chứa tiếng lóng, lỗi chính tả hoặc nhiều ý kiến trong cùng một câu. Một đánh giá có thể tích cực về vị trí nhưng tiêu cực về tiếng ồn, hoặc khen nhân viên nhưng phàn nàn về vệ sinh. Do đó, gán một nhãn cảm xúc chung cho toàn bộ đánh giá sẽ làm mất thông tin chi tiết ở cấp khía cạnh.
+
+Sự xuất hiện của các mô hình ngôn ngữ lớn mở ra một hướng tiếp cận linh hoạt cho bài toán này. Thông qua prompt và schema phù hợp, LLM có thể trích xuất khía cạnh, xác định cảm xúc, chọn bằng chứng và tạo tóm tắt mà không cần huấn luyện từ đầu. Dù vậy, pipeline LLM/API cần kiểm soát chi phí, độ trễ, lỗi định dạng, khả năng chạy lại và tính nhất quán của kết quả. Đây là lý do báo cáo không chỉ xem xét một pipeline LLM trực tiếp, mà còn bổ sung phương pháp thứ hai dựa trên SemAE để tách rõ bước chọn bằng chứng khỏi bước sinh văn bản.
+
+\section{Mục tiêu và phạm vi nghiên cứu}
+
+Mục tiêu tổng quát của đề tài là xây dựng và đánh giá pipeline phân tích cảm xúc theo khía cạnh và tóm tắt đánh giá khách sạn. Cụ thể, đề tài hướng tới các mục tiêu sau:
+
+\begin{itemize}[leftmargin=1.2cm]
+    \item Chuẩn hóa dữ liệu đánh giá khách sạn thành các đơn vị xử lý phù hợp cho bài toán ABSA và tóm tắt.
+    \item Thiết kế pipeline LLM/API có schema đầu ra rõ ràng, có kiểm tra định dạng, cache và cơ chế xử lý lỗi.
+    \item Triển khai phương pháp SemAE trên dữ liệu HASOS để chọn bằng chứng theo 29 khía cạnh khách sạn.
+    \item So sánh các biến thể biểu diễn đầu ra gồm trích rút (extractive), trừu tượng (abstractive), tách cảm xúc bằng từ khóa (keyword) và tách cảm xúc bằng BERT-ABSA.
+    \item Đánh giá kết quả bằng ROUGE, chỉ số vận hành và LLM judge theo bộ tiêu chí chấm (rubric) cố định.
+\end{itemize}
+
+Phạm vi nghiên cứu tập trung vào dữ liệu đánh giá khách sạn dạng văn bản. Báo cáo không huấn luyện LLM từ đầu, không xây dựng hạ tầng phân tán quy mô sản xuất và không báo các chỉ số yêu cầu nhãn gold không tồn tại trong dữ liệu hiện có, chẳng hạn ABSA Macro-F1 ở cấp câu hoặc Quad F1 ở cấp span.
+
+\section{Phương pháp tiếp cận và đóng góp của đề tài}
+
+Đề tài được tổ chức quanh hai phương pháp. Phương pháp thứ nhất dùng LLM thông qua API để phân tích đánh giá theo prompt và schema có cấu trúc. Phương pháp này phù hợp khi cần linh hoạt về định dạng đầu ra và muốn tận dụng năng lực suy luận ngôn ngữ của mô hình lớn. Phương pháp thứ hai dùng SemAE để xếp hạng câu theo khía cạnh, sau đó tạo các bản tóm tắt ở nhiều dạng khác nhau. Phương pháp này giúp quá trình chọn bằng chứng có khả năng tái lập tốt hơn, đồng thời tạo điều kiện phân tích ảnh hưởng của việc tách cảm xúc (sentiment split) và token budget.
+
+Đóng góp chính của đề tài gồm:
+
+\begin{itemize}[leftmargin=1.2cm]
+    \item Một thiết kế pipeline hai nhánh cho bài toán phân tích và tóm tắt theo khía cạnh trong miền khách sạn.
+    \item Một quy trình chuyển SemAE từ dữ liệu huấn luyện SPACE sang suy luận trên HASOS với taxonomy 29 khía cạnh.
+    \item Một bộ biến thể M1--M4 để tách riêng ảnh hưởng của chọn bằng chứng, sinh tóm tắt và tách cảm xúc.
+    \item Một bộ đánh giá kết hợp ROUGE, sweep tham số và LLM judge, có ghi rõ chỉ số nào đủ điều kiện báo cáo chính thức.
+\end{itemize}
+
+% =========================
+% CHUONG 2
+% =========================
+\chapter{Cơ sở lý thuyết}
+
+\section{Xử lý ngôn ngữ tự nhiên}
+
+Xử lý ngôn ngữ tự nhiên là lĩnh vực nghiên cứu các phương pháp giúp máy tính phân tích, biểu diễn và sinh ngôn ngữ con người. Trong bài toán đánh giá khách sạn, NLP được dùng để tách câu, làm sạch văn bản, biểu diễn câu thành vector ngữ nghĩa, phát hiện khía cạnh được nhắc đến và sinh bản tóm tắt ngắn gọn.
+
+Một pipeline NLP thường bắt đầu bằng tiền xử lý văn bản. Các bước phổ biến gồm chuẩn hóa khoảng trắng, tách câu, loại bỏ ký tự lỗi, kiểm tra ngôn ngữ và chuẩn hóa đơn vị đầu vào. Với dữ liệu đánh giá, bước tách câu đặc biệt quan trọng vì một đánh giá dài có thể chứa nhiều nhận xét khác nhau, trong khi phương pháp SemAE sử dụng câu làm đơn vị xếp hạng bằng chứng.
+
+\section{Phân tích cảm xúc và ABSA}
+
+Phân tích cảm xúc nhằm xác định thái độ tích cực, tiêu cực hoặc trung tính trong văn bản. Ở cấp tài liệu (document-level), hệ thống đưa ra một nhãn cho toàn bộ đánh giá. Ở cấp câu (sentence-level), nhãn được gán cho từng câu. Tuy nhiên, trong miền khách sạn, hai cấp này vẫn chưa đủ vì một câu có thể chứa nhiều khía cạnh.
+
+Phân tích cảm xúc theo khía cạnh giải quyết hạn chế trên bằng cách gắn cảm xúc với từng khía cạnh cụ thể. Ví dụ, câu ``phòng sạch nhưng bữa sáng nghèo nàn'' chứa cảm xúc tích cực cho khía cạnh phòng và cảm xúc tiêu cực cho khía cạnh bữa sáng. Trong báo cáo này, ABSA đóng vai trò cầu nối giữa đánh giá thô và tóm tắt theo từng nhóm thông tin.
+
+\section{Mô hình ngôn ngữ lớn và prompt có cấu trúc}
+
+Mô hình ngôn ngữ lớn có khả năng hiểu ngữ cảnh và sinh văn bản theo yêu cầu. Phần lớn các mô hình hiện nay dựa trên kiến trúc Transformer với cơ chế tự chú ý (self-attention)~\cite{vaswani2017attention}. Khi được kết hợp với kỹ thuật thiết kế prompt (prompt engineering), LLM có thể thực hiện các tác vụ như trích xuất khía cạnh, chọn bằng chứng, đánh giá độ trung thực và tạo tóm tắt. Để giảm rủi ro đầu ra không ổn định, pipeline cần yêu cầu schema rõ ràng, kiểm tra JSON, thử lại (retry) khi lỗi và lưu bộ nhớ đệm (cache) kết quả.
+
+Trong phương pháp thứ nhất, LLM được dùng trực tiếp như thành phần phân tích chính. Trong phần đánh giá của phương pháp thứ hai, LLM được dùng như bộ chấm (judge) để chấm các yếu tố khó đo bằng ROUGE, chẳng hạn mức hỗ trợ của bằng chứng, lật cảm xúc (sentiment flip) hoặc sai khía cạnh. Hai vai trò này cần được phân biệt: LLM sinh kết quả là một phần của hệ thống, còn LLM judge là công cụ đánh giá theo bộ tiêu chí chấm.
+
+\section{SemAE và tóm tắt theo khía cạnh}
+
+SemAE là hướng tiếp cận dùng biểu diễn ngữ nghĩa để chọn câu liên quan đến một khía cạnh~\cite{semae}. Thay vì yêu cầu LLM đọc toàn bộ đánh giá, SemAE mã hóa câu đánh giá và so sánh với prototype của từng khía cạnh. Các câu có điểm gần với prototype được xếp hạng cao hơn và được dùng làm bằng chứng cho tóm tắt.
+
+SemAE được huấn luyện trên dữ liệu SPACE, một tập đánh giá khách sạn tiếng Anh có tóm tắt tham chiếu (gold summary) theo các khía cạnh tổng quát. Khi chuyển sang HASOS, hệ thống dùng taxonomy 29 khía cạnh và bộ từ khóa hạt giống (seed words) riêng cho miền khách sạn. Thiết kế này tách bước học biểu diễn ngữ nghĩa khỏi bước định nghĩa taxonomy mục tiêu.
+
+\section{Đánh giá tóm tắt}
+
+ROUGE là nhóm chỉ số phổ biến để so sánh tóm tắt hệ thống với tóm tắt tham chiếu (gold summary) dựa trên n-gram~\cite{lin2004rouge}. ROUGE hữu ích để đo mức độ trùng khớp từ vựng, nhưng không đủ để đánh giá đầy đủ độ trung thực (faithfulness), đúng khía cạnh hoặc đúng cảm xúc. Vì vậy, báo cáo kết hợp ROUGE với bộ chấm tự động bằng mô hình ngôn ngữ lớn (LLM judge) theo bộ tiêu chí chấm (rubric) cố định. Cách đánh giá này giúp phân biệt hai câu hỏi: bản tóm tắt có giống tóm tắt tham chiếu không, và bản tóm tắt có được bằng chứng hỗ trợ không.
+
+% =========================
+% CHUONG 3
+% =========================
+\chapter{Phương pháp đề xuất}
+
+\section{Tổng quan thiết kế hai phương pháp}
+
+Báo cáo giữ phương pháp LLM/API đã trình bày trong bản gốc và bổ sung phương pháp SemAE/HASOS như một nhánh thực nghiệm thứ hai. Hai phương pháp cùng hướng tới đầu ra có cấu trúc theo khía cạnh, nhưng khác nhau ở cách chọn bằng chứng và mức độ phụ thuộc vào LLM.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[node distance=1.1cm and 1.0cm]
+    \node[block, text width=2.6cm] (reviews) {Đánh giá khách sạn};
+    \node[block, right=of reviews, draw=methodblue] (m1) {Phương pháp 1\\LLM/API};
+    \node[block, below=of m1, draw=methodgreen] (m2) {Phương pháp 2\\SemAE/HASOS};
+    \node[block, right=1.2cm of m1] (struct) {Đầu ra có cấu trúc\\khía cạnh, cảm xúc, bằng chứng};
+    \node[block, right=1.2cm of m2] (summ) {Tóm tắt theo\\khía cạnh};
+    \node[block, right=1.2cm of $(struct)!0.5!(summ)$] (eval) {Đánh giá\\ROUGE + LLM judge};
+    \draw[arrow] (reviews) -- (m1);
+    \draw[arrow] (reviews) |- (m2);
+    \draw[arrow] (m1) -- (struct);
+    \draw[arrow] (m2) -- (summ);
+    \draw[arrow] (struct) -- (eval);
+    \draw[arrow] (summ) -- (eval);
+\end{tikzpicture}
+\caption{Thiết kế tổng quan với hai phương pháp bổ sung cho nhau}
+\label{fig:two-method-overview}
+\end{figure}
+
+Phương pháp 1 phù hợp với bài toán cần khả năng diễn giải linh hoạt và đầu ra JSON trực tiếp. Phương pháp 2 phù hợp với mục tiêu nghiên cứu có tính tái lập: cùng một bộ bằng chứng được chọn bởi SemAE có thể được biểu diễn theo nhiều cách khác nhau, từ đó phân tích tác động của tách cảm xúc và sinh tóm tắt.
+
+\section{Phương pháp 1: Pipeline LLM/API}
+
+Phương pháp 1 sử dụng mô hình ngôn ngữ lớn thông qua API. Đầu vào là các đánh giá đã được làm sạch và nhóm theo khách sạn. Prompt yêu cầu mô hình nhận diện khía cạnh, xác định cảm xúc, trích dẫn bằng chứng và trả về kết quả theo schema JSON. Pipeline có cơ chế kiểm tra định dạng, thử lại (retry) khi phản hồi không hợp lệ, lưu bộ nhớ đệm (cache) để tránh gọi lại API không cần thiết và ghi nhật ký (logging) để phục vụ kiểm tra sau thực nghiệm.
+
+Trong cấu trúc báo cáo mới, phương pháp 1 được giữ như nền tảng ứng dụng chính. Nội dung bổ sung không thay thế phương pháp này mà đặt nó cạnh phương pháp 2 để làm rõ ưu và nhược điểm. Cụ thể, LLM/API mạnh ở khả năng tổng hợp và hiểu ngữ cảnh, nhưng chi phí và độ ổn định phụ thuộc vào dịch vụ bên ngoài. SemAE/HASOS giúp kiểm soát tốt hơn bước chọn bằng chứng, nhưng vẫn cần mô hình sinh hoặc luật hậu xử lý để tạo tóm tắt dễ đọc.
+
+\section{Phương pháp 2: SemAE huấn luyện trên SPACE và suy luận trên HASOS}
+
+Phương pháp 2 sử dụng SemAE làm bộ chọn bằng chứng theo khía cạnh. Mô hình được huấn luyện trên SPACE, sau đó dùng checkpoint đã huấn luyện để suy luận trên HASOS~\cite{hasos}. HASOS có 50 khách sạn, 5,000 đánh giá, 45,529 câu và taxonomy 29 khía cạnh. Các khía cạnh con được gom về bốn nhóm có tóm tắt tham chiếu (gold summary) khi tính ROUGE: Facility, Amenity, Service và Experience.
+
+\subsection{Luồng chọn bằng chứng}
+
+Đầu tiên, hệ thống tách đánh giá thành câu. Mỗi câu được mã hóa bằng bộ mã hóa (encoder) của SemAE. Với mỗi khía cạnh trong taxonomy HASOS, hệ thống xây dựng prototype từ bộ từ khóa hạt giống (seed words) tương ứng. Câu đánh giá được xếp hạng theo độ phù hợp với prototype, sau đó lọc bằng ngưỡng điểm và giới hạn token đầu vào. Các câu được chọn trở thành bằng chứng cho bước sinh hoặc ghép tóm tắt.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[node distance=0.9cm and 0.75cm]
+    \node[smallblock] (input) {Đánh giá HASOS};
+    \node[smallblock, right=of input] (sent) {Tách câu};
+    \node[smallblock, right=of sent] (enc) {Bộ mã hóa SemAE};
+    \node[smallblock, below=of enc] (proto) {Prototype khía cạnh\\(29 khía cạnh)};
+    \node[smallblock, right=of enc] (rank) {Xếp hạng câu\\theo khía cạnh};
+    \node[smallblock, right=of rank] (evid) {Bằng chứng tốt nhất\\theo $T$};
+    \node[smallblock, right=of evid] (render) {Sinh tóm tắt\\M1--M4};
+    \draw[arrow] (input) -- (sent);
+    \draw[arrow] (sent) -- (enc);
+    \draw[arrow] (proto) -- (rank);
+    \draw[arrow] (enc) -- (rank);
+    \draw[arrow] (rank) -- (evid);
+    \draw[arrow] (evid) -- (render);
+\end{tikzpicture}
+\caption{Luồng phương pháp 2: từ đánh giá đến các biến thể tóm tắt M1--M4}
+\label{fig:semae-hasos-pipeline}
+\end{figure}
+
+\subsection{Các biến thể M1--M4}
+
+Để tách riêng tác động của từng thành phần, hệ thống triển khai bốn biến thể:
+
+\begin{itemize}[leftmargin=1.2cm]
+    \item \textbf{M1}: giữ nguyên các câu SemAE chọn, đóng vai trò baseline trích rút (extractive).
+    \item \textbf{M2}: dùng bằng chứng đã chọn để sinh tóm tắt trừu tượng (abstractive), chưa tách cảm xúc.
+    \item \textbf{M3}: tách bằng chứng theo cảm xúc bằng backend từ khóa (keyword) rồi sinh tóm tắt.
+    \item \textbf{M4}: tách bằng chứng theo cảm xúc bằng backend BERT-ABSA rồi sinh tóm tắt.
+\end{itemize}
+
+\subsection{Vai trò của các tham số \(T\) và \(B\)}
+
+Trong nhánh SemAE/HASOS, \(T\) và \(B\) không có cùng ý nghĩa tuyệt đối ở mọi biến thể. Tham số \(T\) là ngưỡng điểm SemAE dùng để xuất hoặc lọc pool bằng chứng. Vì điểm SemAE càng nhỏ càng thể hiện câu càng gần prototype khía cạnh, một câu được giữ lại làm evidence khi điểm của nó không vượt quá ngưỡng \(T\). Nếu \(T\) quá chặt, hệ thống có thể bỏ sót các ý quan trọng; nếu \(T\) quá rộng, evidence trở nên nhiễu và bản tóm tắt dễ lệch trọng tâm.
+
+Tham số \(B\) là ngân sách độ dài đầu ra. Với M1, \(B\) tương ứng với \texttt{max\_tokens} ở mức từ: hệ thống nối các câu SemAE đã xếp hạng cho đến khi đạt giới hạn 120 từ. Do đó M1 là baseline trích rút, không sinh văn bản mới và không được tối ưu bằng cùng sweep hậu kỳ như M2--M4. Với M2, M3 và M4, \(B\) là \texttt{max\_new\_tokens} của mô hình sinh FLAN-T5, tức giới hạn số token mới khi viết lại evidence thành summary trừu tượng.
+
+Vì vậy, bảng tham số cuối cùng cần được hiểu như cấu hình so sánh chứ không phải cùng một loại tối ưu cho cả bốn biến thể. M1 dùng run SemAE hiện có \texttt{space\_hasos\_threshold\_full} với \(T=0.005\) cho pool bằng chứng và \(B=120\) từ cho output trích rút. M2--M4 được sweep vì cùng pool evidence có thể được lọc lại và sinh lại summary mà không cần thay đổi bản chất của M1. Thiết lập được chọn là M2 với \(T=0.0075, B=128\), M3 với \(T=0.0055, B=96\), và M4 với \(T=0.005, B=96\).
+
+\section{Thiết kế đánh giá}
+
+Đánh giá được chia thành ba lớp. Lớp thứ nhất là ROUGE-1/2/L, dùng để so khớp với tóm tắt tham chiếu (gold summary). Lớp thứ hai là các chỉ số tự động từ artifact như tỷ lệ dự phòng (fallback rate), tỷ lệ sao chép bằng chứng (copy rate), số bằng chứng trung bình và tỷ lệ nén (compression ratio). Lớp thứ ba là bộ chấm tự động bằng mô hình ngôn ngữ lớn (LLM judge) để chấm độ trung thực, đúng khía cạnh, đúng cảm xúc và mức độ hữu ích của bản tóm tắt.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[node distance=0.9cm and 0.9cm]
+    \node[block, text width=2.6cm] (outputs) {Đầu ra M1--M4};
+    \node[block, right=of outputs, text width=2.6cm] (rouge) {ROUGE\\tóm tắt tham chiếu};
+    \node[block, below=of rouge, text width=2.6cm] (judge) {DeepSeek judge\\rubric JSON};
+    \node[block, below=of outputs, text width=2.6cm] (auto) {Chỉ số artifact\\dự phòng, sao chép, nén};
+    \node[block, right=1.1cm of $(rouge)!0.5!(judge)$, text width=2.8cm] (tables) {Bảng kết quả\\so sánh M1--M4};
+    \draw[arrow] (outputs) -- (rouge);
+    \draw[arrow] (outputs) -- (auto);
+    \draw[arrow] (outputs) |- (judge);
+    \draw[arrow] (rouge) -- (tables);
+    \draw[arrow] (judge) -- (tables);
+    \draw[arrow] (auto) -| (tables);
+\end{tikzpicture}
+\caption{Luồng đánh giá kết hợp ROUGE, chỉ số tự động và LLM judge}
+\label{fig:evaluation-flow}
+\end{figure}
+
+Một item được tính là đạt chuẩn trong LLM judge nếu thỏa các điều kiện: điểm hỗ trợ bằng chứng, đúng khía cạnh và đúng cảm xúc đều từ 4 trở lên; độ bao phủ (coverage) từ 3 trở lên; không có khẳng định không căn cứ (unsupported claim) và không có lỗi lật cảm xúc (sentiment flip). Do đó, tỷ lệ vượt chuẩn (pass rate) không phải là ROUGE, mà là tỷ lệ tóm tắt vượt qua ngưỡng chất lượng ngữ nghĩa tối thiểu theo bộ tiêu chí chấm.
+
+% =========================
+% CHUONG 4
+% =========================
+\chapter{Thực nghiệm và đánh giá}
+
+\section{Thiết lập thực nghiệm}
+
+Thực nghiệm phương pháp 2 sử dụng checkpoint SemAE huấn luyện trên SPACE và suy luận trên HASOS. SPACE được dùng như tập đối chiếu vì có các khía cạnh tổng quát và tóm tắt tham chiếu (gold summary) theo định dạng gần với thiết kế SemAE ban đầu. HASOS là tập mục tiêu chính, có taxonomy 29 khía cạnh và dữ liệu đánh giá khách sạn ở cấp thực thể.
+
+Trong HASOS, vì tóm tắt tham chiếu (gold summary) chỉ bao phủ bốn nhóm khía cạnh cha, các kết quả ở 29 khía cạnh con được gom về bốn nhóm khi tính ROUGE. Hai nhóm Branding và Loyalty không được đưa vào mẫu số ROUGE của HASOS vì không có tóm tắt tham chiếu tương ứng. Cách xử lý này tránh việc báo điểm trên những trường hợp không có tham chiếu hợp lệ.
+
+\begin{table}[H]
+\centering
+\caption{Tóm tắt dữ liệu HASOS sử dụng trong phương pháp 2}
+\label{tab:hasos-data-summary}
+\begin{tabularx}{0.92\textwidth}{l r X}
+\toprule
+\textbf{Thành phần} & \textbf{Số lượng} & \textbf{Ghi chú} \\
+\midrule
+Khách sạn / thực thể & 50 & Mỗi thực thể gồm nhiều đánh giá người dùng. \\
+Đánh giá & 5,000 & Dữ liệu đầu vào dạng văn bản tự nhiên. \\
+Câu đánh giá & 45,529 & Đơn vị được SemAE xếp hạng làm bằng chứng. \\
+Khía cạnh HASOS & 29 & Taxonomy chi tiết theo miền khách sạn. \\
+Nhóm khía cạnh có tóm tắt tham chiếu & 4 & Facility, Amenity, Service, Experience. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Thiết lập sử dụng trong so sánh cuối cùng trên HASOS}
+\label{tab:optimal-settings}
+\begin{threeparttable}
+\begin{tabular}{l c c l}
+\toprule
+\textbf{Biến thể} & \textbf{Ngưỡng $T$} & \textbf{Token $B$} & \textbf{Diễn giải} \\
+\midrule
+M1 & 0.0050 & 120 từ & Baseline trích rút SemAE; không sinh văn bản mới. \\
+M2 & 0.0075 & 128 & Tóm tắt trừu tượng trước khi tách cảm xúc. \\
+M3 & 0.0055 & 96 & Tách cảm xúc bằng luật/từ khóa, sau đó sinh tóm tắt. \\
+M4 & 0.0050 & 96 & Tách cảm xúc bằng BERT-ABSA, sau đó sinh tóm tắt. \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item Với M1, \(T=0.005\) là ngưỡng xuất pool bằng chứng của run SemAE và \(B=120\) là giới hạn số từ của bản tóm tắt trích rút. M1 không được tối ưu bằng cùng sweep hậu kỳ như M2--M4; M2--M4 dùng \(B\) là \texttt{max\_new\_tokens} của mô hình sinh.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Chất lượng bằng chứng và tính trung thực theo LLM judge}
+\label{tab:evidence-faithfulness}
+\begin{threeparttable}
+\small
+\begin{tabular}{l r r r r r r r r}
+\toprule
+\textbf{Phương pháp} & \textbf{N} & \textbf{P@5} & \textbf{Support@5} & \textbf{Leak A} & \textbf{Leak S} & \textbf{Support} & \textbf{Unsup.} & \textbf{Flip} \\
+\midrule
+M1 & 1372 & 0.872 & \textbf{0.894} & 0.067 & 0.001 & 4.170 & 0.208 & 0.011 \\
+M2 & 1372 & 0.874 & 0.653 & 0.029 & \textbf{0.000} & 3.928 & 0.338 & \textbf{0.009} \\
+M3 &  907 & 0.925 & 0.823 & 0.041 & 0.008 & 4.364 & 0.197 & 0.084 \\
+M4 &  804 & \textbf{0.945} & 0.874 & \textbf{0.021} & 0.001 & \textbf{4.552} & \textbf{0.129} & 0.030 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item \textit{N} = số item được chấm; \textit{P@5} = độ chính xác trong 5 câu bằng chứng đầu (precision at 5); \textit{Support@5} = tỷ lệ 5 câu bằng chứng đầu thực sự hỗ trợ nhận định; \textit{Leak A} / \textit{Leak S} = tỷ lệ rò rỉ khía cạnh / cảm xúc ngoài mục tiêu (aspect/sentiment leak); \textit{Support} = số bằng chứng hỗ trợ trung bình; \textit{Unsup.} = tỷ lệ khẳng định không căn cứ (unsupported claim); \textit{Flip} = tỷ lệ lật cảm xúc (sentiment flip). Giá trị tốt nhất mỗi cột được in đậm (các cột lỗi tính theo chiều thấp hơn là tốt hơn).
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Đánh giá tiện ích bản tóm tắt theo LLM judge}
+\label{tab:summary-utility}
+\begin{threeparttable}
+\small
+\begin{tabular}{l r r r r r r r r}
+\toprule
+\textbf{Phương pháp} & \textbf{Pass} & \textbf{Aspect} & \textbf{Sent.} & \textbf{Cov.} & \textbf{Spec.} & \textbf{Useful} & \textbf{Theme} & \textbf{Generic} \\
+\midrule
+M1 & 0.734 & 4.650 & 4.372 & 4.000 & 4.070 & 4.065 & 0.950 & \textbf{0.012} \\
+M2 & 0.610 & 4.473 & 4.239 & 3.600 & 3.738 & 3.840 & 0.920 & 0.079 \\
+M3 & 0.736 & 4.573 & 4.456 & 4.090 & 4.117 & 4.236 & 0.940 & 0.069 \\
+M4 & \textbf{0.842} & \textbf{4.680} & \textbf{4.726} & \textbf{4.340} & \textbf{4.275} & \textbf{4.469} & \textbf{0.965} & 0.063 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item \textit{Pass} = tỷ lệ vượt chuẩn (pass rate); \textit{Aspect} = điểm đúng khía cạnh; \textit{Sent.} = điểm đúng cảm xúc (sentiment alignment); \textit{Cov.} = độ bao phủ (coverage); \textit{Spec.} = độ cụ thể (specificity); \textit{Useful} = độ hữu ích (usefulness); \textit{Theme} = tỷ lệ nêu đúng chủ đề; \textit{Generic} = tỷ lệ tóm tắt chung chung (thấp hơn là tốt hơn). Các điểm số theo thang 1--5. Giá trị tốt nhất mỗi cột được in đậm.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Chỉ số vận hành và ROUGE trên HASOS}
+\label{tab:production-rouge}
+\begin{threeparttable}
+\small
+\begin{tabular}{l r r r r r r r r r}
+\toprule
+\textbf{Phương pháp} & \textbf{Rows} & \textbf{Gen.} & \textbf{Fallback} & \textbf{Copy} & \textbf{Ev.} & \textbf{Comp.} & \textbf{R-1} & \textbf{R-2} & \textbf{R-L} \\
+\midrule
+M1 & 1372 & -- & -- & 1.000 & 6.931 & 1.000 & 0.203 & 0.055 & 0.122 \\
+M2 & 1372 & \textbf{0.630} & \textbf{0.370} & 0.125 & 18.389 & 0.560 & 0.232 & 0.044 & 0.150 \\
+M3 &  907 & 0.589 & 0.411 & 0.456 &  2.834 & 0.730 & \textbf{0.262} & \textbf{0.071} & \textbf{0.168} \\
+M4 &  804 & 0.519 & 0.481 & 0.563 &  1.919 & 0.823 & 0.209 & 0.040 & 0.137 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item \textit{Rows} = số bản ghi; \textit{Gen.} = tỷ lệ sinh trừu tượng thành công (generation rate); \textit{Fallback} = tỷ lệ dự phòng (thấp hơn là tốt hơn); \textit{Copy} = tỷ lệ sao chép bằng chứng (copy rate); \textit{Ev.} = số bằng chứng trung bình (evidence count); \textit{Comp.} = tỷ lệ nén (compression ratio); \textit{R-1} / \textit{R-2} / \textit{R-L} = ROUGE-1 / ROUGE-2 / ROUGE-L. Với M1, \textit{Gen.} và \textit{Fallback} không áp dụng vì đây là baseline trích rút. Giá trị tốt nhất ở các cột có chiều rõ ràng được in đậm.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{ROUGE trên SPACE dùng như phụ lục đối chiếu}
+\label{tab:space-rouge}
+\begin{tabular}{l r r r}
+\toprule
+\textbf{Phương pháp} & \textbf{ROUGE-1} & \textbf{ROUGE-2} & \textbf{ROUGE-L} \\
+\midrule
+M1 trích rút (extractive) & 0.304 & 0.087 & 0.222 \\
+M2 trừu tượng (abstractive) & 0.307 & 0.086 & 0.235 \\
+M3 tách cảm xúc bằng từ khóa & \textbf{0.309} & \textbf{0.089} & \textbf{0.240} \\
+M4 tách cảm xúc bằng BERT-ABSA & 0.308 & \textbf{0.089} & 0.239 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Phạm vi hợp lệ của các nhóm chỉ số}
+\label{tab:metric-availability}
+\begin{tabularx}{\textwidth}{l l X}
+\toprule
+\textbf{Nhóm chỉ số} & \textbf{Trạng thái} & \textbf{Diễn giải} \\
+\midrule
+ROUGE-1/2/L & Tính trực tiếp & Dùng tóm tắt tham chiếu theo nhóm khía cạnh; HASOS được gom 29 khía cạnh con về 4 nhóm có tham chiếu. \\
+Bằng chứng và độ trung thực & Dựa trên judge & DeepSeek Flash chấm 4,455 item M1--M4 theo cùng rubric cố định, output JSON được validate và cache. \\
+Tỷ lệ nén / dự phòng / sao chép & Tính trực tiếp & Lấy từ artifact sinh tóm tắt và tệp bằng chứng JSONL. \\
+ABSA Macro-F1 / Pair-F1 & Chưa báo chính thức & Dữ liệu hiện tại không có nhãn gold khía cạnh--cảm xúc ở cấp câu, nên không giả lập F1 như chỉ số gold. \\
+Quad exact/partial F1 & Chưa báo chính thức & Cần nhãn gold ở cấp span, hiện không tồn tại trong artifact. \\
+p95 latency / cache / retry & Chưa báo chính thức & Cần instrumentation runtime chi tiết; báo cáo hiện chỉ có chi phí judge và các tỷ lệ từ artifact. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Kết quả sweep tham số}
+
+Sweep tham số cho thấy SPACE giữ ngưỡng mặc định \(T=0.0082\), trong khi HASOS cần thiết lập riêng theo phương pháp. Với HASOS, M2 cải thiện khi tăng ngưỡng lên 0.0075, M3 cải thiện mạnh ở 0.0055, còn M4 giữ ngưỡng mặc định 0.005. Token budget tốt nhất cho ba biến thể trừu tượng lần lượt là 128, 96 và 96. Các thiết lập này được dùng làm base cho bảng chỉ số cuối cùng.
+
+\section{Kết quả ROUGE}
+
+Theo ROUGE trên HASOS, M3 đạt ROUGE-1 cao nhất với 0.262, tiếp theo là M2 với 0.232 và M4 với 0.209. Điều này cho thấy tách cảm xúc bằng từ khóa (keyword) trước khi sinh tóm tắt giúp tăng độ trùng khớp với tóm tắt tham chiếu. Tuy nhiên, ROUGE chỉ phản ánh độ trùng n-gram; nó không khẳng định bản tóm tắt có hoàn toàn trung thực với bằng chứng hay không.
+
+Kết quả SPACE trong phụ lục cho thấy bốn biến thể có điểm ROUGE khá gần nhau, với M3 nhỉnh hơn ở ROUGE-1 và ROUGE-L. Khoảng cách trên HASOS rõ hơn vì HASOS dùng taxonomy chi tiết hơn, làm cho việc chọn và tổ chức bằng chứng theo khía cạnh có ảnh hưởng lớn hơn.
+
+\section{Đánh giá bằng LLM judge}
+
+LLM judge được chạy trên 3,083 item HASOS bằng mô hình DeepSeek, với bộ tiêu chí chấm (rubric) cố định và output JSON được kiểm tra hợp lệ. Chi phí thực tế của lượt chấm là khoảng \texttt{\$6.4564}, gồm 2,249,372 prompt token và 6,296,435 completion token. Mỗi item được chấm theo các trục hỗ trợ bằng chứng, đúng khía cạnh, đúng cảm xúc, độ bao phủ (coverage), độ cụ thể (specificity) và độ hữu ích (usefulness), đồng thời có các cờ lỗi như khẳng định không căn cứ (unsupported claim), sai khía cạnh và lật cảm xúc (sentiment flip).
+
+Kết quả cho thấy M4 đạt tỷ lệ vượt chuẩn (pass rate) cao nhất, 0.728, vượt M3 với 0.633 và M2 với 0.437. M4 cũng có tỷ lệ lật cảm xúc thấp nhất, 0.056, và tỷ lệ khẳng định không căn cứ thấp nhất, 0.157. Điều này cho thấy backend BERT-ABSA giúp kiểm soát tốt hơn tính đúng cảm xúc và độ trung thực của bản tóm tắt, dù ROUGE-1 của M4 không cao nhất.
+
+\section{Phân tích tổng hợp}
+
+Hai nhóm chỉ số đưa ra hai góc nhìn khác nhau. Nếu ưu tiên giống tóm tắt tham chiếu theo ROUGE, M3 là lựa chọn tốt nhất trên HASOS. Nếu ưu tiên độ trung thực, đúng khía cạnh và ít lỗi ngữ nghĩa, M4 là lựa chọn đáng tin hơn. M2 có ưu điểm bao phủ nhiều bằng chứng hơn nhưng cũng có tỷ lệ khẳng định không căn cứ (unsupported claim) và tóm tắt chung chung (generic) cao hơn, phản ánh rủi ro khi sinh tóm tắt trước khi tách cảm xúc.
+
+Kết quả này gợi ý rằng hệ thống thực tế không nên chọn phương pháp chỉ dựa trên một chỉ số. Với dashboard phân tích nội bộ, M4 phù hợp hơn khi cần độ tin cậy và tránh lật cảm xúc. Với báo cáo theo tóm tắt tham chiếu hoặc benchmark truyền thống, M3 có thể được ưu tiên do điểm ROUGE tốt hơn. Một hướng kết hợp hợp lý là dùng M3 để tối ưu độ trùng khớp và dùng các luật hoặc LLM judge như lớp kiểm soát chất lượng trước khi xuất bản tóm tắt.
+
+\section{Hạn chế}
+
+Báo cáo không trình bày ABSA Macro-F1 hoặc Quad F1 như chỉ số chính thức vì dữ liệu hiện tại không có nhãn gold khía cạnh--cảm xúc ở cấp câu hoặc span. Nếu tự dùng nhãn sinh bởi hệ thống để chấm lại hệ thống, kết quả sẽ không có giá trị như đánh giá trên nhãn gold. Ngoài ra, các chỉ số vận hành như p95 latency, tỷ lệ thử lại (retry rate) hoặc tỷ lệ trúng cache (cache hit rate) của pipeline summarization gốc cần instrumentation runtime chi tiết hơn trước khi báo cáo trong báo cáo này.
+
+Một hạn chế khác là LLM judge vẫn phụ thuộc vào bộ tiêu chí chấm (rubric) và mô hình đánh giá. Dù toàn bộ output được kiểm tra hợp lệ bằng schema và có cache để tái lập, chỉ số dựa trên judge không thay thế hoàn toàn đánh giá thủ công. Trong phiên bản tiếp theo, có thể chọn một tập mẫu nhỏ để người đánh giá kiểm tra chéo nhằm ước lượng độ nhất quán giữa LLM judge và đánh giá của con người.
+
+% =========================
+% KET LUAN
+% =========================
+\chapter{Kết luận}
+
+Khóa luận đã trình bày bài toán phân tích cảm xúc theo khía cạnh và tóm tắt đánh giá khách sạn theo hai hướng tiếp cận. Phương pháp thứ nhất dựa trên LLM/API, phù hợp với mục tiêu tạo đầu ra linh hoạt và có cấu trúc. Phương pháp thứ hai sử dụng SemAE huấn luyện trên SPACE và suy luận trên HASOS, giúp xây dựng một baseline có tính tái lập cao hơn ở bước chọn bằng chứng.
+
+Kết quả thực nghiệm cho thấy việc tách cảm xúc và tối ưu tham số có ảnh hưởng rõ rệt đến chất lượng tóm tắt. Trên HASOS, M3 đạt ROUGE-1 cao nhất, trong khi M4 đạt điểm tốt nhất theo LLM judge về tỷ lệ vượt chuẩn (pass rate), hỗ trợ bằng chứng, đúng cảm xúc và tỷ lệ lật cảm xúc (sentiment flip) thấp. Điều này khẳng định cần đánh giá hệ thống tóm tắt bằng nhiều nhóm chỉ số, thay vì chỉ dựa vào ROUGE hoặc chỉ dựa vào đánh giá ngữ nghĩa.
+
+Về mặt kỹ thuật, phương pháp 2 cho thấy lợi ích của việc tách bước chọn bằng chứng khỏi bước sinh tóm tắt. SemAE giúp thu hẹp không gian đầu vào theo từng khía cạnh, còn các biến thể M2--M4 cho phép phân tích tác động của việc tách cảm xúc và sinh tóm tắt trừu tượng. Cách tổ chức này phù hợp với các hệ thống cần khả năng giải thích vì mỗi bản tóm tắt đều gắn với bằng chứng cụ thể.
+
+Trong tương lai, đề tài có thể được mở rộng theo ba hướng. Thứ nhất, xây dựng bộ nhãn gold ở cấp câu hoặc span để đánh giá ABSA Macro-F1, Pair-F1 và Quad F1 một cách chính thức. Thứ hai, bổ sung instrumentation vận hành để đo p95 latency, tỷ lệ thử lại (retry rate), tỷ lệ trúng cache (cache hit rate) và chi phí trên mỗi 1,000 đánh giá. Thứ ba, kết hợp M3 và M4 trong một pipeline lai (hybrid), trong đó hệ thống dùng ROUGE/sweep để tối ưu độ trùng khớp nhưng dùng judge hoặc luật kiểm soát để loại bỏ lỗi khẳng định không căn cứ (unsupported claim) và lật cảm xúc.
+
+\begin{thebibliography}{9}
+
+\bibitem{lin2004rouge}
+Chin-Yew Lin.
+\newblock ROUGE: A Package for Automatic Evaluation of Summaries.
+\newblock In \textit{Text Summarization Branches Out}, 2004.
+
+\bibitem{vaswani2017attention}
+Ashish Vaswani et al.
+\newblock Attention Is All You Need.
+\newblock In \textit{NeurIPS}, 2017.
+
+\bibitem{semae}
+SemAE repository and experiment artifacts.
+\newblock Local project reports: \texttt{reports/rouge\_comparison\_combined.md}, \texttt{reports/sweep/optimality\_summary.md}, and \texttt{reports/metrics/paper\_tables.md}.
+
+\bibitem{hasos}
+HASOS hotel review benchmark artifacts.
+\newblock Local dataset and taxonomy: \texttt{data/hasos/hasos\_summ.json}, \texttt{data/hasos/aspect\_taxonomy.json}, and \texttt{data/seeds\_hasos/}.
+
+\end{thebibliography}
+
+\end{document}
