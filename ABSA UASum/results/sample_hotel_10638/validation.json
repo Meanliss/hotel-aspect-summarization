@@ -1,0 +1,63 @@
+{
+  "processed_rows": 4558,
+  "aspect_counts": {
+    "facility": 2296,
+    "service": 845,
+    "amenity": 780,
+    "experience": 610,
+    "loyalty": 24,
+    "branding": 3
+  },
+  "sentiment_counts": {
+    "positive": 2232,
+    "negative": 1424,
+    "neutral": 902
+  },
+  "aspect_sentiment_counts": {
+    "amenity": {
+      "positive": 213,
+      "negative": 332,
+      "neutral": 235
+    },
+    "branding": {
+      "positive": 3,
+      "negative": 0,
+      "neutral": 0
+    },
+    "experience": {
+      "positive": 327,
+      "negative": 155,
+      "neutral": 128
+    },
+    "facility": {
+      "positive": 1165,
+      "negative": 689,
+      "neutral": 442
+    },
+    "loyalty": {
+      "positive": 23,
+      "negative": 0,
+      "neutral": 1
+    },
+    "service": {
+      "positive": 501,
+      "negative": 248,
+      "neutral": 96
+    }
+  },
+  "cluster_sentiment_rows": 117,
+  "cluster_three_sentiment_rows": 45,
+  "blank_cluster_summary_rows": 0,
+  "blank_three_sentiment_summary_cells": {
+    "positive_summary": 5,
+    "negative_summary": 4,
+    "neutral_summary": 9
+  },
+  "old_template_startswith_counts": {
+    "cluster_summary": 0,
+    "positive_summary": 0,
+    "negative_summary": 0,
+    "neutral_summary": 0
+  },
+  "cluster_count_sum_matches_processed": true
+}

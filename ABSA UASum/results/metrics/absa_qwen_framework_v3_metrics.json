@@ -1,0 +1,85 @@
+{
+  "input": "external/annotated_absa_22hotels_460reviews_3594quad.csv",
+  "mode": "qwen",
+  "text_column": "evidence",
+  "elapsed_sec": 858.653,
+  "load_stats": {
+    "skipped": {
+      "missing_sentiment": 7
+    },
+    "loaded_rows": 3587
+  },
+  "metrics": {
+    "total_rows": 3587,
+    "aspect_correct": 2981,
+    "sentiment_correct": 3488,
+    "joint_correct": 2910,
+    "aspect_accuracy": 0.831057,
+    "sentiment_accuracy": 0.9724,
+    "joint_accuracy": 0.811263,
+    "gold_aspect_counts": {
+      "service": 990,
+      "experience": 447,
+      "amenity": 801,
+      "branding": 121,
+      "facility": 1037,
+      "loyalty": 191
+    },
+    "pred_aspect_counts": {
+      "service": 1010,
+      "experience": 466,
+      "amenity": 936,
+      "loyalty": 208,
+      "facility": 917,
+      "branding": 50
+    },
+    "gold_sentiment_counts": {
+      "positive": 3279,
+      "neutral": 69,
+      "negative": 239
+    },
+    "pred_sentiment_counts": {
+      "positive": 3277,
+      "negative": 235,
+      "neutral": 75
+    },
+    "by_gold_aspect": {
+      "facility": {
+        "support": 1037,
+        "aspect_accuracy": 0.783992,
+        "sentiment_accuracy": 0.961427,
+        "joint_accuracy": 0.760849
+      },
+      "amenity": {
+        "support": 801,
+        "aspect_accuracy": 0.938826,
+        "sentiment_accuracy": 0.962547,
+        "joint_accuracy": 0.901373
+      },
+      "service": {
+        "support": 990,
+        "aspect_accuracy": 0.911111,
+        "sentiment_accuracy": 0.988889,
+        "joint_accuracy": 0.90202
+      },
+      "experience": {
+        "support": 447,
+        "aspect_accuracy": 0.713647,
+        "sentiment_accuracy": 0.986577,
+        "joint_accuracy": 0.706935
+      },
+      "branding": {
+        "support": 121,
+        "aspect_accuracy": 0.22314,
+        "sentiment_accuracy": 0.933884,
+        "joint_accuracy": 0.214876
+      },
+      "loyalty": {
+        "support": 191,
+        "aspect_accuracy": 0.879581,
+        "sentiment_accuracy": 0.979058,
+        "joint_accuracy": 0.858639
+      }
+    }
+  }
+}

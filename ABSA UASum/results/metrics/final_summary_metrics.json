@@ -1,0 +1,356 @@
+{
+  "metric_type": "final_aspect_sentiment_summary_metrics",
+  "notes": {
+    "rebuilt_from": "canonical processed_sentences.csv and cluster_evidence.csv",
+    "bertscore": "Disabled for this rebuild; BERTScore columns are 0 and bertscore_available is False.",
+    "rouge1_recall": "Unigram recall against source segments for the same hotel/aspect.",
+    "rouge2_recall": "Bigram recall against source segments for the same hotel/aspect.",
+    "rouge_l_recall": "Longest common subsequence recall against concatenated source segments.",
+    "coverage_score": "Share of unique source tokens covered by the summary."
+  },
+  "stats": {
+    "rebuilt_at": "2026-06-10 15:46:13",
+    "source": {
+      "taxonomy_csv": "results/intermediate/hotel_review1_vi_100plus_llm_v3_full_cluster_taxonomy.csv",
+      "processed_sentences_csv": "results/intermediate/hotel_review1_vi_100plus_llm_v3_full_processed_sentences.csv",
+      "cluster_evidence_csv": "results/intermediate/hotel_review1_vi_100plus_llm_v3_full_cluster_evidence.csv"
+    },
+    "summary_rebuild": {
+      "mode": "local_canonical_measurement_scale",
+      "qwen_summary_calls": 0,
+      "used_existing_extraction_cache": true,
+      "used_existing_summary_cache": false,
+      "summary_cache_note": "No summary cache table exists in the pipeline cache DB; rebuild reused processed/evidence outputs.",
+      "top_clusters": 6,
+      "descriptor_limit": 5,
+      "bertscore_enabled": false
+    },
+    "rows": {
+      "final_summary": 10494,
+      "aspect_summary": 8834,
+      "cluster_sentence_summary": 23123,
+      "hotel_overall_summary": 1660,
+      "output": 1660,
+      "summary_metrics": 8834,
+      "final_summary_metrics": 8834
+    },
+    "elapsed_sec": 508.447
+  },
+  "overall": {
+    "rows": 8834,
+    "rouge1_recall": {
+      "mean": 0.210028,
+      "median": 0.16635,
+      "min": 0.0,
+      "max": 1.0
+    },
+    "rouge2_recall": {
+      "mean": 0.131751,
+      "median": 0.092082,
+      "min": 0.0,
+      "max": 1.0
+    },
+    "rouge_l_recall": {
+      "mean": 0.125743,
+      "median": 0.074824,
+      "min": 0.0,
+      "max": 1.0
+    },
+    "coverage_score": {
+      "mean": 0.300574,
+      "median": 0.280643,
+      "min": 0.0,
+      "max": 1.0
+    },
+    "bertscore_precision": {
+      "mean": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 0.0
+    },
+    "bertscore_recall": {
+      "mean": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 0.0
+    },
+    "bertscore_f1": {
+      "mean": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "max": 0.0
+    }
+  },
+  "by_aspect": {
+    "amenity": {
+      "rows": 1660,
+      "rouge1_recall": {
+        "mean": 0.230485,
+        "median": 0.211772,
+        "min": 0.016808,
+        "max": 0.661157
+      },
+      "rouge2_recall": {
+        "mean": 0.129288,
+        "median": 0.116425,
+        "min": 0.00972,
+        "max": 0.461538
+      },
+      "rouge_l_recall": {
+        "mean": 0.099597,
+        "median": 0.08917,
+        "min": 0.009864,
+        "max": 0.341463
+      },
+      "coverage_score": {
+        "mean": 0.33798,
+        "median": 0.330612,
+        "min": 0.08224,
+        "max": 0.721649
+      },
+      "bertscore_precision": {
+        "mean": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "bertscore_recall": {
+        "mean": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "bertscore_f1": {
+        "mean": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      }
+    },
+    "branding": {
+      "rows": 553,
+      "rouge1_recall": {
+        "mean": 0.322978,
+        "median": 0.309524,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "rouge2_recall": {
+        "mean": 0.209289,
+        "median": 0.175,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "rouge_l_recall": {
+        "mean": 0.288203,
+        "median": 0.263158,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "coverage_score": {
+        "mean": 0.335097,
+        "median": 0.333333,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "bertscore_precision": {
+        "mean": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "bertscore_recall": {
+        "mean": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "bertscore_f1": {
+        "mean": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      }
+    },
+    "experience": {
+      "rows": 1660,
+      "rouge1_recall": {
+        "mean": 0.167864,
+        "median": 0.157332,
+        "min": 0.02009,
+        "max": 0.515152
+      },
+      "rouge2_recall": {
+        "mean": 0.092886,
+        "median": 0.084177,
+        "min": 0.010007,
+        "max": 0.356643
+      },
+      "rouge_l_recall": {
+        "mean": 0.074653,
+        "median": 0.068497,
+        "min": 0.009044,
+        "max": 0.238095
+      },
+      "coverage_score": {
+        "mean": 0.250762,
+        "median": 0.244444,
+        "min": 0.087755,
+        "max": 0.538462
+      },
+      "bertscore_precision": {
+        "mean": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "bertscore_recall": {
+        "mean": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "bertscore_f1": {
+        "mean": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      }
+    },
+    "facility": {
+      "rows": 1660,
+      "rouge1_recall": {
+        "mean": 0.108019,
+        "median": 0.10666,
+        "min": 0.0144,
+        "max": 0.300265
+      },
+      "rouge2_recall": {
+        "mean": 0.059905,
+        "median": 0.058289,
+        "min": 0.007728,
+        "max": 0.202552
+      },
+      "rouge_l_recall": {
+        "mean": 0.048087,
+        "median": 0.047603,
+        "min": 0.008409,
+        "max": 0.116402
+      },
+      "coverage_score": {
+        "mean": 0.244209,
+        "median": 0.245554,
+        "min": 0.096142,
+        "max": 0.47619
+      },
+      "bertscore_precision": {
+        "mean": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "bertscore_recall": {
+        "mean": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "bertscore_f1": {
+        "mean": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      }
+    },
+    "loyalty": {
+      "rows": 1641,
+      "rouge1_recall": {
+        "mean": 0.373654,
+        "median": 0.352941,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "rouge2_recall": {
+        "mean": 0.274785,
+        "median": 0.25,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "rouge_l_recall": {
+        "mean": 0.291038,
+        "median": 0.26087,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "coverage_score": {
+        "mean": 0.391286,
+        "median": 0.368421,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "bertscore_precision": {
+        "mean": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "bertscore_recall": {
+        "mean": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "bertscore_f1": {
+        "mean": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      }
+    },
+    "service": {
+      "rows": 1660,
+      "rouge1_recall": {
+        "mean": 0.13436,
+        "median": 0.132933,
+        "min": 0.01895,
+        "max": 0.350731
+      },
+      "rouge2_recall": {
+        "mean": 0.077697,
+        "median": 0.074708,
+        "min": 0.01199,
+        "max": 0.237981
+      },
+      "rouge_l_recall": {
+        "mean": 0.063113,
+        "median": 0.060693,
+        "min": 0.01174,
+        "max": 0.180723
+      },
+      "coverage_score": {
+        "mean": 0.26817,
+        "median": 0.26379,
+        "min": 0.106698,
+        "max": 0.528846
+      },
+      "bertscore_precision": {
+        "mean": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "bertscore_recall": {
+        "mean": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "bertscore_f1": {
+        "mean": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      }
+    }
+  }
+}
