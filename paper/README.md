@@ -1,16 +1,6 @@
 # Thesis Source
 
-LaTeX source for the graduation thesis.
-
-## Files
-
-| Path | Description |
-| --- | --- |
-| `main.tex` | Entry point, preamble, front matter, and chapter includes. |
-| `Chap_1.tex` - `Chap_5.tex` | Thesis chapters. |
-| `references.bib` | Bibliography. |
-| `tables/metrics.tex` | Final metric tables. |
-| `figures/method2/` | Final Method 2 figures. |
+LaTeX source for the thesis report.
 
 ## Build
 
