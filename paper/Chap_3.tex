@@ -1,0 +1,1793 @@
+\chapter{PHƯƠNG PHÁP THỰC HIỆN}
+
+\section{Tổng quan phương pháp đề xuất}
+
+Chương này trình bày phương pháp luận được đề xuất nhằm giải quyết bài toán tóm tắt tổng hợp ý kiến đa khía cạnh trong dữ liệu đánh giá khách sạn. Bài toán đặt ra không chỉ yêu cầu rút gọn nội dung từ nhiều phản hồi khác nhau, mà còn cần bảo toàn thông tin về khía cạnh được đề cập, khuynh hướng cảm xúc, bằng chứng nguồn và mức độ nhất quán giữa dữ liệu đầu vào với bản tóm tắt đầu ra.
+
+Thay vì xây dựng một luồng xử lý duy nhất, khóa luận tổ chức phương pháp nghiên cứu theo hai trục tiếp cận độc lập và song song. Mỗi trục tiếp cận bài toán từ một góc nhìn khoa học khác nhau, có mục tiêu nghiên cứu, cơ chế vận hành và phạm vi thực nghiệm riêng biệt. Việc đề xuất hai phương pháp không nhằm mục đích thay thế lẫn nhau hoặc kết hợp trực tiếp trong cùng một pipeline, mà nhằm khảo sát bài toán ABSA-Summary dưới hai mô hình giải pháp khác nhau.
+
+Phương pháp thứ nhất tập trung vào khả năng kiểm soát quy trình phân tích và sinh tóm tắt dựa trên cấu trúc ABSA. Phương pháp thứ hai tập trung vào việc học biểu diễn ngữ nghĩa và lựa chọn bằng chứng phục vụ tóm tắt thông qua mô hình học sâu. Cụ thể, phạm vi và mục tiêu khoa học của từng hướng tiếp cận được xác định như sau:
+
+\begin{enumerate}[leftmargin=1.2cm]
+    \item \textbf{Phương pháp 1 (UASum): Tóm tắt ý kiến có kiểm soát dựa trên UOS và ABSA.}
+
+    Phương pháp này xây dựng một quy trình xử lý tuần tự dựa trên mô hình ngôn ngữ nền tảng Qwen, trong đó dữ liệu phản hồi thô được phân tách thành các đơn vị ý kiến, phân tích theo cấu trúc ABSA và sau đó được tổng hợp thành bản tóm tắt theo từng khía cạnh. Trọng tâm của phương pháp là kiểm soát định dạng đầu ra, duy trì khả năng truy vết về câu gốc và hạn chế hiện tượng sinh thông tin không được hỗ trợ bởi dữ liệu đầu vào. Do đó, UASum đóng vai trò như một hướng tiếp cận có tính kiểm soát cao, phù hợp để khảo sát khả năng xây dựng hệ thống tóm tắt có cấu trúc, minh bạch và có khả năng kiểm chứng nguồn gốc thông tin.
+
+    \item \textbf{Phương pháp 2 (SemAE): Tóm tắt dựa trên biểu diễn ngữ nghĩa và lựa chọn bằng chứng bằng SemAE.}
+
+    Phương pháp này tiếp cận bài toán từ góc độ học biểu diễn ngữ nghĩa thông qua mô hình tự mã hóa ngữ nghĩa SemAE. Trọng tâm của phương pháp là mã hóa câu đánh giá vào không gian biểu diễn ngữ nghĩa, từ đó xếp hạng và lựa chọn các bằng chứng phù hợp cho từng khía cạnh hoặc nhóm cảm xúc. Khác với phương pháp thứ nhất, hướng tiếp cận này cô lập khâu lựa chọn bằng chứng khỏi khâu sinh văn bản tóm tắt nhằm đánh giá tác động của các chiến lược trích chọn dữ liệu đến chất lượng thông tin đầu ra. Đây là trục thực nghiệm chính liên quan đến các biến thể mô hình và cơ chế lựa chọn bằng chứng trong khóa luận.
+\end{enumerate}
+
+Từ hai hướng tiếp cận trên, các phần tiếp theo của chương sẽ lần lượt trình bày mục tiêu của phương pháp, ý tưởng tổng thể, kiến trúc hệ thống, quy trình xử lý chi tiết và thiết kế đánh giá tương ứng. Cách tổ chức này giúp làm rõ bản chất độc lập của hai phương pháp, đồng thời tạo cơ sở để phân tích ưu điểm, hạn chế và phạm vi áp dụng của từng hướng tiếp cận trong bài toán tóm tắt ý kiến theo khía cạnh.
+
+
+% Từ hai hướng tiếp cận trên, chương này lần lượt trình bày phát biểu bài toán, dữ liệu và tiền xử lý, kiến trúc tổng thể của từng phương pháp, các biến thể thực nghiệm, cơ chế kiểm soát chất lượng đầu ra và thiết kế đánh giá. Cách tổ chức này giúp làm rõ bản chất độc lập của hai phương pháp, đồng thời tạo cơ sở để so sánh, phân tích và đánh giá ưu nhược điểm của từng hướng tiếp cận trong các chương tiếp theo.
+
+
+
+% Thiết lập cấu trúc phương pháp luận dựa trên hai trục nghiên cứu độc lập và song song nhằm giải quyết bài toán tóm tắt tổng hợp đa ý kiến, đa khía cạnh dưới các góc nhìn khoa học khác nhau. Sự xuất hiện của hai phương pháp không nhằm mục đích thay thế hay bổ trợ trực tiếp trong cùng một luồng vận hành, mà để thiết lập hai mô hình giải pháp có bản chất thuật toán và mục tiêu thực nghiệm hoàn toàn riêng biệt.
+
+% Mục tiêu khoa học và phạm vi nghiên cứu của từng hướng tiếp cận được định hình rõ ràng như sau:
+
+% \begin{enumerate}[leftmargin=1.2cm]
+%     \item \textbf{Phương pháp 1 Quy trình phân tích cảm xúc và tóm tắt ý kiến có kiểm soát (ABSA--Summary):}  Thiết lập một quy trình phân tích và tóm tắt có kiểm soát dựa trên mô hình ngôn ngữ nhỏ (SLM-based Controlled Pipeline). Mục tiêu nghiên cứu chính của phương pháp này là trả lời câu hỏi liệu có thể xây dựng một chuỗi xử lý dữ liệu tuần tự, áp đặt lược đồ định dạng chặt chẽ và có khả năng truy vết nguồn tuyệt đối cho dữ liệu phản hồi thô hay không. Trục này đóng vai trò như một giải pháp nền tảng vững chắc về mặt kiểm soát rủi ro định dạng và quản lý hiện tượng ảo giác thông tin của mô hình ngôn ngữ.
+%     \item \textbf{Phương pháp 2 (Trục kiến trúc thuật toán học sâu):} Thiết lập một quy trình tóm tắt dựa trên mô hình mạng tự mã hóa ngữ nghĩa (SemAE-based Summarization Pipeline). Đây là trọng tâm thực nghiệm cốt lõi của mã nguồn nghiên cứu, tập trung sâu vào khâu trích rút đặc trưng không gian và tối ưu hóa việc phân tách cấu trúc ngữ nghĩa văn bản. Trục này tách biệt hoàn toàn khỏi quy trình của phương pháp~1 nhằm trả lời câu hỏi khoa học trung tâm: khi khâu lựa chọn bằng chứng được cô lập khỏi khâu sinh văn bản tóm tắt, các chiến lược trích chọn dữ liệu khác nhau sẽ tác động thế nào đến chất lượng thông tin đầu ra.
+% \end{enumerate}
+
+\subsection{Ý tưởng tổng thể}
+
+Ý tưởng tổng thể của bài toán ABSA-Summary là chuyển đổi tập các câu đánh giá tự nhiên của người dùng thành một bản tóm tắt có cấu trúc, trong đó các ý kiến được tổ chức theo từng khía cạnh và khuynh hướng cảm xúc tương ứng. Khác với tóm tắt văn bản thông thường, bài toán này không chỉ yêu cầu rút gọn nội dung, mà còn cần xác định được người dùng đang nhận xét về khía cạnh nào, ý kiến đó mang sắc thái tích cực hay tiêu cực, và các nhận định trong bản tóm tắt có phản ánh đúng dữ liệu đầu vào hay không.
+
+Về mặt tổng quát, hệ thống ABSA-Summary có thể được mô tả qua bốn giai đoạn chính: dữ liệu đầu vào, tiền xử lý dữ liệu, tóm tắt và đầu ra. Trong giai đoạn đầu tiên, hệ thống tiếp nhận tập các câu đánh giá của người dùng, thường chứa nhiều ý kiến khác nhau về khách sạn như phòng ở, dịch vụ, tiện nghi, vị trí hoặc trải nghiệm tổng thể. Các câu đánh giá này có thể có độ dài không đồng nhất, chứa nhiều khía cạnh trong cùng một câu, hoặc thể hiện nhiều cảm xúc khác nhau trong cùng một phản hồi.
+
+Ở giai đoạn tiền xử lý dữ liệu, các câu đánh giá được chuẩn hóa nhằm giảm nhiễu và đưa về định dạng phù hợp cho các bước phân tích tiếp theo. Các thao tác tiền xử lý có thể bao gồm chuẩn hóa văn bản, loại bỏ ký tự không cần thiết, tách câu, tách ý kiến và biểu diễn dữ liệu dưới dạng phù hợp. Giai đoạn này đóng vai trò quan trọng vì chất lượng dữ liệu đầu vào ảnh hưởng trực tiếp đến khả năng nhận diện khía cạnh, cảm xúc và chất lượng bản tóm tắt cuối cùng.
+
+Sau khi dữ liệu được tiền xử lý, hệ thống thực hiện quá trình tóm tắt theo định hướng khía cạnh. Thay vì tổng hợp toàn bộ đánh giá thành một đoạn văn chung, các ý kiến được tổ chức theo từng nhóm khía cạnh và khuynh hướng cảm xúc. Cách tiếp cận này giúp hệ thống nhận diện được các điểm nổi bật trong tập đánh giá, chẳng hạn các ý kiến tích cực về chất lượng phòng, các phản hồi tiêu cực về dịch vụ hoặc các nhận xét trái chiều về tiện nghi. Từ đó, hệ thống tạo ra bản tóm tắt ngắn gọn nhưng vẫn bảo toàn được các thông tin quan trọng về nội dung và cảm xúc.
+
+Đầu ra của hệ thống là bản tóm tắt ABSA có cấu trúc. Mỗi khía cạnh có thể được trình bày cùng với các ý kiến tích cực và tiêu cực tương ứng, giúp người đọc nhanh chóng nắm bắt được những điểm mạnh và hạn chế được đề cập trong tập đánh giá. Ví dụ, đối với khía cạnh \textit{SERVICE}, bản tóm tắt có thể nêu rằng nhân viên thân thiện và hỗ trợ nhiệt tình, nhưng một số phản hồi cho thấy thời gian phản hồi còn chậm. Đối với khía cạnh \textit{FACILITY}, bản tóm tắt có thể thể hiện rằng phòng sạch sẽ và tiện nghi, nhưng một số cơ sở vật chất vẫn còn hạn chế.
+
+Như vậy, ý tưởng cốt lõi của ABSA-Summary là kết hợp giữa phân tích cảm xúc theo khía cạnh và tóm tắt văn bản. Quá trình này giúp chuyển đổi dữ liệu đánh giá thô, vốn thường dài, phân tán và chứa nhiều ý kiến khác nhau, thành một bản tóm tắt có tổ chức, dễ hiểu và có khả năng hỗ trợ người dùng trong việc nắm bắt nhanh các đặc điểm nổi bật của khách sạn.
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=0.98\textwidth]{h4_quy_trinh_chung.png}
+\caption{Quy trình xử lý logic chung cho bài toán tóm tắt ý kiến khách sạn theo khía cạnh}
+\label{fig:common-processing-flow}
+\end{figure}
+
+\subsection{Kiến trúc tổng thể của hệ thống}
+\label{subsec:overall-system-architecture}
+
+Để giải quyết bài toán tóm tắt ý kiến khách sạn theo khía cạnh, khóa luận đề xuất kiến trúc tổng thể tích hợp hai quy trình xử lý chính hoạt động song song và độc lập: phương pháp thứ nhất dựa trên quy trình kiểm soát tuần tự với mô hình ngôn ngữ nền tảng Qwen (UASum), và phương pháp thứ hai dựa trên mô hình học biểu diễn tự mã hóa ngữ nghĩa (SemAE).
+
+Quy trình xử lý khái quát của cả hai hệ thống đi từ dữ liệu đánh giá khách sạn thô, qua các bước xử lý đặc trưng, gán khía cạnh, phân loại cảm xúc, chọn lọc bằng chứng cho đến việc tổng hợp và đánh giá bản tóm tắt đầu ra. Sự tương đồng về mục tiêu và khác biệt về kiến trúc thuật toán của hai hệ thống được mô tả tổng quan trong Hình~\ref{fig:overall-comparison-architecture}.
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=0.98\textwidth]{h1_tong_quan_so_sanh.png}
+\caption{Tổng quan so sánh quy trình và kiến trúc của hai hệ thống đề xuất}
+\label{fig:overall-comparison-architecture}
+\end{figure}
+
+
+\section{Phát biểu bài toán ABSA-Summary}
+
+Bài toán Tóm tắt ý kiến theo khía cạnh (Aspect-Based Sentiment Analysis Summarization - viết tắt là ABSA-Summary) được đặt trong bối cảnh xử lý và tổng hợp dữ liệu phản hồi từ người dùng. Khác với bài toán tóm tắt văn bản truyền thống (chỉ tập trung vào việc rút gọn nội dung hoặc nén câu), bài toán này đòi hỏi hệ thống phải đồng thời giải quyết các khía cạnh nghiệp vụ phức tạp liên quan đến phân loại cảm xúc theo khía cạnh và kiểm chứng nguồn gốc thông tin.
+
+\subsection{Định nghĩa đầu vào và đầu ra}
+\label{subsec:input-output-definition}
+
+Để xây dựng một hệ thống ABSA-Summary hiệu quả, mô hình đề xuất cần đối mặt và vượt qua bốn thách thức khoa học cốt lõi sau:
+\begin{enumerate}[leftmargin=1.2cm]
+    \item \textbf{Hiện tượng cực tính cảm xúc hỗn hợp (Mixed Sentiment)}: Một câu đánh giá tự nhiên của khách hàng thường chứa nhiều mệnh đề nhận xét về các đối tượng khác nhau với sắc thái đối lập (ví dụ: \textit{``phòng rộng rãi nhưng nhân viên không thân thiện''}). Việc xử lý trực tiếp cấp câu sẽ dẫn đến lỗi trung hòa cảm xúc hoặc nhận diện khuyết thiếu thông tin.
+    \item \textbf{Độ phân giải thông tin (Aspect-Sentiment Granularity)}: Các nhận xét về khách sạn rất đa dạng và phân mảnh. Bản tóm tắt không chỉ cần phân biệt các khía cạnh lớn (như dịch vụ, cơ sở vật chất) mà còn cần làm rõ các chi tiết nghiệp vụ con (như chất lượng giấc ngủ, thái độ nhân viên, tốc độ wifi) để người đọc có được thông tin cụ thể, hữu ích.
+    \item \textbf{Ảo giác thông tin của mô hình sinh (Hallucination)}: Khi tổng hợp từ nhiều nguồn phản hồi khác nhau, các mô hình ngôn ngữ nền tảng có xu hướng tự sinh ra các thông tin không có trong văn bản gốc (ảo giác nội dung) hoặc bị lệch định dạng đầu ra (ảo giác cấu trúc).
+    \item \textbf{Khả năng kiểm chứng và truy vết (Traceability)}: Trong các ứng dụng thực tế (như hệ thống hỗ trợ ra quyết định hoặc cổng thông tin khách sạn), người dùng cần kiểm chứng được tính trung thực của bản tóm tắt. Do đó, hệ thống bắt buộc phải liên kết được từng nhận định tóm tắt với các câu đánh giá nguồn cụ thể.
+\end{enumerate}
+
+Dựa trên các thách thức này, bài toán ABSA-Summary trong khóa luận được định nghĩa chính thức với các thành phần đầu vào, đầu ra và hệ thống ràng buộc thiết kế như dưới đây. Khái niệm này được sử dụng thống nhất cho cả hai hướng tiếp cận được đề xuất trong khóa luận.
+
+
+\paragraph{Đầu vào.}
+Gọi $H = \{h_1, h_2, \dots, h_N\}$ là tập các khách sạn cần được tóm tắt.
+Với mỗi khách sạn $h_i \in H$, tập đánh giá gốc tương ứng được ký hiệu là
+%
+\begin{equation}
+  R_i = \{r_{i1}, r_{i2}, \dots, r_{iM_i}\},
+  \label{eq:tap-danh-gia-goc}
+\end{equation}
+%
+trong đó $r_{ij}$ là một đánh giá tự nhiên do người dùng sinh ra. Mỗi đánh
+giá có thể bao gồm nhiều câu, nhiều mệnh đề, nhiều khía cạnh và nhiều cực
+tính cảm xúc khác nhau.
+
+Sau bước tiền xử lý ban đầu, mỗi đánh giá $r_{ij}$ được phân rã thành một
+dãy câu hoặc mệnh đề ứng viên:
+%
+\begin{equation}
+  r_{ij}
+  \xrightarrow{\ \text{preprocess}\ }
+  \{s_{ij}^{1}, s_{ij}^{2}, \dots, s_{ij}^{L_{ij}}\}.
+  \label{eq:preprocess-review}
+\end{equation}
+%
+Trong đó, $s_{ij}^{l}$ là câu hoặc mệnh đề thứ $l$ được tách ra từ đánh giá
+$r_{ij}$, còn $L_{ij}$ là số lượng câu/mệnh đề thu được sau tiền xử lý. Mỗi
+$câu/mệnh đề$ này được gắn kèm một con trỏ nguồn
+%
+\begin{equation}
+  e_{ij}^{l} = (h_i, r_{ij}, l),
+  \label{eq:source-pointer}
+\end{equation}
+%
+nhằm bảo đảm khả năng truy vết từ các bằng chứng được sử dụng trong quá
+trình tóm tắt về đúng khách sạn, đúng đánh giá và đúng vị trí trong văn bản
+gốc.
+
+\paragraph{Biểu diễn trung gian: đơn vị ý kiến.}
+Từ các câu hoặc mệnh đề ứng viên, hệ thống thực hiện phân tích cảm xúc theo
+khía cạnh để tạo ra các đơn vị ý kiến. Một đơn vị ý kiến được ký hiệu là
+%
+\begin{equation}
+  o_k = \big(h_i,\; t_k,\; a_k,\; p_k,\; c_k,\; q_k,\; x_k,\; e_k\big),
+  \label{eq:don-vi-y-kien}
+\end{equation}
+%
+trong đó các thành phần của $o_k$ được mô tả trong
+Bảng~\ref{tab:ky-hieu-don-vi-y-kien}.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Ký hiệu các thành phần của đơn vị ý kiến $o_k$}
+  \label{tab:ky-hieu-don-vi-y-kien}
+  \small
+  \begin{tabularx}{\textwidth}{@{}L{0.16\textwidth} Y@{}}
+    \toprule
+    \textbf{Ký hiệu} & \textbf{Ý nghĩa} \\
+    \midrule
+    $h_i$ &
+    Định danh của khách sạn (thực thể lưu trú nhận được đánh giá). \\
+
+    $t_k$ &
+    Thuật ngữ khía cạnh hoặc đối tượng cụ thể được nhắc đến trong câu,
+    ví dụ \textit{staff}, \textit{room}, \textit{breakfast}, \textit{pool}.
+    Thành phần này có thể rỗng trong trường hợp câu chỉ thể hiện khía cạnh
+    ở mức ngữ nghĩa tổng quát. \\
+
+    $a_k$ &
+    Khía cạnh được đề cập trong đơn vị ý kiến, với $a_k \in \mathcal{A}$.
+    Tập $\mathcal{A}$ gồm các khía cạnh được sử dụng trong bài toán, chẳng hạn
+    \texttt{facility}, \texttt{amenity}, \texttt{service},
+    \texttt{experience}, \texttt{branding} và \texttt{loyalty}. \\
+
+    $p_k$ &
+    Cực tính cảm xúc chuẩn hóa của đơn vị ý kiến, với
+    $p_k \in \mathcal{P} = \{\mathrm{positive}, \mathrm{negative}, \mathrm{neutral}\}$.
+    Ba giá trị này lần lượt biểu diễn ý kiến tích cực, tiêu cực và trung lập. \\
+
+    $c_k$ &
+    Mã nhóm hoặc cụm chủ đề nghiệp vụ con chi tiết hơn của khía cạnh,
+    ví dụ \texttt{F\_ROM}, \texttt{A\_WIF}. \\
+
+    $q_k$ &
+    Từ hoặc cụm từ biểu thị ý kiến (descriptor), ví dụ \textit{friendly},
+    \textit{clean}, \textit{slow}, \textit{small}. Đây là thành phần thể hiện
+    nội dung nhận xét gắn với khía cạnh. \\
+
+    $x_k$ &
+    Đoạn bằng chứng văn cảnh (evidence span) tương ứng của phân đoạn UOS. \\
+
+    $e_k$ &
+    Con trỏ nguồn (source pointer), cho phép ánh xạ đơn vị ý kiến về câu hoặc mệnh đề
+    nguồn tương ứng trong đánh giá gốc. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Với mỗi khách sạn $h_i$, các đơn vị ý kiến được gom theo khía cạnh và cảm
+xúc để hình thành tập bằng chứng:
+%
+\begin{equation}
+  E(h_i, a, p)
+  =
+  \big\{
+    o_k
+    \mid
+    \mathrm{hotel}(o_k) = h_i,\;
+    a_k = a,\;
+    p_k = p
+  \big\}.
+  \label{eq:tap-bang-chung-theo-cam-xuc}
+\end{equation}
+%
+Trong đó, $E(h_i, a, p)$ là tập các ý kiến của khách sạn $h_i$ thuộc khía
+cạnh $a$ và mang cực tính cảm xúc $p$. Khi không cần phân biệt cảm xúc, tập
+bằng chứng theo khía cạnh được định nghĩa là:
+%
+\begin{equation}
+  E(h_i, a)
+  =
+  \bigcup_{p \in \{\text{positive}, \text{negative}, \text{neutral}\}}
+  E(h_i, a, p).
+  \label{eq:tap-bang-chung-theo-khia-canh}
+\end{equation}
+%
+Tập bằng chứng này là dữ liệu trung gian quan trọng cho quá trình tóm tắt.
+Tùy theo từng phương pháp cụ thể, các phần tử trong $E(h_i,a)$ có thể được
+gom nhóm, xếp hạng, lọc trùng hoặc chọn lọc trước khi đưa vào bước sinh tóm
+tắt.
+
+\paragraph{Đầu ra.}
+Với mỗi khách sạn $h_i$ và mỗi khía cạnh $a \in A$ có đủ bằng chứng, hệ
+thống sinh một đoạn tóm tắt theo khía cạnh:
+%
+\begin{equation}
+  S(h_i, a)
+  =
+  f_{\mathrm{sum}}\big(E^{*}(h_i, a)\big),
+  \qquad
+  E^{*}(h_i, a) \subseteq E(h_i, a),
+  \label{eq:tom-tat-theo-khia-canh}
+\end{equation}
+%
+trong đó $E^{*}(h_i, a)$ là tập bằng chứng đã được chọn lọc từ
+$E(h_i,a)$, còn $f_{\mathrm{sum}}$ là hàm tổng hợp hoặc sinh tóm tắt. Hàm
+này có thể được hiện thực theo nhiều cách khác nhau, chẳng hạn tóm tắt
+trích rút dựa trên các câu bằng chứng, hoặc tóm tắt trừu tượng bằng mô hình
+ngôn ngữ.
+
+Đầu ra tổng quát của hệ thống đối với khách sạn $h_i$ được biểu diễn dưới
+dạng tập các tóm tắt theo khía cạnh:
+%
+\begin{equation}
+  S(h_i)
+  =
+  \big\{
+    S(h_i, a)
+    \mid
+    a \in A,\;
+    E(h_i, a) \neq \varnothing
+  \big\}.
+  \label{eq:dau-ra-tong-quat}
+\end{equation}
+%
+Nói cách khác, thay vì sinh một đoạn tóm tắt duy nhất cho toàn bộ khách
+sạn, hệ thống tạo ra bản tóm tắt có cấu trúc, trong đó mỗi khía cạnh được
+trình bày cùng với các ý kiến hoặc cảm xúc nổi bật tương ứng. Cấu trúc đầu
+ra có thể được minh họa như sau:
+
+\begin{equation}
+  S(h_i)
+  =
+  \{
+    (\texttt{SERVICE}, S(h_i,\texttt{SERVICE})),
+    (\texttt{FACILITY}, S(h_i,\texttt{FACILITY})),
+    (\texttt{AMENITY}, S(h_i,\texttt{AMENITY})),
+    \dots
+  \}.
+  \label{eq:structured-summary}
+\end{equation}
+
+\paragraph{Ràng buộc thiết kế của đầu ra.}
+Bất kể phương pháp cụ thể được sử dụng, bản tóm tắt đầu ra cần thỏa các
+ràng buộc thiết kế sau:
+
+\begin{enumerate}[leftmargin=1.2cm]
+  \item \textbf{Tính đúng khía cạnh:}
+  nội dung trong $S(h_i,a)$ phải phản ánh đúng khía cạnh $a$ đang được tóm
+  tắt, tránh trộn lẫn thông tin giữa các khía cạnh khác nhau.
+
+  \item \textbf{Tính nhất quán cảm xúc:}
+  các nhận định tích cực, tiêu cực hoặc trung lập trong bản tóm tắt cần
+  phù hợp với cực tính cảm xúc của các đơn vị ý kiến được sử dụng làm bằng
+  chứng.
+
+  \item \textbf{Tính truy vết:}
+  mỗi nhận định quan trọng trong bản tóm tắt cần có khả năng ánh xạ ngược
+  về một hoặc nhiều bằng chứng $e_k$ trong tập $E^{*}(h_i,a)$. Ràng buộc
+  này giúp tăng tính minh bạch và hạn chế hiện tượng sinh thông tin không
+  có căn cứ.
+
+  \item \textbf{Tính giới hạn bởi bằng chứng:}
+  quá trình sinh tóm tắt chỉ được sử dụng các bằng chứng đã được chọn lọc
+  trong $E^{*}(h_i,a)$, thay vì truy cập trực tiếp toàn bộ tập đánh giá
+  gốc $R_i$. Điều này giúp kiểm soát phạm vi thông tin đầu vào và hỗ trợ
+  đánh giá mức độ trung thực của bản tóm tắt.
+
+  \item \textbf{Tính cô đọng:}
+  độ dài của mỗi đoạn tóm tắt cần được giới hạn bởi một ngân sách độ dài
+  $B$, chẳng hạn số từ hoặc số token tối đa:
+  %
+  \begin{equation}
+    |S(h_i,a)| \leq B.
+    \label{eq:budget-summary}
+  \end{equation}
+\end{enumerate}
+
+Tóm lại, bài toán ABSA-Summary trong khóa luận có thể được hiểu là quá
+trình ánh xạ từ tập đánh giá thô $R_i$ của một khách sạn sang tập tóm tắt
+có cấu trúc $S(h_i)$ theo từng khía cạnh. Quá trình này được trung gian bởi
+các đơn vị ý kiến và tập bằng chứng, nhằm bảo đảm rằng bản tóm tắt đầu ra
+vừa ngắn gọn, vừa phản ánh đúng nội dung, cảm xúc và nguồn gốc thông tin
+trong dữ liệu đánh giá ban đầu.
+
+
+\subsection{Hệ thống khía cạnh nghiệp vụ và ranh giới phân loại}
+\label{subsec:method1-aspect-taxonomy}
+
+Trước khi đi vào các giai đoạn xử lý cơ học của dòng dữ liệu, hệ thống cần thiết lập một khung phân loại chuẩn (Taxonomy) đóng vai trò là cơ sở nghiệp vụ nền tảng. Khung phân loại này định nghĩa cấu trúc sáu khía cạnh cốt lõi thuộc tập hợp $\mathcal{A}$, phạm vi bao phủ, các điểm neo từ vựng và quy tắc xác định ranh giới biên nhằm quản lý độ phân giải thông tin một cách nhất quán.
+
+\begin{equation}
+\mathcal{A} = \{\mathrm{facility}, \mathrm{amenity}, \mathrm{service}, \mathrm{experience}, \mathrm{branding}, \mathrm{loyalty}\}
+\label{eq:method1-aspect-set-definition}
+\end{equation}
+
+Sự hiểu biết tường minh về nội hàm của từng khía cạnh là điều kiện bắt buộc để cấu trúc các bộ định tuyến kiểm soát (Guardrails) ở các bước sau. Khung phân loại khía cạnh nghiệp vụ, mô tả phạm vi, từ khóa neo và các thang đo con tương ứng được tổng hợp chi tiết trong Bảng~\ref{tab:aspect-cues-description}.
+
+% \begin{enumerate}[leftmargin=1.2cm]
+%     \item \textbf{Cơ sở vật chất (\texttt{facility}):} Phản ánh các thuộc tính vật lý, kiến trúc cấu trúc và môi trường xây dựng của khách sạn. Khía cạnh này bao phủ điều kiện phòng ngủ, trạng thái giường nệm, không gian phòng tắm, thiết bị nội thất, hệ thống ánh sáng, chất lượng cách âm tiếng ồn, điều hòa thông gió, tòa nhà hạ tầng chung, lối vào hành lang, sảnh lễ tân, bãi đỗ xe vật lý, an ninh vật lý (camera, khóa cửa, thẻ từ), vị trí địa lý, cảnh quan và tầm nhìn xung quanh.
+%     \item \textbf{Tiện ích cung cấp (\texttt{amenity}):} Phản ánh các chức năng, dịch vụ gia tăng hoặc công cụ hỗ trợ được khách sạn chủ động thiết lập nhằm phục vụ nhu cầu thư giãn và tiện nghi của khách lưu trú. Khía cạnh này bao phủ chất lượng mạng không dây (WiFi), hồ bơi, phòng tập thể hình (Gym), dịch vụ chăm sóc sức khỏe (Spa/Massage), khu vui chơi giải trí, tiện ích phục vụ ăn uống (bữa sáng, buffet, nhà hàng, quán cà phê, quầy bar, thực đơn), các vật dụng tiện nghi trong phòng (tủ lạnh nhỏ minibar, ấm đun nước, máy sấy), dịch vụ giặt ủi và dịch vụ xe đưa đón (shuttle, trung chuyển sân bay).
+%     \item \textbf{Dịch vụ con người (\texttt{service}):} Phản ánh chất lượng tương tác trực tiếp của con người và tính hiệu quả của các quy trình vận hành. Khía cạnh này tập trung đánh giá thái độ, tính chuyên nghiệp, sự nhiệt tình, khả năng giao tiếp ngôn ngữ của nhân viên (lễ tân, buồng phòng, phục vụ nhà hàng, quản lý, chủ nhà), quy trình đón tiếp (check-in/check-out, đặt phòng), tốc độ phản hồi và năng lực hỗ trợ, giải quyết khiếu nại hoặc sự cố phát sinh.
+%     \item \textbf{Cảm nhận trải nghiệm (\texttt{experience}):} Phản ánh trạng thái cảm xúc chủ quan, mức độ thư giãn và sự thỏa mãn tổng thể của khách hàng đối với kỳ nghỉ. Khía cạnh này bao phủ bầu không khí, cảm giác cozy (ấm cúng), mức độ an tâm chủ quan, sự tiện lợi chung và nhận diện về giá trị so với chi phí bỏ ra (đáng tiền, giá hợp lý, đắt, phí tiền). Đây là khía cạnh mang tính chất tổng hợp khi khách hàng không chỉ rõ một đối tượng vận hành cụ thể.
+%     \item \textbf{Nhận diện thương hiệu (\texttt{branding}):} Phản ánh các đánh giá liên quan đến hình ảnh chuỗi, danh tiếng, uy tín, đẳng cấp năm sao hoặc mức độ đáp ứng/vượt so với kỳ vọng ban đầu dựa trên tiêu chuẩn thương hiệu. Khía cạnh này đòi hỏi các tín hiệu rõ ràng về mặt định vị cao cấp (luxury), sự đồng nhất tiêu chuẩn hoặc danh tiếng của tài sản, không đơn thuần suy ra từ tên gọi khách sạn hay sự hài lòng chung.
+%     \item \textbf{Mức độ trung thành (\texttt{loyalty}):} Phản ánh các biểu hiện hành vi trong tương lai của khách hàng dựa trên mối gắn kết với cơ sở lưu trú. Khía cạnh này chỉ bao phủ ba xu hướng rõ rệt: ý định quay lại lưu trú trong tương lai (revisit intent), ý định khuyến nghị/giới thiệu khách sạn cho người khác (recommendation), và sự gắn bó lâu dài (trở thành khách quen, ưu tiên lựa chọn, sở thích đặc biệt).
+% \end{enumerate}
+
+% Gói cần có trong preamble:
+% \usepackage{longtable}
+% \usepackage{booktabs}
+% \usepackage{array}
+% \usepackage{ragged2e}
+
+{\footnotesize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.18}
+
+\begin{longtable}{@{}
+    >{\RaggedRight\arraybackslash}p{2.2cm}
+    >{\RaggedRight\arraybackslash}p{5.4cm}
+    >{\RaggedRight\arraybackslash}p{3.8cm}
+    >{\RaggedRight\arraybackslash}p{4.6cm}
+@{}}
+\caption{Hệ thống khía cạnh nghiệp vụ, mô tả và các từ khóa neo tiêu biểu trong đánh giá khách sạn}
+\label{tab:aspect-cues-description} \\
+
+\toprule
+\textbf{Khía cạnh} &
+\textbf{Mô tả} &
+\textbf{Từ khóa neo tiêu biểu (Cues)} &
+\textbf{Các thang đo con tích hợp (Clusters)} \\
+\midrule
+\endfirsthead
+
+\toprule
+\textbf{Khía cạnh} &
+\textbf{Mô tả} &
+\textbf{Từ khóa neo tiêu biểu (Cues)} &
+\textbf{Các thang đo con tích hợp (Clusters)} \\
+\midrule
+\endhead
+
+\midrule
+\multicolumn{4}{r}{\textit{Tiếp tục ở trang sau}} \\
+\endfoot
+
+\bottomrule
+\endlastfoot
+
+\textbf{Cơ sở vật chất}
+(\texttt{facility})
+&
+Phản ánh các thuộc tính vật lý, kiến trúc, cấu trúc và môi trường xây dựng của khách sạn.
+Khía cạnh này bao gồm điều kiện phòng ngủ, giường nệm, phòng tắm, nội thất, ánh sáng,
+khả năng cách âm, điều hòa, thông gió, hạ tầng tòa nhà, lối vào, hành lang, sảnh lễ tân,
+an ninh vật lý, vị trí địa lý, cảnh quan và tầm nhìn xung quanh.
+&
+room, bed, bathroom, interior, noise, window, AC, view, clean, phòng, giường, cửa sổ, ồn, cách âm, điều hòa.
+&
+Vệ sinh phòng, sự thoải mái, điều kiện phòng tắm, chất lượng giường nệm, thiết kế nội thất, hạ tầng tòa nhà, hệ thống điều hòa, an ninh vật lý, cảnh quan tầm nhìn. \\
+
+\midrule
+
+\textbf{Tiện ích cung cấp}
+(\texttt{amenity})
+&
+Phản ánh các chức năng, dịch vụ gia tăng hoặc công cụ hỗ trợ được khách sạn thiết lập nhằm
+phục vụ nhu cầu thư giãn, sinh hoạt và tiện nghi của khách lưu trú. Khía cạnh này bao gồm
+WiFi, hồ bơi, phòng tập, spa, khu vui chơi, dịch vụ ăn uống, vật dụng tiện nghi trong phòng,
+giặt ủi và dịch vụ đưa đón.
+&
+wifi, internet, breakfast, buffet, pool, gym, restaurant, minibar, parking, ăn sáng, hồ bơi, nhà hàng, giặt ủi.
+&
+Chất lượng WiFi, chất lượng bữa sáng, hồ bơi, phòng tập gym, dịch vụ spa, bãi đỗ xe, xe đưa đón, tiện nghi trong phòng, chất lượng đồ ăn thức uống. \\
+
+\midrule
+
+\textbf{Dịch vụ con người}
+(\texttt{service})
+&
+Phản ánh chất lượng tương tác trực tiếp giữa khách hàng và nhân viên, cũng như tính hiệu quả
+của các quy trình vận hành. Khía cạnh này tập trung vào thái độ, sự chuyên nghiệp, sự nhiệt tình,
+khả năng giao tiếp của nhân viên, quy trình check-in/check-out, tốc độ phản hồi và năng lực
+hỗ trợ, xử lý khiếu nại hoặc sự cố phát sinh.
+&
+staff, receptionist, housekeeping, check-in, helpful, friendly, nhân viên, lễ tân, phục vụ, dọn phòng, hỗ trợ.
+&
+Thái độ nhân viên, tính chuyên nghiệp, quy trình nhận/trả phòng, khả năng phản hồi nhanh, xử lý sự cố phàn nàn, phục vụ nhà hàng, năng lực giao tiếp. \\
+
+\midrule
+
+\textbf{Cảm nhận trải nghiệm}
+(\texttt{experience})
+&
+Phản ánh trạng thái cảm xúc chủ quan, mức độ thư giãn và sự thỏa mãn tổng thể của khách hàng
+đối với kỳ lưu trú. Khía cạnh này bao gồm bầu không khí, cảm giác thoải mái, sự yên bình, mức độ
+an tâm, sự tiện lợi chung và cảm nhận về giá trị so với chi phí bỏ ra.
+&
+stay, atmosphere, relax, peaceful, vibe, price, value, worth, trải nghiệm, không khí, thư giãn, yên bình, giá cả, đáng tiền.
+&
+Trải nghiệm lưu trú tổng thể, cảm xúc bầu không khí, giá trị so với chi phí, cảm giác an toàn chủ quan, sự thuận tiện, mức độ yêu thích tận hưởng. \\
+
+\midrule
+
+\textbf{Nhận diện thương hiệu}
+(\texttt{branding})
+&
+Phản ánh các đánh giá liên quan đến hình ảnh thương hiệu, danh tiếng, uy tín, tiêu chuẩn dịch vụ,
+đẳng cấp cao cấp hoặc mức độ đáp ứng kỳ vọng ban đầu. Khía cạnh này yêu cầu các tín hiệu rõ ràng
+về định vị thương hiệu, sự sang trọng, tính nhất quán tiêu chuẩn hoặc danh tiếng của khách sạn.
+&
+brand, reputation, standard, expectation, luxury, premium, thương hiệu, danh tiếng, tiêu chuẩn, kỳ vọng, đẳng cấp.
+&
+Danh tiếng uy tín, niềm tin thương hiệu, cảm nhận sang trọng cao cấp, tính nhất quán thương hiệu, mức độ đáp ứng kỳ vọng. \\
+
+\midrule
+
+\textbf{Mức độ trung thành}
+(\texttt{loyalty})
+&
+Phản ánh các biểu hiện hành vi trong tương lai của khách hàng dựa trên mối gắn kết với cơ sở
+lưu trú. Khía cạnh này bao gồm ý định quay lại, ý định giới thiệu khách sạn cho người khác và sự
+gắn bó lâu dài như trở thành khách quen, ưu tiên lựa chọn hoặc yêu thích đặc biệt.
+&
+return, come back, recommend, favorite, member, quay lại, lần sau, giới thiệu, đề xuất, yêu thích, khách quen.
+&
+Ý định quay lại lưu trú, ý định giới thiệu khuyến nghị, sở thích gắn bó đặc biệt, hành vi trung thành thành viên. \\
+
+\end{longtable}
+}
+}
+
+{\footnotesize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.15}
+
+\begin{longtable}{@{}
+    >{\centering\arraybackslash}p{1.5cm}
+    >{\RaggedRight\arraybackslash}p{4.0cm}
+    >{\RaggedRight\arraybackslash}p{10cm}
+@{}}
+\caption{Hệ thống thang đo nghiệp vụ con trong đánh giá khách sạn}
+\label{tab:aspect-measurement-scale} \\
+
+\toprule
+\textbf{Mã} &
+\textbf{Thang đo nghiệp vụ con} &
+\textbf{Mô tả} \\
+\midrule
+\endfirsthead
+
+\toprule
+\textbf{Mã} &
+\textbf{Thang đo nghiệp vụ con} &
+\textbf{Mô tả} \\
+\midrule
+\endhead
+
+\midrule
+\multicolumn{3}{r}{\textit{Tiếp tục ở trang sau}} \\
+\endfoot
+
+\bottomrule
+\endlastfoot
+
+\texttt{F\_ROM}
+&
+Phòng, giường và chất lượng giấc ngủ
+&
+Đánh giá về tình trạng phòng, mức độ sạch sẽ, độ rộng, sự thoải mái của nội thất, chất lượng giường và trải nghiệm giấc ngủ. \\
+
+\texttt{F\_BTH}
+&
+Phòng tắm và khu vực vệ sinh
+&
+Đánh giá về trang thiết bị phòng tắm, vệ sinh, bảo trì và mức độ tiện dụng của khu vực vệ sinh. \\
+
+\texttt{F\_INT}
+&
+Thiết kế nội thất và không gian bên trong
+&
+Đánh giá về trang trí nội thất, thẩm mỹ của đồ dùng, ánh sáng và bầu không khí trong không gian bên trong khách sạn. \\
+
+\texttt{F\_BLD}
+&
+Hạ tầng và kết cấu tòa nhà
+&
+Đánh giá về tình trạng kết cấu, chất lượng công trình và hạ tầng vật lý của khách sạn. \\
+
+\texttt{F\_ENV}
+&
+Độ ồn và sự thoải mái môi trường
+&
+Đánh giá về mức độ yên tĩnh, tiếng ồn, không gian xung quanh và sự thoải mái của môi trường lưu trú. \\
+
+\texttt{F\_CLM}
+&
+Điều hòa không khí và thông gió
+&
+Đánh giá về khả năng điều chỉnh nhiệt độ, luồng không khí và chất lượng thông gió trong khách sạn. \\
+
+\texttt{F\_SEC}
+&
+Hạ tầng an ninh vật lý
+&
+Đánh giá về hệ thống, thiết bị và điều kiện an ninh vật lý trong khách sạn. \\
+
+\texttt{F\_LOC}
+&
+Tầm nhìn, môi trường xung quanh và vị trí
+&
+Đánh giá về cảnh quan, tầm nhìn, khu vực xung quanh, khả năng tiếp cận và sự thuận tiện của vị trí. \\
+
+\midrule
+
+\texttt{A\_WIF}
+&
+WiFi và kết nối Internet
+&
+Đánh giá về khả năng truy cập Internet, tốc độ và độ ổn định của kết nối WiFi. \\
+
+\texttt{A\_FOD}
+&
+Ẩm thực và đồ uống
+&
+Đánh giá về đồ ăn, thức uống, nhà hàng, buffet, bữa sáng và chất lượng trải nghiệm ăn uống. \\
+
+\texttt{A\_POL}
+&
+Hồ bơi và tiện ích nước
+&
+Đánh giá về hồ bơi và các tiện ích liên quan đến nước. \\
+
+\texttt{A\_WEL}
+&
+Phòng gym, spa và tiện ích chăm sóc sức khỏe
+&
+Đánh giá về các tiện ích thể thao, spa, chăm sóc sức khỏe và thư giãn. \\
+
+\texttt{A\_ENT}
+&
+Giải trí và hoạt động thư giãn
+&
+Đánh giá về các tiện ích, dịch vụ hoặc hoạt động giải trí trong khách sạn. \\
+
+\texttt{A\_TRN}
+&
+Di chuyển và bãi đỗ xe
+&
+Đánh giá về hỗ trợ di chuyển, đưa đón, bãi đỗ xe và sự thuận tiện trong vận chuyển. \\
+
+\texttt{A\_RUT}
+&
+Tiện ích trong phòng
+&
+Đánh giá về các tiện ích và thiết bị có sẵn trong phòng như minibar, thiết bị điện, đồ dùng cá nhân hoặc tiện nghi bổ sung. \\
+
+\texttt{A\_UTL}
+&
+Giặt ủi và dịch vụ tiện ích
+&
+Đánh giá về dịch vụ giặt ủi và các hỗ trợ tiện ích liên quan. \\
+
+\midrule
+
+\texttt{S\_ATT}
+&
+Thái độ và sự hiếu khách của nhân viên
+&
+Đánh giá về sự thân thiện, lịch sự, nhiệt tình và thái độ phục vụ của nhân viên khách sạn. \\
+
+\texttt{S\_OPR}
+&
+Hiệu quả vận hành dịch vụ
+&
+Đánh giá về quy trình vận hành, tốc độ xử lý và mức độ hiệu quả trong cung cấp dịch vụ. \\
+
+\texttt{S\_SUP}
+&
+Hỗ trợ và xử lý vấn đề
+&
+Đánh giá về khả năng phản hồi, hỗ trợ và giải quyết nhu cầu hoặc sự cố của khách hàng. \\
+
+\texttt{S\_COM}
+&
+Khả năng giao tiếp
+&
+Đánh giá về chất lượng giao tiếp, khả năng sử dụng ngôn ngữ và sự rõ ràng trong trao đổi của nhân viên. \\
+
+\midrule
+
+\texttt{E\_OVR}
+&
+Trải nghiệm lưu trú tổng thể
+&
+Đánh giá về ấn tượng chung và mức độ hài lòng tổng thể đối với kỳ lưu trú. \\
+
+\texttt{E\_EMO}
+&
+Trải nghiệm cảm xúc
+&
+Đánh giá về sự thoải mái, thư giãn, cảm xúc tích cực, mức độ tận hưởng và cảm nhận bầu không khí. \\
+
+\texttt{E\_VAL}
+&
+Giá trị so với chi phí
+&
+Đánh giá về mức độ xứng đáng giữa chi phí bỏ ra, chất lượng nhận được và kỳ vọng của khách hàng. \\
+
+\texttt{E\_SAF}
+&
+Cảm giác an toàn chủ quan
+&
+Đánh giá về cảm nhận an toàn, sự yên tâm và mức độ thoải mái cá nhân trong quá trình lưu trú. \\
+
+\midrule
+
+\texttt{B\_REP}
+&
+Uy tín và độ tin cậy thương hiệu
+&
+Đánh giá về danh tiếng, sự nhất quán, mức độ đáng tin cậy và hình ảnh thương hiệu của khách sạn. \\
+
+\texttt{B\_LUX}
+&
+Cảm nhận sang trọng và cao cấp
+&
+Đánh giá về mức độ sang trọng, tính độc quyền, cảm nhận cao cấp và chất lượng vượt trội của khách sạn. \\
+
+\midrule
+
+\texttt{L\_RET}
+&
+Ý định quay lại
+&
+Đánh giá về ý định tiếp tục lưu trú tại khách sạn trong tương lai. \\
+
+\texttt{L\_REC}
+&
+Ý định giới thiệu
+&
+Đánh giá về khả năng khách hàng giới thiệu khách sạn cho người khác. \\
+
+\texttt{L\_PRF}
+&
+Sự yêu thích và gắn bó của khách hàng
+&
+Đánh giá về mức độ yêu thích, ưu tiên lâu dài hoặc sự gắn bó cảm xúc của khách hàng với khách sạn. \\
+
+\end{longtable}
+}
+
+\section{Phương pháp 1: Tóm tắt ý kiến có kiểm soát dựa trên UOS và ABSA}
+\label{sec:method1-uasum}
+
+\subsection{Bài toán, động cơ và giả thuyết thiết kế}
+\label{subsec:method1-problem-motivation}
+
+Bài toán đặt ra không phải là phân loại một đánh giá vào một nhãn cảm xúc duy nhất hay thực hiện tóm tắt tự do trực tiếp. Các câu đánh giá khách sạn thường có cấu trúc đa ý kiến phức tạp: một phản hồi đơn lẻ có thể vừa khen phòng sạch, vừa chê wifi yếu, vừa nhận xét nhân viên nhiệt tình. Nếu đưa toàn bộ câu đánh giá thô vào mô hình ngôn ngữ để yêu cầu tóm tắt trực tiếp, mô hình phải tự thực hiện đồng thời nhiều quyết định: chọn ý kiến quan trọng, tách mục tiêu, nhận biết khía cạnh, xác định cảm xúc, gom ý trùng lặp và diễn đạt lại. Việc tích hợp tất cả các quyết định này vào một lần sinh văn bản (end-to-end black-box) dẫn đến các rủi ro lớn: không thể truy vết nguyên nhân lỗi khi tóm tắt sai, dễ bị ảnh hưởng bởi lỗi cực tính hỗn hợp, và tăng nguy cơ sinh thông tin ảo giác ngoài dữ liệu nguồn.
+
+Luận điểm thiết kế của phương pháp UASum là: câu tóm tắt đáng tin hơn khi quá trình sinh văn bản được đặt sau một tầng tổ chức bằng chứng có cấu trúc. Nói cách khác, mô hình ngôn ngữ không được dùng như một hộp đen tóm tắt trực tiếp, mà được dùng ở hai vai trò có kiểm soát: tạo ứng viên phân tích ngôn ngữ và diễn đạt lại các nhóm bằng chứng đã được chuẩn hóa. Giả thuyết phương pháp có thể viết ngắn gọn như sau:
+
+\begin{equation}
+\operatorname{Summary}(D) \approx G\left(\operatorname{Bucket}\left(\operatorname{ABSA}(D)\right)\right),
+\label{eq:method1-uasum-hypothesis}
+\end{equation}
+
+trong đó $D$ là tập dữ liệu đánh giá, $\operatorname{ABSA}(\cdot)$ là tầng trích xuất thông tin cấu trúc, $\operatorname{Bucket}(\cdot)$ là tầng gom nhóm bằng chứng nhằm tăng cường khả năng truy vết nguồn gốc, và $G$ là hàm sinh tóm tắt có kiểm soát.
+
+Do đó, UASum được triển khai không như một mô hình tóm tắt đầu-cuối, mà như một quy trình phân rã quyết định. Mỗi quyết định trung gian trong quá trình tóm tắt được biểu diễn thành một cấu trúc dữ liệu có thể kiểm tra: phân đoạn ý kiến người dùng, nhãn khía cạnh, cực tính cảm xúc, cụm chủ đề, đoạn bằng chứng và mã nguồn truy vết. Cách tổ chức này cho phép nghiên cứu đánh giá riêng tác động của từng thành phần, bao gồm tiền phân đoạn UOS, chuẩn hóa ABSA, gom nhóm bằng chứng và sinh văn bản có khóa bằng chứng. Vì vậy, trọng tâm của phương pháp không chỉ là tạo ra bản tóm tắt cuối cùng, mà là thiết kế một quy trình tóm tắt có thể kiểm soát, kiểm chứng và phân tích lỗi.
+
+Từ luận điểm thiết kế trên, nghiên cứu đặt ra ba câu hỏi khoa học trung tâm cần giải quyết:
+\begin{enumerate}[leftmargin=1.2cm]
+    \item Liệu việc tiền phân đoạn văn bản thành các phân đoạn ý kiến người dùng (UOS) có giúp giảm thiểu lỗi cực tính hỗn hợp và nhận diện đa mục tiêu so với phương pháp phân loại nhãn đơn cấp câu thông thường hay không?
+    \item Việc tích hợp các cụm chủ đề (cluster) và các từ/cụm miêu tả (descriptor) có giúp gia tăng độ cụ thể và độ chi tiết của bản tóm tắt so với cách tiếp cận chỉ sử dụng cặp khía cạnh -- cảm xúc thuần túy hay không?
+    \item Cơ chế sinh văn bản khóa bằng chứng (evidence-locked generation) có giảm thiểu hiện tượng ảo giác và tăng cường khả năng truy vết dữ liệu so với quy trình tóm tắt trực tiếp từ văn bản đánh giá thô hay không?
+\end{enumerate}
+
+Các câu hỏi trên định hướng cho các phân tích và thí nghiệm so sánh trong Chương~4. Câu hỏi thứ nhất gợi mở việc so sánh hiệu quả giữa quy trình có tiền phân đoạn UOS và quy trình xử lý trực tiếp ở mức câu. Câu hỏi thứ hai định hướng đánh giá vai trò của cụm chủ đề hoặc descriptor trong quá trình gom bằng chứng. Câu hỏi thứ ba là cơ sở để phân tích sự khác biệt giữa sinh tóm tắt trực tiếp từ văn bản đánh giá thô và sinh tóm tắt có khóa bằng chứng. Nhờ đó, UASum không chỉ được trình bày như một pipeline kỹ thuật, mà còn được xem như một tập hợp các giả thuyết thiết kế làm tiền đề cho các khảo sát thực nghiệm.
+
+\subsection{Kiến trúc tổng thể của phương pháp UASum}
+\label{subsec:method1-overall-summary-architecture}
+
+Phương pháp UASum được xây dựng dựa trên nguyên lý đường ống kiểm soát tuần tự (sequential control pipeline), trong đó mô hình ngôn ngữ nền tảng Qwen đóng vai trò bộ phân tích trung gian có cấu trúc, thay vì tóm tắt trực tiếp văn bản thô. Kiến trúc tổng thể của UASum gồm bốn tầng xử lý chính: (1) Tiền xử lý và phân đoạn ý kiến người dùng (UOS), (2) Trích xuất đặc trưng ABSA đa khía cạnh, (3) Gom cụm bằng chứng và xếp hạng câu đại diện, và (4) Sinh tóm tắt có kiểm soát.
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=0.98\textwidth]{h2_quy_trinh_qwen_absa.png}
+\caption{Kiến trúc tổng thể và các tầng xử lý của phương pháp UASum dựa trên bằng chứng khóa cấu trúc}
+\label{fig:uasum-architecture}
+\end{figure}
+\begin{figure}[tbp]
+\centering
+\begin{adjustbox}{max width=\textwidth}
+\begin{tikzpicture}[
+    node distance=0.68cm and 0.72cm,
+    every node/.style={font=\scriptsize, align=center},
+    layer/.style={rectangle, rounded corners=2pt, draw=methodblue, fill=methodblue!7, minimum height=0.78cm, text width=2.78cm},
+    proc/.style={rectangle, rounded corners=2pt, draw=linegray, fill=softgray, minimum height=0.78cm, text width=2.86cm},
+    check/.style={rectangle, rounded corners=2pt, draw=methodgreen, fill=methodgreen!8, minimum height=0.78cm, text width=2.86cm},
+    outnode/.style={rectangle, rounded corners=2pt, draw=linegray, fill=white, minimum height=0.78cm, text width=2.86cm}
+]
+\node[layer] (raw) {Văn bản thô\\$D=\{(h_i,r_i)\}$};
+\node[proc, right=of raw] (pre) {Tiền xử lý \& UOS\\$\phi, f_{\mathrm{pre}}$};
+\node[layer, right=of pre] (feature) {Trích xuất đặc trưng\\khía cạnh, cảm xúc, cụm};
+\node[proc, right=of feature] (bucket) {Gom bằng chứng\\$B_{h,a,p,c}$};
+\node[layer, below=of bucket] (gen) {Sinh tóm tắt\\$g_{\theta}(B)$};
+\node[outnode, left=of gen] (eval) {Đánh giá\\faithfulness, coverage};
+\node[check, left=of eval] (control) {Kiểm soát\\schema, guardrail, fallback, post-check};
+\draw[arrow] (raw) -- (pre);
+\draw[arrow] (pre) -- (feature);
+\draw[arrow] (feature) -- (bucket);
+\draw[arrow] (bucket) -- (gen);
+\draw[arrow] (gen) -- (eval);
+\draw[arrow] (control) -- (pre);
+\draw[arrow] (control) -- (feature);
+\draw[arrow] (control) -- (gen);
+\end{tikzpicture}
+\end{adjustbox}
+\caption{Kiến trúc tổng thể của phương pháp UASum dựa trên bằng chứng khóa cấu trúc}
+\label{fig:uasum-architecture2}
+\end{figure}
+
+Nguyên tắc cốt lõi của UASum là sự cô lập thông tin: các sai lệch ngữ nghĩa (như gán khía cạnh sai hoặc cực tính nhầm) được phát hiện sớm ở các tầng trung gian nhờ vào các bộ kiểm soát (guardrails), từ đó ngăn ngừa hiện tượng lan truyền sai lệch đến bản tóm tắt cuối cùng. Đầu ra của mô hình tại mỗi tầng xử lý được chuẩn hóa thông qua phép chiếu ràng buộc ngữ nghĩa:
+\begin{equation}
+\hat{o} = \Pi_s\left( M_{\theta}(P_s, I_s); \Omega_s \right),
+\label{eq:method1-llm-as-controlled-operator}
+\end{equation}
+trong đó $M_{\theta}$ là mô hình ngôn ngữ, $P_s$ là prompt tương ứng với tầng $s$, $I_s$ là đầu vào, $\Omega_s$ là tập ràng buộc kiểm soát, và $\Pi_s$ là hàm chuẩn hóa đầu ra (bao gồm kiểm tra cấu trúc JSON, lọc thực thể, và gọi các luật dự phòng).
+
+Để người đọc dễ dàng hình dung cách triển khai thực tế của quy trình, Bảng~\ref{tab:uasum-dataflow-example} minh họa cụ thể sự biến đổi và cấu trúc hóa của dòng dữ liệu chạy từ một câu đánh giá thô đầu vào qua các tầng trung gian cho đến bản tóm tắt đầu ra có liên kết nguồn.
+
+\begin{table}[tbp]
+\centering
+\caption{Ví dụ minh họa dòng dữ liệu đi qua các tầng xử lý của phương pháp UASum}
+\label{tab:uasum-dataflow-example}
+\small
+\begin{tabularx}{\textwidth}{l Y}
+\toprule
+\textbf{Tầng xử lý} & \textbf{Trạng thái dữ liệu thực tế} \\
+\midrule
+\textbf{Đầu vào thô ($r_i$)} & ``Phòng ở đây rất rộng rãi nhưng tiếc là wifi chập chờn lúc được lúc không.'' \\
+\midrule
+\textbf{Tách UOS ($u_{ij}$)} &
+\begin{tabular}[t]{@{}l@{}}
+- $u_{i1}$: ``Phòng ở đây rất rộng rãi'' (Nguồn: $e_{i1}$)\\
+- $u_{i2}$: ``tiếc là wifi chập chờn lúc được lúc không'' (Nguồn: $e_{i2}$)
+\end{tabular} \\
+\midrule
+\textbf{Trích xuất ABSA ($o_k$)} &
+\begin{tabular}[t]{@{}l@{}}
+- $o_1$: $(h_i, \text{phòng}, \mathrm{facility}, \mathrm{positive}, \texttt{F\_ROM}, \text{rộng rãi}, u_{i1}, e_{i1})$\\
+- $o_2$: $(h_i, \text{wifi}, \mathrm{amenity}, \mathrm{negative}, \texttt{A\_WIF}, \text{chập chờn}, u_{i2}, e_{i2})$
+\end{tabular} \\
+\midrule
+\textbf{Gom túi ($B_{h,a,p,c}$)} &
+\begin{tabular}[t]{@{}l@{}}
+- $B_{h_i, \mathrm{facility}, \mathrm{positive}, \texttt{F\_ROM}} \leftarrow \{o_1\}$ \\
+- $B_{h_i, \mathrm{amenity}, \mathrm{negative}, \texttt{A\_WIF}} \leftarrow \{o_2\}$
+\end{tabular} \\
+\midrule
+\textbf{Tóm tắt cực tính ($y_{h,a,p}$)}&
+\begin{tabular}[t]{@{}l@{}}
+- $y_{h_i, \mathrm{facility}, \mathrm{positive}} \leftarrow$ ``Khách hàng đánh giá cao không gian phòng ngủ rộng rãi [1].'' \\
+- $y_{h_i, \mathrm{amenity}, \mathrm{negative}} \leftarrow$ ``Hệ thống kết nối mạng internet wifi còn không ổn định [2].''
+\end{tabular} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Chuẩn bị và tiền xử lý dữ liệu}
+\label{subsec:method1-data-preparation}
+
+Gọi tập dữ liệu đánh giá đầu vào là $D = \{(h_i, r_i)\}_{i=1}^N$, trong đó $h_i$ là định danh của khách sạn (thực thể) và $r_i$ là văn bản đánh giá thô của khách hàng. Trước khi đi vào luồng phân tích, văn bản thô $r_i$ được chuẩn hóa thông qua hàm tiền xử lý $\phi(\cdot)$:
+\begin{equation}
+\tilde{r}_i = \phi(r_i).
+\label{eq:method1-normalization}
+\end{equation}
+Hàm $\phi(\cdot)$ thực hiện làm sạch cơ bản như loại bỏ các dòng trống, chuẩn hóa khoảng trắng thừa, loại bỏ các ký tự không hợp lệ, và mã hóa khóa nguồn để liên kết chặt chẽ văn bản sau xử lý với bản ghi gốc.
+
+Bảng~\ref{tab:uasum-notation} liệt kê các ký hiệu toán học chính được sử dụng trong suốt mô tả của phương pháp UASum.
+
+\begin{table}[tbp]
+\centering
+\caption{Các ký hiệu chính trong phương pháp UASum}
+\label{tab:uasum-notation}
+\small
+\begin{tabularx}{\textwidth}{L{0.18\textwidth} L{0.24\textwidth} Y}
+\toprule
+\textbf{Ký hiệu} & \textbf{Tên gọi} & \textbf{Ý nghĩa trong quy trình} \\
+\midrule
+$D$ & Tập văn bản đánh giá đầu vào & Tập các cặp $(h_i,r_i)$ gồm thực thể và nội dung đánh giá. \\
+$r_i$ & Văn bản đánh giá gốc & Văn bản tự do do người dùng viết. \\
+$u_{ij}$ & Phân đoạn ý kiến người dùng (UOS) & Câu hoặc đơn vị ngữ nghĩa được tách từ văn bản đánh giá. \\
+$o_k$ & Đơn vị ý kiến ABSA & Đơn vị ý kiến đã cấu trúc hóa gồm thực thể, khía cạnh, cảm xúc, cụm. \\
+$a_k$ & Khía cạnh chuẩn hóa & Nhãn khía cạnh thuộc hệ thống phân loại $\mathcal{A}$. \\
+$p_k$ & Cực tính cảm xúc & Sắc thái cảm xúc thuộc tập cực tính $\mathcal{P} = \{\mathrm{positive}, \mathrm{negative}, \mathrm{neutral}\}$. \\
+$c_k$ & Cụm chủ đề & Thang đo nghiệp vụ phụ thuộc vào khía cạnh $a_k$. \\
+$B_{h,a,p,c}$ & Túi chứa bằng chứng & Nhóm các bản ghi ý kiến có cùng thực thể, khía cạnh, cảm xúc và cụm. \\
+$y_{h,a,p}$ & Văn bản tóm tắt cực tính & Câu tóm tắt tổng hợp cho thực thể $h$, khía cạnh $a$, cực tính $p$. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Luồng xử lý dữ liệu UOS}
+\label{subsec:method1-uos-workflow}
+
+Phân đoạn ý kiến người dùng (User Opinion Segment - UOS), ký hiệu là $u_{ij}$, là đơn vị xử lý ngữ nghĩa cơ sở trong phương pháp UASum. Về mặt cấu trúc ngôn ngữ, một UOS là một mệnh đề hoặc một câu ngắn tự chứa (self-contained clause) chứa đựng đúng một mục tiêu đánh giá cụ thể (Aspect Term / Target) và một từ/cụm biểu thị ý kiến đi kèm (Opinion Term / Descriptor). Việc tiền phân tách văn bản thô thành các UOS độc lập là bước đi then chốt nhằm giải quyết triệt để bài toán cực tính hỗn hợp (mixed sentiment) — ví dụ như câu \textit{"phòng rộng rãi nhưng nhân viên không thân thiện"} sẽ được phân tách thành hai UOS độc lập phản ánh hai khía cạnh đối lập, từ đó loại bỏ sự nhiễu loạn thông tin khi gán nhãn ABSA ở các tầng sau.
+
+Sau bước tiền xử lý, văn bản đánh giá đã làm sạch $\tilde{r}_i$ được đưa vào bộ phân tách mệnh đề ngữ nghĩa $f_{\mathrm{pre}}(\cdot)$ để chuyển đổi thành một tập hợp các UOS. Bộ phân tách này sử dụng mô hình ngôn ngữ nền tảng Qwen hoạt động với một prompt chỉ dẫn cụ thể (instruction prompt). Nội dung prompt yêu cầu mô hình thực hiện: (1) nhận diện các liên từ (như \textit{nhưng, tuy nhiên, và, song, mà}) hoặc dấu câu để phân tách câu phức thành các mệnh đề ý kiến độc lập (UOS), (2) giữ nguyên văn cấu trúc từ ngữ gốc của người dùng để tránh làm sai lệch sắc thái biểu đạt ở bước này, và (3) xuất kết quả dưới dạng danh sách JSON cấu trúc. Kết quả thu được là một tập hợp các UOS:
+\begin{equation}
+f_{\mathrm{pre}}(\tilde{r}_i) = U_i = \{u_{i1}, u_{i2}, \dots, u_{im_i}\}.
+\label{eq:method1-presegmentation}
+\end{equation}
+Mỗi phân đoạn $u_{ij} \in U_i$ đại diện cho một mệnh đề tự chứa mang thông tin ý kiến đơn lẻ. Tại bước này, hệ thống chủ động tránh thực hiện gán khía cạnh hay cực tính cảm xúc để tránh việc suy luận sớm làm biến dạng ngữ cảnh gốc.
+
+\begin{figure}[tbp]
+\centering
+\begin{adjustbox}{max width=\textwidth}
+\begin{tikzpicture}[
+    >=Stealth,
+    node distance=0.45cm,
+    stepbox/.style={
+        rectangle,
+        rounded corners=2pt,
+        draw=black!70,
+        fill=white,
+        text width=0.85\textwidth,
+        align=center,
+        minimum height=0.72cm,
+        inner sep=4pt,
+        font=\small
+    },
+    arrow/.style={->, thick, draw=black!70}
+]
+\node[stepbox] (s1) {\textbf{Bước 1: Chuẩn hóa văn bản đánh giá thô}\\[-1pt]\footnotesize Loại bỏ khoảng trắng thừa, ký tự đặc biệt, chuẩn hóa cấu trúc câu bằng $\phi(r_i)$};
+\node[stepbox, below=of s1] (s2) {\textbf{Bước 2: Tiền phân đoạn (LLM / Fallback Regex)}\\[-1pt]\footnotesize Phân tách mệnh đề dựa trên dấu câu và liên từ tương phản (\textit{nhưng, tuy nhiên, bù lại})};
+\node[stepbox, below=of s2] (s3) {\textbf{Bước 3: Đo lường độ bám nguồn (Source Grounding Check)}\\[-1pt]\footnotesize Kiểm tra tỷ lệ trùng lặp token $\operatorname{src}(u_{ij}, r_i)$ giữa đoạn trích xuất và câu đánh giá gốc};
+\node[stepbox, below=of s3] (s4) {\textbf{Bước 4: Bộ lọc rào cản chất lượng (Length \& Noise Filter)}\\[-1pt]\footnotesize Loại bỏ đoạn quá ngắn ($|u_{ij}| < \tau_{\mathrm{len}}$) hoặc chứa từ khóa vô nghĩa, xã giao ($\operatorname{noise}(u_{ij})$)};
+\node[stepbox, below=of s4] (s5) {\textbf{Bước 5: Kết xuất phân đoạn ý kiến người dùng (UOS)}\\[-1pt]\footnotesize Trả về danh sách các phân đoạn UOS hợp lệ đã được gán mã nguồn truy vết gốc};
+
+\draw[arrow] (s1) -- (s2);
+\draw[arrow] (s2) -- (s3);
+\draw[arrow] (s3) -- (s4);
+\draw[arrow] (s4) -- (s5);
+\end{tikzpicture}
+\end{adjustbox}
+\caption{Luồng xử lý và xác thực phân đoạn ý kiến người dùng (UOS) trong phương pháp UASum}
+\label{fig:uasum-uos-workflow}
+\end{figure}
+
+Để bảo đảm chất lượng thông tin và loại bỏ nhiễu, các ứng viên phân đoạn phải vượt qua bộ lọc rào cản chất lượng được tổng hợp qua hàm nhị phân xác thực đơn vị:
+\begin{equation}
+\operatorname{valid}(u_{ij}, r_i) = \mathbb{I}\left[ |u_{ij}| \geq \tau_{\mathrm{len}} \land \operatorname{src}(u_{ij}, r_i) \geq \tau_{\mathrm{src}} \land \neg \operatorname{noise}(u_{ij}) \right].
+\label{eq:method1-unit-validity}
+\end{equation}
+
+Hàm xác thực này kiểm soát ba điều kiện logic chính:
+\begin{enumerate}[leftmargin=1.2cm]
+    \item \textbf{Độ dài tối thiểu}: $|u_{ij}| \geq \tau_{\mathrm{len}}$ để loại bỏ các từ cảm thán hoặc cụm từ quá ngắn không chứa đựng nội dung đánh giá thực chất. Vai trò của ngưỡng này là lọc nhiễu ban đầu, với giá trị tối ưu được xác định và tinh chỉnh qua thực nghiệm trong Chương~4 (mặc định đặt $\tau_{\mathrm{len}} = 3$ từ).
+    \item \textbf{Lọc nhiễu}: Điều kiện $\neg \operatorname{noise}(u_{ij})$ loại bỏ các câu xã giao, cảm ơn hoặc chào hỏi không chứa tín hiệu thông tin nghiệp vụ.
+    \item \textbf{Độ bám nguồn (Source Grounding Check)}: Đo lường tỷ lệ các token của $u_{ij}$ xuất hiện trong đánh giá gốc $r_i$ nhằm ngăn chặn hiện tượng LLM tự sinh thêm từ ngữ ngoài văn cảnh gốc (ảo giác thông tin):
+\begin{equation}
+\operatorname{src}(u_{ij}, r_i) = \frac{\sum_{t \in \operatorname{tok}(u_{ij})} \min\left(\operatorname{count}(t, u_{ij}), \operatorname{count}(t, r_i)\right)}{|\operatorname{tok}(u_{ij})|}.
+\label{eq:method1-source-precision}
+\end{equation}
+Ngưỡng tối thiểu $\tau_{\mathrm{src}}$ đóng vai trò là rào cản kiểm duyệt độ trung thực ngữ nghĩa. Việc tinh chỉnh ngưỡng này (được trình bày chi tiết trong thực nghiệm ở Chương~4, mặc định đặt $\tau_{\mathrm{src}} = 0.85$) giúp duy trì sự cân bằng giữa tính tự nhiên của câu mệnh đề tiếng Việt sau khi chuẩn hóa và yêu cầu bám sát văn bản gốc. Nếu $\operatorname{src}(u_{ij}, r_i) < \tau_{\mathrm{src}}$, phân đoạn bị loại bỏ ngay lập tức để hạn chế tối đa nguy cơ ảo giác thông tin.
+\end{enumerate}
+
+Trường hợp mô hình ngôn ngữ nền tảng gặp lỗi kết nối (endpoint error) hoặc trả về kết quả không đúng cấu trúc JSON yêu cầu, hệ thống tự động kích hoạt \textbf{luật dự phòng (fallback rule)} dựa trên biểu thức chính quy (Regex). Luật này thay thế hoàn toàn vai trò của mô hình ngôn ngữ trong khâu phân đoạn $f_{\mathrm{pre}}$, sử dụng các biểu thức đối sánh các liên từ tương phản hoặc chuyển ý (\textit{nhưng, tuy nhiên, bù lại, mặt khác}) và các dấu phân cách để phân rã câu trực tiếp tại ranh giới các mệnh đề. Cơ chế này đóng vai trò quan trọng trong việc ngăn ngừa hiện tượng lật cực tính cảm xúc (sentiment flipping): nếu một câu phức chứa hai vế đối lập (ví dụ: \textit{``phòng đẹp nhưng dịch vụ rất tệ''}) không được tách biệt, mô hình có thể gán nhãn cực tính chung dựa trên một vế trội, làm mất hoặc đảo ngược sắc thái của vế còn lại.
+
+\subsection{Trích xuất cấu trúc ABSA từ UOS}
+\label{subsec:method1-absa-extraction}
+
+Sau khi tiền phân đoạn văn bản thành các UOS, quy trình tiến hành trích xuất đặc trưng ABSA đa khía cạnh và chuẩn hóa cấu trúc dữ liệu trước khi thực hiện gom nhóm bằng chứng.
+
+\subsubsection{Nhận diện khía cạnh}
+\label{subsubsec:method1-aspect-detection}
+
+Với mỗi phân đoạn UOS $u_{ij}$, mục tiêu của hàm trích xuất khía cạnh $f_{\mathrm{ext}}(\cdot)$ là tìm các thực thể/thuộc tính được đánh giá và đề xuất nhãn khía cạnh ban đầu $\hat{a}_k$:
+\begin{equation}
+f_{\mathrm{ext}}(u_{ij}) \rightarrow O_u = \{(t_k, \hat{a}_k, x_k, \alpha_k)\}_{k=1}^{K_u},
+\label{eq:method1-aspect-extraction-function}
+\end{equation}
+trong đó $t_k$ là thuật ngữ khía cạnh (target), $\hat{a}_k$ là nhãn khía cạnh đề xuất sơ bộ, $x_k$ là đoạn bằng chứng tương ứng (evidence span), và $\alpha_k$ là độ tin cậy trích xuất.
+
+Nhãn khía cạnh đề xuất sơ bộ $\hat{a}_k$ không được sử dụng trực tiếp mà bắt buộc phải đi qua bộ định tuyến kiểm soát khía cạnh (aspect guardrail) $g_A(\cdot)$ để chuẩn hóa về miền khía cạnh cố định $\mathcal{A} = \{\mathrm{facility}, \mathrm{amenity}, \mathrm{service}, \mathrm{experience}, \mathrm{branding}, \mathrm{loyalty}\}$:
+\begin{equation}
+a_k = g_A(\hat{a}_k, t_k, x_k; \mathcal{T}), \quad a_k \in \mathcal{A},
+\label{eq:method1-aspect-guardrail}
+\end{equation}
+trong đó $\mathcal{T}$ là hệ thống phân loại định nghĩa ranh giới các khía cạnh. Bộ định tuyến kiểm soát $g_A(\cdot)$ áp dụng cơ chế dominant anchor routing để ghi đè các đề xuất nhãn sai lệch ranh giới dựa trên các từ khóa neo thực tế trong đoạn bằng chứng $x_k$:
+\begin{equation}
+g_A(\hat{a}_k, t_k, x_k; \mathcal{T}) = \begin{cases}
+\mathrm{loyalty}, & \text{nếu } x_k \text{ chứa ý định quay lại hoặc giới thiệu},\\
+\mathrm{service}, & \text{nếu } x_k \text{ chứa thông tin về nhân viên hoặc quy trình phục vụ},\\
+\mathrm{amenity}, & \text{nếu } x_k \text{ chứa thông tin về tiện ích (wifi, hồ bơi, buffet)},\\
+\mathrm{facility}, & \text{nếu } x_k \text{ chứa thông tin về phòng ngủ, giường nệm, AC},\\
+\mathrm{experience}, & \text{nếu } x_k \text{ chỉ mang tính cảm nhận/trải nghiệm chung},\\
+\hat{a}_k, & \text{nếu không có anchor đủ mạnh để ghi đè.}
+\end{cases}
+\label{eq:method1-dominant-anchor-routing}
+\end{equation}
+
+Nguyên tắc chuẩn hóa khía cạnh bằng hệ thống bộ định tuyến kiểm soát được chi tiết trong Bảng~\ref{tab:method1-aspect-guardrail-rules}.
+
+\begin{table}[tbp]
+\centering
+\caption{Nguyên tắc chuẩn hóa khía cạnh bằng hệ thống bộ định tuyến kiểm soát}
+\label{tab:method1-aspect-guardrail-rules}
+\small
+\begin{tabularx}{\textwidth}{L{0.22\textwidth} Y}
+\toprule
+\textbf{Nguyên tắc} & \textbf{Ý nghĩa khi gán nhãn} \\
+\midrule
+Ưu tiên ý nghĩa cụ thể & Nếu bằng chứng nói rõ phòng, wifi, bữa sáng, nhân viên hoặc vị trí, khía cạnh được gán theo ý nghĩa đó thay vì gán chung vào trải nghiệm. \\
+Tách tiện ích và dịch vụ & Food, breakfast, pool, wifi thuộc tiện ích; thái độ nhân viên, check-in và xử lý vấn đề thuộc dịch vụ. \\
+Phân biệt an ninh vật lý và an toàn cảm nhận & Khóa cửa, bảo vệ, bãi xe hoặc camera nghiêng về \texttt{facility}; cảm giác an tâm hoặc thoải mái chủ quan nghiêng về \texttt{experience}. \\
+Phân biệt giá trị tiện ích và giá trị tổng thể & Nhận xét ``đáng tiền'' về bữa sáng, shuttle hoặc spa thuộc \texttt{amenity}; nhận xét đáng tiền cho toàn bộ kỳ nghỉ thuộc \texttt{experience}. \\
+Không suy diễn thương hiệu & Tên khách sạn hoặc trải nghiệm tốt không đủ để gán branding; cần tín hiệu về danh tiếng, tiêu chuẩn, kỳ vọng hoặc sự sang trọng. \\
+Không suy diễn trung thành & Sự hài lòng chung không đủ để gán loyalty; cần ý định quay lại, giới thiệu hoặc gắn bó rõ ràng. \\
+Giữ trạng thái trace & Khi khía cạnh bị đổi bởi bộ định tuyến, hệ thống lưu khía cạnh trước và sau chuẩn hóa để phục vụ phân tích lỗi. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Trích xuất thuật ngữ khía cạnh và opinion term}
+\label{subsubsec:method1-aspect-opinion-terms}
+
+Để đảm bảo tính cụ thể và độ phân giải nghiệp vụ của thông tin, quá trình ABSA bóc tách UOS thành các thành phần ngữ nghĩa cụ thể:
+\begin{itemize}[leftmargin=1.2cm]
+    \item \textbf{Thuật ngữ khía cạnh (Aspect Term / Target) $t_k$}: Là từ hoặc cụm từ cụ thể đại diện cho đối tượng được nhận xét (ví dụ: \textit{"nhân viên", "phòng ngủ", "wifi", "ăn sáng"}).
+    \item \textbf{Từ/cụm miêu tả (Opinion Term / Descriptor) $q_k$}: Là các từ khóa mang tính chất mô tả thuộc tính hoặc sắc thái của đối tượng (ví dụ: \textit{"thân thiện", "sạch sẽ", "chậm", "phong phú"}).
+    \item \textbf{Đoạn bằng chứng (Evidence Span) $x_k$}: Là phân đoạn văn bản gốc chứa đựng cả $t_k$ và $q_k$.
+\end{itemize}
+
+Trong một số trường hợp, thuật ngữ khía cạnh $t_k$ hoặc opinion term $q_k$ không được nêu rõ ràng trong câu (tính chất ẩn - implicit). Lúc này, hệ thống sẽ sử dụng đoạn bằng chứng văn cảnh $x_k$ kết hợp với danh mục từ khóa neo trong hệ thống phân loại $\mathcal{T}$ để suy luận ra khía cạnh $a_k$ và cụm chủ đề $c_k$ tương ứng. Opinion term $q_k$ đóng vai trò làm bằng chứng từ vựng thực tế (lexical evidence), tránh việc tự động đồng nhất hóa với nhãn cảm xúc $p_k$.
+
+\subsubsection{Xác định cực tính cảm xúc}
+\label{subsubsec:method1-sentiment-polarity}
+
+Với mỗi phân đoạn ý kiến, hệ thống tiến hành phân loại cảm xúc bằng hàm $f_{\mathrm{sent}}(\cdot)$ để gán một cực tính cảm xúc duy nhất thuộc tập $\mathcal{P} = \{\mathrm{positive}, \mathrm{negative}, \mathrm{neutral}\}$:
+\begin{equation}
+f_{\mathrm{sent}}(t_k, a_k, x_k) \rightarrow (p_k, \beta_k), \quad p_k \in \mathcal{P},
+\label{eq:method1-sentiment-classifier}
+\end{equation}
+trong đó $p_k$ là nhãn cực tính cảm xúc và $\beta_k$ là điểm tin cậy của nhãn cảm xúc.
+
+Quy trình xác định cảm xúc trong prompt Qwen tuân thủ các quy tắc thiết kế sau:
+\begin{enumerate}[leftmargin=1.2cm]
+    \item Mô hình ngôn ngữ nền tảng Qwen được yêu cầu phân tách các cấu trúc đối lập trước (tiền phân đoạn mệnh đề phức).
+    \item Đối với các phân đoạn còn chứa sắc thái hỗn hợp, mô hình chỉ chọn cực tính trội (dominant polarity) nếu cực tính đó chiếm ưu thế rõ rệt trong văn cảnh $x_k$.
+    \item Trường hợp hai cực tính cân bằng hoặc mang sắc thái hài lòng ở mức chấp nhận được nhưng vẫn còn điểm hạn chế, nhãn mặc định được gán là \texttt{neutral}.
+\end{enumerate}
+
+Khi mô hình ngôn ngữ nền tảng gặp lỗi endpoint hoặc trả về định dạng không hợp lệ, hệ thống tự động kích hoạt \textbf{luật dự phòng cực tính cảm xúc (fallback sentiment rule)} dựa trên thuật toán đếm từ khóa cực tính xuất hiện trong $x_k$:
+\begin{equation}
+p_k^{\mathrm{fallback}} = \begin{cases}
+\mathrm{positive}, & \text{nếu } n_{+}(x_k) > n_{-}(x_k),\\
+\mathrm{negative}, & \text{nếu } n_{-}(x_k) > n_{+}(x_k),\\
+\mathrm{neutral}, & \text{nếu } n_{+}(x_k) = n_{-}(x_k),
+\end{cases}
+\label{eq:method1-fallback-sentiment}
+\end{equation}
+trong đó $n_{+}(x_k)$ và $n_{-}(x_k)$ lần lượt là số lượng các từ khóa tích cực và tiêu cực được đối sánh từ từ điển cực tính chuẩn của hệ thống.
+
+\subsubsection{Chuẩn hóa đầu ra theo cấu trúc ABSA}
+\label{subsubsec:method1-output-normalization}
+
+Sau khi trích xuất khía cạnh và cảm xúc, dữ liệu đi qua bước chuẩn hóa cuối cùng để tạo thành bản ghi ý kiến toàn vẹn. Hàm chuẩn hóa thực hiện các bước sau:
+\begin{itemize}[leftmargin=1.2cm]
+    \item \textbf{Chuẩn hóa nhãn cảm xúc (\texttt{normalize\_sentiment})}: Ánh xạ các nhãn cảm xúc dạng tự do hoặc viết tắt (như \textit{``pos'', ``neg'', ``tích cực'', ``tiêu cực''}) về dạng canonical chuẩn: \texttt{positive}, \texttt{negative}, \texttt{neutral}.
+    \item \textbf{Bộ kiểm soát khía cạnh (\texttt{guardrail\_aspect\_assignment})}: Áp dụng bộ lọc dominant anchor để đảm bảo $a_k \in \mathcal{A}$. Nếu khía cạnh bị ghi đè/thay đổi bởi bộ lọc này, hệ thống sẽ thực hiện \textbf{khởi động lại cụm chủ đề (ResetCluster)} để đảm bảo cụm chủ đề $c_k$ không mang nhãn ngoài không gian của khía cạnh mới.
+\end{itemize}
+
+Trước khi chuẩn hóa cơ sở dữ liệu, mô hình Qwen trả về kết quả ABSA từ UOS dưới định dạng cấu trúc JSON với lược đồ (schema) như sau:
+\begin{verbatim}
+{
+  "target": "tên đối tượng được đánh giá hoặc null",
+  "aspect": "nhãn khía cạnh thô (ví dụ: ROOM, STAFF...)",
+  "polarity": "positive | negative | neutral",
+  "descriptor": "từ miêu tả ý kiến (ví dụ: sạch sẽ, chậm...)",
+  "cluster": "mã cụm chủ đề con thô"
+}
+\end{verbatim}
+
+Lược đồ này sau đó được hệ thống làm sạch và chuyển đổi thành cấu trúc bản ghi ý kiến chuẩn hóa cuối cùng có định dạng:
+\begin{equation}
+o_k = (h_i, t_k, a_k, p_k, c_k, q_k, x_k, e_k),
+\label{eq:method1-core-record}
+\end{equation}
+trong đó $h_i$ là định danh khách sạn, $t_k$ là thuật ngữ khía cạnh, $a_k$ là nhãn khía cạnh chuẩn hóa thuộc miền $\mathcal{A}$, $p_k$ là cực tính cảm xúc chuẩn hóa thuộc $\mathcal{P}$, $c_k$ là mã cụm chủ đề nghiệp vụ thuộc $\mathcal{C}_{a_k}$, $q_k$ là từ biểu thị ý kiến, $x_k$ là đoạn bằng chứng văn cảnh, và $e_k$ là khóa nguồn (source pointer/ID) nhằm tăng cường khả năng truy vết nguồn gốc cho dữ liệu.
+
+\subsection{Tổ chức thông tin và chọn lọc bằng chứng}
+\label{subsec:method1-information-organization}
+
+Sau khi trích xuất các đơn vị ý kiến cấu trúc $o_k$ ở bước ABSA, hệ thống tiến hành tổ chức thông tin và chọn lọc các bằng chứng có giá trị nhằm chuẩn bị dữ liệu đầu vào có tính đại diện cao cho mô hình sinh.
+
+\subsubsection{Gom nhóm ý kiến theo khía cạnh và cảm xúc}
+\label{subsubsec:method1-evidence-grouping}
+
+Nếu khía cạnh là trục định tuyến chính của quy trình, thì cụm chủ đề nghiệp vụ là tầng duy trì độ phân giải chi tiết của thông tin trong từng khía cạnh. Thay vì chỉ phân loại ở mức khía cạnh chung chung (ví dụ: \texttt{service-positive}), hệ thống ánh xạ các đơn vị ý kiến vào không gian cụm chủ đề tương ứng:
+\begin{equation}
+(a_k, p_k, x_k) \rightarrow (a_k, p_k, c_k, q_k, x_k), \quad c_k \in \mathcal{C}_{a_k},
+\label{eq:method1-cum-enrichment}
+\end{equation}
+trong đó $\mathcal{C}_{a_k}$ là tập hợp các cụm chủ đề thuộc khía cạnh $a_k$.
+
+Các đơn vị ý kiến sau đó được gom nhóm trong cơ sở dữ liệu thành các túi bằng chứng (evidence buckets) $B_{h_i,a,p,c}$ dựa trên sự đồng nhất về bốn thuộc tính khóa chính: định danh khách sạn ($h_i$), nhãn khía cạnh chuẩn hóa ($a \in \mathcal{A}$), cực tính cảm xúc chuẩn hóa ($p \in \mathcal{P}$), và mã cụm chủ đề nghiệp vụ con ($c \in \mathcal{C}_{a}$):
+\begin{equation}
+B_{h_i,a,p,c} = \{o_k \mid o_k.h_i = h_i \land o_k.a_k = a \land o_k.p_k = p \land o_k.c_k = c\},
+\label{eq:method1-evidence-bucket}
+\end{equation}
+Mỗi nhóm bằng chứng $B_{h_i,a,p,c}$ đại diện cho một luận điểm nghiệp vụ cụ thể. Đối với mỗi nhóm bằng chứng, hệ thống tổng hợp các thông số thống kê bao gồm số lượng ý kiến ($|B_{h_i,a,p,c}|$), tập hợp các từ biểu thị ý kiến nổi bật, và danh sách các câu bằng chứng mẫu:
+\begin{equation}
+\mathcal{E}_{h_i,a,p} = \left\{ \left(c, |B_{h_i,a,p,c}|, \operatorname{TopDesc}(B_{h_i,a,p,c}), \operatorname{Samples}(B_{h_i,a,p,c})\right) \right\}_{c\in\mathcal{C}_a}.
+\label{eq:method1-sentiment-evidence-payload}
+\end{equation}
+
+\subsubsection{Loại bỏ ý kiến trùng lặp hoặc nhiễu}
+\label{subsubsec:method1-deduplication-and-noise-removal}
+
+Để tránh hiện tượng mô hình sinh bị lặp lại các ý kiến giống nhau hoặc bị nhiễu thông tin bởi các phân đoạn có chất lượng kém, hệ thống thực hiện hai bước kiểm soát logic:
+\begin{enumerate}[leftmargin=1.2cm]
+    \item \textbf{Loại bỏ trùng lặp từ vựng (Lexical Deduplication)}: Trong mỗi túi bằng chứng $B_{h_i,a,p,c}$, các đơn vị ý kiến có cùng nội dung opinion term $q_k$ hoặc có đoạn bằng chứng $x_k$ trùng lặp (độ tương đồng Jaccard về mặt từ vựng vượt ngưỡng $\tau_{\mathrm{sim}}$) sẽ được gộp lại thành một bản ghi duy nhất, đồng thời cộng dồn tần suất xuất hiện vào tham số đếm của cụm. Ngưỡng tương đồng $\tau_{\mathrm{sim}}$ đóng vai trò kiểm soát độ lọc trùng của các ý kiến tương đồng (giá trị tối ưu được khảo sát thực nghiệm trong Chương~4, mặc định đặt $\tau_{\mathrm{sim}} = 0.70$).
+    \item \textbf{Lọc nhiễu ngữ nghĩa chéo (Consistency Clean-up)}: Khi khía cạnh bị ghi đè bởi bộ định tuyến kiểm soát, hệ thống tự động kích hoạt hàm khởi động lại cụm chủ đề (ResetCluster) để loại bỏ hoặc cập nhật lại các cụm cũ không tương thích với khía cạnh mới:
+\begin{equation}
+\operatorname{ResetCluster}(o_k) = \mathbb{I}\left[a_k^{\mathrm{final}} \neq a_k^{\mathrm{initial}}\right].
+\label{eq:method1-cluster-reset}
+\end{equation}
+Nếu điều kiện này thỏa mãn, cụm chủ đề $c_k$ bị xóa bỏ hoặc gán lại theo không gian phân loại mới nhằm bảo đảm:
+\begin{equation}
+c_k \in \mathcal{C}_{a_k^{\mathrm{final}}}.
+\label{eq:method1-cluster-aspect-consistency}
+\end{equation}
+\end{enumerate}
+
+\subsubsection{Chọn bằng chứng đại diện cho từng khía cạnh}
+\label{subsubsec:method1-representative-evidence}
+
+Để cung cấp ngữ cảnh minh họa chất lượng cao cho mô hình sinh mà không làm vượt giới hạn ngữ cảnh, hệ thống lựa chọn câu bằng chứng đại diện nhất từ mỗi nhóm $B_{h_i,a,p,c}$ bằng điểm số tối ưu $\operatorname{rep}(x)$ của câu bằng chứng $x$:
+\begin{equation}
+\operatorname{rep}(x) = w_1 \beta_o + w_2 \alpha_o + w_3 \operatorname{len\_clarity}(x),
+\label{eq:method1-representative-score}
+\end{equation}
+trong đó $\beta_o$ và $\alpha_o$ lần lượt là điểm tin cậy cảm xúc và khía cạnh của đơn vị ý kiến tương ứng với bằng chứng $x$, các trọng số $w_1$, $w_2$, $w_3$ thỏa mãn điều kiện ràng buộc $w_1 + w_2 + w_3 = 1$. Các trọng số này được tối ưu hóa thông qua các thử nghiệm thực tế để cân bằng giữa độ tin cậy cảm xúc, tính đặc trưng của khía cạnh và chỉ số độ rõ nghĩa ước lượng qua độ dài $\operatorname{len\_clarity}(x)$ của câu bằng chứng. Đại lượng $\operatorname{len\_clarity}(x)$ xấp xỉ mức độ rõ nghĩa và tính hợp lệ của câu bằng chứng $x$ dựa trên tiêu chí độ dài từ theo hàm heuristic:
+\begin{equation}
+\operatorname{len\_clarity}(x) = 1 - \frac{| |tok(x)| - \mu_{\mathrm{len}} |}{\max(|tok(x)|, \mu_{\mathrm{len}})},
+\end{equation}
+với $|tok(x)|$ là số từ của $x$ và $\mu_{\mathrm{len}}$ là độ dài trung bình mong đợi của một mệnh đề ý kiến (được thiết lập ở mức 15 từ). Hàm số này giúp ưu tiên các câu bằng chứng có độ dài vừa phải, loại bỏ các câu quá ngắn thiếu ngữ cảnh hoặc các câu quá dài gây loãng thông tin.
+
+Đồng thời, các cụm chủ đề được xếp hạng bằng hàm $\operatorname{rank}(c)$ để ưu tiên các chủ đề có tần suất xuất hiện cao nhất và độ tin cậy lớn nhất lên vị trí đầu trong prompt của mô hình ngôn ngữ:
+\begin{equation}
+\operatorname{rank}(c) = \left( |B_{h_i,a,p,c}|, \overline{\delta}_{c}, |\operatorname{TopDesc}(B_{h_i,a,p,c})| \right),
+\label{eq:method1-cluster-ranking-formula}
+\end{equation}
+trong đó $\overline{\delta}_c$ là điểm tin cậy trung bình của các đơn vị ý kiến trong cụm.
+
+Bảng~\ref{tab:method1-special-mechanisms} tóm tắt các cơ chế tối ưu hóa và kiểm soát cấu trúc dữ liệu giúp hệ thống duy trì tính ổn định khoa học.
+
+\begin{table}[tbp]
+\centering
+\caption{Các cơ chế kiểm soát cấu trúc dữ liệu trong hệ thống}
+\label{tab:method1-special-mechanisms}
+\small
+\begin{tabularx}{\textwidth}{L{0.25\textwidth} Y}
+\toprule
+\textbf{Cơ chế} & \textbf{Giá trị khoa học đối với phương pháp} \\
+\midrule
+Chọn bằng chứng đại diện & Sử dụng điểm tối ưu hóa rep($x$) thay vì lấy mẫu ngẫu nhiên, giúp nâng cao chất lượng minh chứng. \\
+Đồng bộ khía cạnh và cụm & Áp dụng ResetCluster để hạn chế lỗi phân bố nhãn chéo giữa các tầng phân loại. \\
+Xếp hạng cụm chủ đề & Ưu tiên thông tin theo tần suất và độ tin cậy lũy kế, nâng cao tính đại diện của tóm tắt. \\
+Phân rã và hợp nhất & Áp dụng cơ chế Chunk--collapse khi khối lượng bằng chứng vượt ngưỡng ngữ cảnh vật lý. \\
+Hậu kiểm logic & Hạn chế ảo giác thông tin của LLM qua PostCheck bằng phương án dự phòng. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+
+\subsection{Sinh tóm tắt có kiểm soát và truy vết}
+\label{subsec:method1-controlled-generation}
+
+Sau khi dữ liệu bằng chứng đã được tổ chức và chọn lọc, hệ thống chuyển giao sang tầng sinh văn bản để tạo ra bản tóm tắt hoàn chỉnh.
+
+\subsubsection{Sinh tóm tắt theo từng khía cạnh}
+\label{subsubsec:method1-conditional-generation-flow}
+
+Mô hình sinh tóm tắt đóng vai trò là một hàm ánh xạ có điều kiện $g_{\theta}(\cdot)$, biến đổi túi thông tin bằng chứng $\mathcal{E}_{h,a,p}$ thành văn bản tóm tắt cực tính $y_{h,a,p}$:
+\begin{equation}
+y_{h,a,p} = g_{\theta}\left( \mathcal{E}_{h,a,p} \right).
+\label{eq:method1-sentiment-summary}
+\end{equation}
+
+Quy trình tổng hợp được xây dựng theo kiến trúc ba tầng từ dưới lên (Bottom-up Three-tier Architecture) để đảm bảo tính nhất quán ngữ nghĩa:
+\begin{align}
+y_{h,a,p} &= g^{(1)}_{\theta} \left(\mathcal{E}_{h,a,p}\right), \label{eq:method1-layer-sentiment}\\
+y_{h,a} &= g^{(2)}_{\theta} \left(y_{h,a,\mathrm{positive}}, y_{h,a,\mathrm{negative}}, y_{h,a,\mathrm{neutral}}\right), \label{eq:method1-layer-aspect-summary}\\
+y_h &= g^{(3)}_{\theta} \left(\{y_{h,a}\}_{a\in\mathcal{A}}\right). \label{eq:method1-layer-hotel}
+\end{align}
+
+Tại tầng khía cạnh ($y_{h,a}$), dữ liệu được đóng gói có cấu trúc gồm dòng tiêu đề chứa phân phối định lượng và các đoạn tóm tắt tương ứng:
+\begin{equation}
+y_{h,a} = \left[ \operatorname{Header}(a, n_{+}, n_{-}, n_{0});\ \operatorname{Pos}(y_{h,a,+});\ \operatorname{Neg}(y_{h,a,-});\ \operatorname{Neu}(y_{h,a,0}) \right].
+\label{eq:method1-structured-aspect-summary}
+\end{equation}
+
+Để giải quyết bài toán cân bằng cảm xúc khi xảy ra hiện tượng đồng hạng (tie-count) tại tầng tổng hợp khách sạn ($y_h$), hệ thống áp dụng thuật toán quyết định dựa trên tổng điểm tin cậy tích lũy (Confidence-based Tie-breaking):
+\begin{equation}
+\mathcal{P}_{max} = \arg\max_{p \in \mathcal{P}} n_{h,p}, \quad \text{với } n_{h,p} = \sum_{a\in\mathcal{A}} n_{h,a,p},
+\label{eq:method1-pmax-set}
+\end{equation}
+\begin{equation}
+p_h^{*} = \begin{cases}
+p, & \text{nếu } |\mathcal{P}_{max}| = 1 \text{ và } \mathcal{P}_{max} = \{p\}, \\
+\mathrm{neutral}, & \text{nếu } \mathrm{neutral} \in \mathcal{P}_{tie}, \\
+\arg\max_{p \in \mathcal{P}_{tie}} \sum_{a\in\mathcal{A}} \sum_{o \in B_{h,a,p,c}} \beta_o, & \text{nếu không thuộc hai trường hợp trên},
+\end{cases}
+\label{eq:method1-hotel-tie-breaking}
+\end{equation}
+trong đó $\mathcal{P}_{tie}$ là tập các cực tính đồng hạng. Thuật toán này ưu tiên nhãn trung tính an toàn để tránh suy luận chủ quan lệch hướng khi các cực tính đối lập có trọng số ngang hàng.
+
+Đối với các nhóm bằng chứng có kích thước vượt quá giới hạn ngữ cảnh, hệ thống áp dụng cơ chế phân rã và hợp nhất (Chunk--collapse summary):
+\begin{equation}
+g^{(1)}_{\theta}(B) = \operatorname{Collapse}_{\theta} \left( \{g^{(1)}_{\theta}(B^{(q)})\}_{q=1}^{Q} \right), \quad \text{với } B=\bigcup_{q=1}^{Q}B^{(q)}.
+\label{eq:method1-chunk-collapse}
+\end{equation}
+
+\subsubsection{Kiểm soát định dạng đầu ra}
+\label{subsubsec:method1-output-format-control}
+
+Trước khi được ghi nhận, mọi bản tóm tắt sinh ra từ mô hình sinh đều phải đi qua bộ lọc hậu kiểm logic ($\operatorname{PostCheck}$):
+\begin{equation}
+\operatorname{PostCheck}(y, B_{h_i,a,p,c}) = \begin{cases}
+y, & \text{nếu } \mathbb{I}_{\mathrm{place}}(y) = 0 \land \mathbb{I}_{\mathrm{dump}}(y) = 0 \land \mathbb{I}_{\mathrm{leak}}(y) = 0, \\
+y_{\mathrm{fb}}^{\mathrm{rule}}(B_{h_i,a,p,c}), & \text{nếu ngược lại}.
+\end{cases}
+\label{eq:method1-postcheck-logic}
+\end{equation}
+Trong đó:
+\begin{itemize}[leftmargin=1.2cm]
+    \item $\mathbb{I}_{\mathrm{place}}(y) = 1$ nếu văn bản chứa các từ giữ chỗ kỹ thuật hoặc lỗi sinh khuôn mẫu (ví dụ: \textit{``[Tên khách sạn]'', ``[Nhập ở đây]''}).
+    \item $\mathbb{I}_{\mathrm{dump}}(y) = 1$ nếu mô hình sinh liệt kê thô dạng JSON hoặc mảng từ khóa thay vì sinh câu văn tự nhiên.
+    \item $\mathbb{I}_{\mathrm{leak}}(y) = 1$ nếu phát hiện rò rỉ ngôn ngữ hệ thống hoặc mô hình sinh không đúng ngôn ngữ đích yêu cầu.
+\end{itemize}
+Hàm dự phòng $y_{\mathrm{fb}}^{\mathrm{rule}}(B_{h_i,a,p,c})$ tự động tái cấu trúc văn bản tóm tắt bằng cách ghép nối có cấu trúc tên các cụm chủ đề cùng các từ biểu thị ý kiến tương ứng đã được xác minh nguồn gốc từ túi bằng chứng $B_{h_i,a,p,c}$, giúp hạn chế tối đa khả năng phát sinh ảo giác định dạng.
+
+\subsubsection{Kiểm soát lỗi và khả năng truy vết nguồn}
+\label{subsubsec:method1-error-control-and-traceability}
+
+Để tăng tính minh bạch và khả năng kiểm chứng (verifiability), mô hình sinh được định hướng bám sát nguồn thông qua cơ chế khóa bằng chứng (evidence lock), biểu diễn xấp xỉ dưới dạng bao hàm các nhận định:
+\begin{equation}
+\operatorname{Claims}(y_{h_i,a,p}) \subseteq \operatorname{Support} \left( \{B_{h_i,a,p,c}\}_{c\in \mathcal{C}_a} \right).
+\label{eq:method1-evidence-lock}
+\end{equation}
+
+Mối quan hệ bao hàm ngữ nghĩa $\operatorname{Claims} \subseteq \operatorname{Support}$ trên thực tế được xấp xỉ kiểm tra bám nguồn bằng đối chiếu từ khóa và thực thể đa lớp thông qua hai phương thức phối hợp:
+\begin{enumerate}[leftmargin=1.2cm]
+    \item \textbf{Kiểm soát bằng chỉ thị trong Prompt (Prompt-based constraint)}: Prompt thiết kế cho mô hình sinh được cấu trúc chặt chẽ, định hướng mô hình chỉ sử dụng các từ miêu tả (descriptors) và dữ liệu có sẵn trong túi bằng chứng $B_{h_i,a,p,c}$ được cung cấp dưới dạng ngữ cảnh, hạn chế tối đa việc suy diễn thông tin nằm ngoài phạm vi này.
+    \item \textbf{Hậu kiểm tự động bằng đối chiếu từ khóa (Rule-based keyword-matching post-verification)}: Sau khi văn bản được sinh ra, hệ thống tự động đối chiếu các thực thể, danh từ và tính từ xuất hiện trong câu tóm tắt với tập hợp các từ khóa gốc trong túi bằng chứng để kiểm chứng sự tương đồng về mặt từ vựng. Nếu phát hiện sự xuất hiện của các từ khóa chỉ khía cạnh mới hoặc thông tin không thể đối sánh được với túi bằng chứng, hệ thống sẽ từ chối câu tóm tắt này và kích hoạt hàm dự phòng rule-based ($y_{\mathrm{fb}}^{\mathrm{rule}}$) để tạo văn bản thay thế bám sát nguồn.
+\end{enumerate}
+
+Mỗi nhận định trong bản tóm tắt $y_{h_i,a,p}$ nhờ đó có thể liên kết trực tiếp với một hoặc nhiều mã nguồn gốc $e_k$ của đơn vị ý kiến tương ứng trong túi bằng chứng $B_{h_i,a,p,c}$. Quy trình liên kết và kiểm tra tính bám nguồn này được trực quan hóa qua sơ đồ luồng dữ liệu trong Hình~\ref{fig:method1-evidence-generation}.
+
+\begin{figure}[tbp]
+\centering
+\begin{adjustbox}{max width=\textwidth}
+\begin{tikzpicture}[
+    >=Stealth,
+    node distance=0.62cm and 0.70cm,
+    every node/.style={font=\scriptsize, align=center},
+    box/.style={rectangle, rounded corners=2pt, draw=linegray, fill=softgray, minimum height=0.75cm, text width=2.8cm},
+    outnode/.style={rectangle, rounded corners=2pt, draw=methodblue, fill=methodblue!8, minimum height=0.75cm, text width=2.9cm},
+    check/.style={rectangle, rounded corners=2pt, draw=methodgreen, fill=methodgreen!8, minimum height=0.75cm, text width=2.9cm},
+    arrow/.style={->, thick, draw=black!70}
+]
+\node[box] (records) {Opinion records\\$o_k=(h_i,t_k,a_k,p_k,c_k,q_k,x_k,e_k)$};
+\node[box, right=of records] (bucket) {Evidence buckets\\$B_{h_i,a,p,c}$};
+\node[box, right=of bucket] (stats) {Bucket statistics\\count, descriptors, samples};
+\node[check, below=of stats] (lock) {Evidence lock\\claims $\subseteq$ support};
+\node[outnode, left=of lock] (sent) {Sentiment summary\\$y_{h_i,a,p}$};
+\node[outnode, left=of sent] (aspect) {Aspect summary\\$y_{h_i,a}$};
+\node[outnode, below=of sent] (audit) {Trace and audit\\source evidence ($e_k$)};
+\draw[arrow] (records) -- (bucket);
+\draw[arrow] (bucket) -- (stats);
+\draw[arrow] (stats) -- (lock);
+\draw[arrow] (lock) -- (sent);
+\draw[arrow] (sent) -- (aspect);
+\draw[arrow] (bucket.north) -- ++(0,0.42) -| ([xshift=0.42cm]stats.east) |- (audit.east);
+\draw[arrow] (sent) -- (audit);
+\end{tikzpicture}
+\end{adjustbox}
+\caption{Cơ chế gom bằng chứng và sinh văn bản tóm tắt có khả năng kiểm chứng}
+\label{fig:method1-evidence-generation}
+\end{figure}
+
+
+\subsection{Bản chất, ưu điểm và giới hạn của phương pháp}
+\label{subsec:method1-nature-advantages-limitations}
+
+Phương pháp UASum đại diện cho một cách tiếp cận có hệ thống đối với bài toán tóm tắt ý kiến khách hàng đa khía cạnh, tập trung vào tính kiểm soát ngữ nghĩa và khả năng truy vết.
+
+Đối chiếu với các thách thức khoa học đã nêu trong phần phát biểu bài toán (Mục~\ref{subsec:input-output-definition}), UASum phù hợp nhất với các yêu cầu về xử lý cảm xúc hỗn hợp, kiểm soát bằng chứng và truy vết nguồn gốc. Tuy nhiên, phương pháp vẫn bị giới hạn bởi độ trễ xử lý, sự phụ thuộc vào chất lượng của mô hình nền tảng và các trường hợp mơ hồ ngữ nghĩa trong văn cảnh tự nhiên của khách hàng.
+
+\subsubsection{Bản chất của phương pháp}
+\label{subsubsec:method1-nature-of-method}
+
+Bản chất của UASum là mô hình đường ống tuần tự kiểm soát (sequential controlled pipeline), phân tách độc lập giữa giai đoạn trích xuất đặc trưng ABSA và giai đoạn tổng hợp sinh văn bản. Thay vì coi mô hình ngôn ngữ nền tảng như một hộp đen sinh tự do trực tiếp từ văn bản thô, phương pháp định hình mô hình thành các bộ phân tích cấu trúc trung gian. Sự cách ly thông tin này ngăn chặn hiện tượng lan truyền lỗi ngữ nghĩa đến câu tóm tắt cuối cùng.
+
+\subsubsection{Ưu điểm của phương pháp}
+\label{subsubsec:method1-advantages-of-method}
+
+- \textbf{Khả năng giải thích cao (Explainability)}: Mọi câu tóm tắt đều có bằng chứng hỗ trợ rõ ràng từ các túi bằng chứng tương ứng.
+- \textbf{Tính bám nguồn cao (Faithfulness)}: Cơ chế evidence lock và bộ lọc hậu kiểm PostCheck giúp giảm thiểu tối đa các lỗi ảo giác định dạng hoặc thông tin ngoài văn cảnh.
+- \textbf{Độ phân giải thông tin chi tiết (Granularity)}: Việc tích hợp các cụm chủ đề (clusters) giúp bản tóm tắt giữ được sắc thái nghiệp vụ con cụ thể của từng khía cạnh mà không bị bao quát hóa quá rộng.
+- \textbf{Khả năng tự phục hồi (Self-recovery)}: Hệ thống tích hợp các bộ luật dự phòng bằng biểu thức chính quy và từ điển cực tính chuẩn để duy trì hoạt động ổn định khi xảy ra lỗi API LLM.
+
+\subsubsection{Giới hạn của phương pháp}
+\label{subsubsec:method1-limitations-of-method}
+
+- \textbf{Phụ thuộc vào mô hình nền tảng}: Độ chính xác trích xuất và tính trôi chảy của văn bản tóm tắt phụ thuộc lớn vào năng lực xử lý ngôn ngữ tự nhiên của LLM nền tảng (Qwen).
+- \textbf{Độ trễ tính toán (Latency)}: Do quy trình gồm nhiều bước truy vấn tuần tự (tiền phân đoạn, ABSA, gom cụm, hậu kiểm, sinh tóm tắt), hệ thống đòi hỏi chi phí tính toán và thời gian phản hồi lớn hơn so với cách tiếp cận sinh trực tiếp.
+- \textbf{Ranh giới biên mập mờ (Semantic Ambiguity)}: Các câu đánh giá mang tính ẩn dụ sâu sắc hoặc văn cảnh văn hóa phức tạp có thể vượt ngoài khả năng kiểm soát của bộ định tuyến khía cạnh, dẫn đến việc gán sai cụm chủ đề nghiệp vụ.
+
+\section{Phương pháp 2: SemAE -- Tóm tắt dựa trên biểu diễn ngữ nghĩa và lựa chọn bằng chứng}
+\label{sec:method2-semae-evidence-detail}
+
+Phương pháp~2 tập trung vào việc tách rõ hai quyết định thường bị trộn lẫn trong tóm tắt trực tiếp: \textit{chọn câu nào làm bằng chứng} và \textit{diễn đạt bằng chứng đó thành bản tóm tắt}. Nếu phương pháp~1 nhấn mạnh quy trình SLM linh hoạt, có lược đồ và có kiểm soát, thì phương pháp~2 đặt SemAE ở vai trò bộ chọn bằng chứng có thể chạy lại. Mục tiêu của phương pháp không phải là xử lý riêng một tập dữ liệu cụ thể, mà là xây dựng một cơ chế chọn bằng chứng ngữ nghĩa có thể áp dụng cho các tập đánh giá cùng miền và có hệ khía cạnh xác định trước.
+
+Phương pháp này giả định ba điều kiện tổng quát: có tập câu đánh giá theo từng thực thể, có hệ khía cạnh cần tóm tắt, và có mô hình biểu diễn ngữ nghĩa được huấn luyện hoặc thích nghi trên dữ liệu cùng miền. Khi các điều kiện này được thỏa mãn, SemAE có thể được triển khai trên các tập dữ liệu khác nhau trong cùng miền nghiệp vụ mà không thay đổi bản chất phương pháp.
+
+Trong quy trình này, SemAE nhận các câu đánh giá đã tách và xếp hạng chúng theo mức liên quan với từng khía cạnh. Từ cùng một danh sách bằng chứng đã xếp hạng, khóa luận xây dựng bốn biến thể đầu ra: SemAE M1 giữ nguyên câu gốc theo hướng trích rút; SemAE M2 sinh tóm tắt trừu tượng trực tiếp từ bằng chứng; SemAE M3 tách bằng chứng theo cảm xúc bằng từ khóa rồi mới sinh; SemAE M4 thay bước tách cảm xúc bằng bộ xử lý BERT-ABSA. Cách tổ chức này giúp tách nguyên nhân lỗi: lỗi có thể đến từ chọn câu, gán cảm xúc, sinh văn bản hoặc kiểm soát độ trung thực, thay vì chỉ nhìn vào bản tóm tắt cuối cùng.
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=0.98\textwidth]{method2_overview.png}
+\caption{Tổng quan phương pháp~2: SemAE chọn và ghi truy vết bằng chứng, sau đó bốn biến thể SemAE M1--SemAE M4 dùng cùng nền bằng chứng để tạo tóm tắt và được đánh giá bằng ROUGE, chỉ số vận hành, bộ chấm LLM và truy vết nguồn}
+\label{fig:method2-overview}
+\end{figure}
+
+\subsection{Kiến trúc tổng thể của phương pháp SemAE}
+\label{subsec:method2-overall-architecture}
+
+Trong phần này, phương pháp~2 được gọi là SemAE để nhấn mạnh vai trò của SemAE như một tầng lựa chọn bằng chứng phục vụ tóm tắt. Kiến trúc tổng thể gồm năm khối chức năng: chuẩn bị dữ liệu và hệ phân loại, mã hóa câu bằng SemAE, xếp hạng và chọn bằng chứng theo khía cạnh, tạo tóm tắt theo từng biến thể, và đánh giá kèm truy vết nguồn. Các khối này được tổ chức tuần tự nhằm bảo đảm rằng bản tóm tắt cuối không được sinh trực tiếp từ toàn bộ tập đánh giá thô, mà luôn đi qua một lớp bằng chứng đã được chọn lọc và ghi nhận nguồn.
+
+Điểm quan trọng của kiến trúc SemAE là tách tầng chọn bằng chứng khỏi tầng sinh văn bản. SemAE không trực tiếp tạo câu tóm tắt; mô hình này chỉ mã hóa và xếp hạng câu đánh giá theo mức độ phù hợp với từng khía cạnh. Sau đó, các biến thể SemAE M1--SemAE M4 sử dụng cùng nền bằng chứng để tạo đầu ra theo các chiến lược khác nhau. Nhờ vậy, khi so sánh kết quả, khóa luận có thể phân biệt tương đối rõ ảnh hưởng của ba nhóm yếu tố: chất lượng chọn câu, cách tách cảm xúc và cách diễn đạt tóm tắt.
+
+Về mặt luồng dữ liệu, mỗi câu được lưu kèm định danh thực thể, đánh giá gốc và vị trí câu. Các thông tin này đi xuyên suốt từ bước mã hóa, xếp hạng, lọc theo ngưỡng cho đến khi tạo bản tóm tắt và đánh giá. Do đó, kiến trúc không chỉ hướng đến điểm số tự động, mà còn phục vụ phân tích định tính: có thể kiểm tra câu nào được chọn, câu đó thuộc khía cạnh nào, điểm SemAE ra sao và được biến thể nào sử dụng trong đầu ra.
+
+\subsection{Bài toán, động cơ và giả thuyết thiết kế}
+\label{subsec:method2-problem-motivation}
+
+Bài toán đầu vào của phương pháp~2 là tập đánh giá khách sạn đã được tổ chức theo thực thể:
+
+\begin{equation}
+D_{\mathrm{H}}=\{(e_i, R_i)\}_{i=1}^{N},
+\label{eq:method2-input-dataset}
+\end{equation}
+
+trong đó \(e_i\) là định danh khách sạn, còn \(R_i=\{r_{i1}, r_{i2}, \ldots, r_{im_i}\}\) là tập các đánh giá của khách sạn đó. Mỗi đánh giá \(r_{ij}\) được tách thành các câu, tạo thành tập câu ứng viên:
+
+\begin{equation}
+S_i=\{s_{i1},s_{i2},\ldots,s_{in_i}\}.
+\label{eq:method2-sentence-set}
+\end{equation}
+
+Với một hệ phân loại khía cạnh \(A=\{a_1,a_2,\ldots,a_K\}\), nhiệm vụ của phương pháp~2 là chọn ra, với mỗi cặp \((e_i,a_k)\), một tập bằng chứng \(E_{i,k}\subseteq S_i\) sao cho các câu trong \(E_{i,k}\) liên quan đến khía cạnh \(a_k\), có thể truy ngược về nguồn và đủ thông tin để tạo tóm tắt. Trên tập bằng chứng này, các biến thể SemAE M1--SemAE M4 tạo ra tóm tắt \(y_{i,k}\) hoặc \(y_{i,k,p}\) với \(p\) là cực tính cảm xúc khi có tách cảm xúc.
+
+Động cơ chính của thiết kế này xuất phát từ hạn chế của quy trình sinh trực tiếp. Nếu đưa toàn bộ đánh giá của một khách sạn vào mô hình sinh và yêu cầu tạo tóm tắt theo khía cạnh, mô hình phải đồng thời làm nhiều việc: xác định câu nào liên quan đến khía cạnh, nhận biết cảm xúc, loại bỏ ý trùng lặp, tổng hợp nội dung và diễn đạt lại. Khi đầu ra sai, rất khó biết lỗi phát sinh ở bước nào. Phương pháp~2 tách các quyết định này thành các khâu rõ ràng hơn. SemAE chỉ chịu trách nhiệm chọn và xếp hạng câu; các biến thể SemAE M1--SemAE M4 chỉ quyết định cách dùng các câu đã chọn để tạo tóm tắt.
+
+Giả thuyết thiết kế của phương pháp~2 có thể viết như sau:
+
+\begin{equation}
+\operatorname{TomTat}_{m}(e_i,a_k)
+=
+G_m\left(
+\operatorname{Select}_{\mathrm{SemAE}}(S_i,a_k;T)
+;B
+\right),
+\quad m\in\{\mathrm{SemAE\ M1},\mathrm{SemAE\ M2},\mathrm{SemAE\ M3},\mathrm{SemAE\ M4}\}.
+\label{eq:method2-design-hypothesis}
+\end{equation}
+
+Trong công thức trên, \(\operatorname{Select}_{\mathrm{SemAE}}\) là bước chọn bằng chứng theo ngưỡng \(T\), còn \(G_m\) là cơ chế tạo tóm tắt của biến thể \(m\) với ngân sách độ dài \(B\). Giả thuyết là: nếu bước chọn bằng chứng được cố định, có truy vết và có thể chạy lại, thì sự khác biệt giữa SemAE M1--SemAE M4 phản ánh rõ hơn tác động của trích rút, sinh trừu tượng và tách cảm xúc. Đây là lý do phương pháp~2 phù hợp với phân tích loại bỏ thành phần trong luận án, thay vì chỉ báo một kết quả tóm tắt cuối cùng.
+
+So với phương pháp~1, phương pháp~2 ít linh hoạt hơn ở bước hiểu ngôn ngữ tự nhiên vì phụ thuộc vào mô hình SemAE, hệ phân loại khía cạnh và từ khóa hạt giống. Bù lại, phương pháp~2 có lợi thế về khả năng kiểm tra lại: mỗi câu tóm tắt đều có thể truy về các câu bằng chứng đã được xếp hạng, mỗi ngưỡng chọn bằng chứng có thể được quét lại, và mỗi biến thể SemAE M1--SemAE M4 có thể được so sánh trên cùng một nền dữ liệu.
+
+\subsection{Chuẩn bị dữ liệu, hệ phân loại và từ khóa hạt giống}
+\label{subsec:method2-data-taxonomy-seeds}
+
+Bước chuẩn bị dữ liệu của phương pháp~2 có ba đầu vào chính: dữ liệu đánh giá đã chuẩn hóa, hệ phân loại khía cạnh và tập mô tả hoặc từ khóa hạt giống cho từng khía cạnh. Dữ liệu đánh giá cần được tổ chức theo thực thể để hệ thống có thể tạo tóm tắt riêng cho từng khách sạn, sản phẩm hoặc dịch vụ. Hệ phân loại xác định các khía cạnh cần tóm tắt, còn từ khóa hạt giống giúp định vị các câu ứng viên ban đầu trước khi SemAE xếp hạng bằng biểu diễn ngữ nghĩa.
+
+Phương pháp không yêu cầu một số lượng khía cạnh cố định. Hệ khía cạnh có thể gồm các nhóm khía cạnh tổng quát hoặc các khía cạnh con chi tiết hơn tùy theo yêu cầu nghiệp vụ. Điều kiện quan trọng là mỗi khía cạnh phải có mô tả đủ rõ để hệ thống xác định câu ứng viên và diễn giải kết quả. Nếu một số khía cạnh không có dữ liệu tham chiếu trong giai đoạn đánh giá, việc tính các thước đo dựa trên tham chiếu sẽ chỉ áp dụng cho phần có tham chiếu hợp lệ; chi tiết này thuộc thiết kế thực nghiệm ở Chương~4.
+
+\begin{table}[tbp]
+\centering
+\caption{Vai trò của các thành phần dữ liệu tổng quát trong phương pháp~2}
+\label{tab:method2-data-files}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{L{0.25\textwidth} Y Y}
+\toprule
+\textbf{Thành phần} & \textbf{Yêu cầu tổng quát} & \textbf{Vai trò trong quy trình} \\
+\midrule
+Dữ liệu đánh giá & Tập đánh giá tự nhiên được tổ chức theo thực thể và có thể tách thành câu hoặc mệnh đề. & Cung cấp nguồn câu ứng viên để mã hóa, xếp hạng và chọn bằng chứng. \\
+Hệ phân loại khía cạnh & Danh sách khía cạnh hoặc khía cạnh con được định nghĩa trước cho miền nghiệp vụ. & Quy định các mục cần tóm tắt và không gian chuẩn hóa kết quả. \\
+Từ khóa hoặc mô tả hạt giống & Tập từ khóa, cụm từ hoặc mô tả ngữ nghĩa đại diện cho từng khía cạnh. & Tạo tập câu ứng viên trước khi SemAE tính phân phối khía cạnh và xếp hạng. \\
+Mô hình tách từ và biểu diễn & Bộ tách đơn vị từ và mô hình SemAE được huấn luyện hoặc thích nghi trên dữ liệu cùng miền. & Bảo đảm câu đầu vào được mã hóa trong cùng không gian biểu diễn ngữ nghĩa. \\
+Thông tin truy vết nguồn & Định danh thực thể, định danh đánh giá và vị trí câu trong văn bản gốc. & Cho phép kiểm tra ngược từ bản tóm tắt hoặc bằng chứng về dữ liệu đầu vào. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Trước khi suy luận, quy trình cần kiểm tra tính nhất quán của các thành phần trên: cùng bộ tách đơn vị từ, cùng không gian biểu diễn, cùng hệ khía cạnh và cùng cấu trúc truy vết nguồn. Nếu một trong các thành phần này không đồng nhất, điểm xếp hạng bằng chứng có thể không còn phản ánh đúng quan hệ giữa câu đánh giá và khía cạnh cần tóm tắt.
+
+
+\subsection{Huấn luyện hoặc thích nghi mô hình biểu diễn trên dữ liệu cùng miền}
+\label{subsec:method2-domain-training-transfer}
+
+SemAE được dùng như một mô hình biểu diễn ngữ nghĩa cho câu. Về nguyên tắc, mô hình có thể được huấn luyện trước trên một tập đánh giá đủ lớn thuộc cùng miền nghiệp vụ, sau đó áp dụng cho tập mục tiêu có cùng kiểu văn bản và hệ khía cạnh tương thích. Việc huấn luyện trên dữ liệu cùng miền giúp mô hình học được các kiểu diễn đạt thường gặp trong đánh giá khách sạn, chẳng hạn nhận xét về phòng, dịch vụ, tiện nghi, vị trí hoặc trải nghiệm tổng thể.
+
+Quy trình này không giả định tập nguồn và tập mục tiêu phải trùng nhau hoàn toàn. Tập nguồn có thể có hệ khía cạnh tổng quát hơn, trong khi tập mục tiêu có thể dùng hệ khía cạnh chi tiết hơn. Trong trường hợp đó, SemAE đóng vai trò bộ mã hóa câu, còn hệ phân loại và từ khóa hạt giống của tập mục tiêu điều khiển bước tạo câu ứng viên và chọn bằng chứng. Nhờ vậy, phương pháp tách được hai yếu tố: năng lực biểu diễn ngữ nghĩa được học từ dữ liệu cùng miền và yêu cầu nghiệp vụ cụ thể của tập mục tiêu.
+
+Cách thiết kế này có ý nghĩa phương pháp luận quan trọng. Nếu để mô hình sinh tự quyết định toàn bộ khía cạnh và bằng chứng, kết quả có thể phụ thuộc mạnh vào lời nhắc hoặc vào phân bố của một tập dữ liệu cụ thể. Ngược lại, với SemAE, tầng chọn bằng chứng được ràng buộc bởi hệ khía cạnh, từ khóa hạt giống và điểm xếp hạng ngữ nghĩa. Thiết lập huấn luyện và tập dữ liệu cụ thể được trình bày ở Chương~4 như một hiện thực của nguyên tắc tổng quát này.
+
+\subsection{Mã hóa văn bản, xếp hạng và chọn lọc bằng chứng}
+\label{subsec:method2-encoding-ranking}
+
+\subsubsection{Mã hóa câu bằng SemAE}
+\label{subsubsec:method2-semae-encoding}
+
+Sau khi đọc tập đánh giá mục tiêu, quy trình tách từng đánh giá thành các câu ứng viên. Mỗi câu được lưu kèm ba trường nguồn: \texttt{entity\_id}, \texttt{review\_id} và \texttt{sentence\_index}. Ba trường này bảo đảm rằng mọi bằng chứng được chọn sau này đều có thể truy ngược về đúng khách sạn, đúng đánh giá và đúng vị trí câu trong văn bản gốc.
+
+Khâu mã hóa biến mỗi câu ứng viên thành một phân phối ngữ nghĩa. Cụ thể, câu \(s\) được đưa qua SentencePiece và SemAE để thu được biểu diễn \(D_s\). Với một khách sạn \(e_i\), trước hết hệ thống tính phân phối nền \(P_i\) bằng cách lấy trung bình biểu diễn của toàn bộ câu thuộc khách sạn đó:
+
+\begin{equation}
+P_i = \frac{1}{|S_i|}\sum_{s\in S_i}D_s.
+\label{eq:method2-background-distribution}
+\end{equation}
+
+Phân phối nền \(P_i\) mô tả nội dung chung của khách sạn \(e_i\). Nếu chỉ dựa vào phân phối này, hệ thống dễ chọn các câu chung chung về trải nghiệm lưu trú, nhưng chưa chắc đúng khía cạnh cần tóm tắt. Vì vậy, bước tiếp theo là tạo tập câu ứng viên cho từng khía cạnh. Với khía cạnh \(a_k\), hệ thống kiểm tra câu \(s\) có khớp từ khóa hạt giống của \(a_k\) hay không. Những câu khớp được đưa vào tập \(C_{i,k}\):
+
+\begin{equation}
+C_{i,k}=\{s\in S_i \mid \operatorname{Khop}(s,\operatorname{HatGiong}(a_k))=1\}.
+\label{eq:method2-candidate-set}
+\end{equation}
+
+Từ tập ứng viên \(C_{i,k}\), hệ thống tính phân phối khía cạnh \(P_{i,k}\) bằng trung bình biểu diễn của các câu ứng viên:
+
+\begin{equation}
+P_{i,k}=\frac{1}{|C_{i,k}|}\sum_{s\in C_{i,k}}D_s.
+\label{eq:method2-aspect-distribution}
+\end{equation}
+
+Nếu một khía cạnh không có câu ứng viên, quy trình không tạo bằng chứng giả và không ép mô hình sinh tóm tắt cho khía cạnh đó. Trường hợp này được ghi nhận như đầu ra rỗng hoặc thiếu mục hợp lệ, nhằm tránh tạo nội dung không có nguồn hỗ trợ.
+
+\subsubsection{Tính điểm liên quan theo khía cạnh}
+\label{subsubsec:method2-aspect-scoring}
+
+Sau khi có \(D_s\), \(P_i\) và \(P_{i,k}\), hệ thống gán điểm cho từng câu theo mức phù hợp với khía cạnh. Điểm xếp hạng được tính bằng hiệu giữa độ lệch của câu so với phân phối khía cạnh và độ lệch của câu so với phân phối nền:
+
+\begin{equation}
+\operatorname{score}(s,a_k)
+=
+\operatorname{KL}(D_s\Vert P_{i,k})
+-
+\beta\operatorname{KL}(D_s\Vert P_i),
+\label{eq:method2-ranking-score}
+\end{equation}
+
+trong đó \(\operatorname{KL}(\cdot\Vert\cdot)\) là KL-divergence, còn \(\beta\) là hệ số điều chỉnh vai trò của phân phối nền. Công thức này phản ánh trực giác sau: một câu tốt cho khía cạnh cần gần phân phối khía cạnh, nhưng cũng cần đủ đặc trưng so với nội dung chung của khách sạn. Vì điểm được diễn giải như một dạng khoảng cách đã hiệu chỉnh, điểm nhỏ hơn cho thấy câu phù hợp hơn. Sau khi tính điểm, các câu được sắp xếp tăng dần theo \(\operatorname{score}(s,a_k)\).
+
+\subsubsection{Xếp hạng và lọc bằng chứng}
+\label{subsubsec:method2-evidence-ranking}
+
+Danh sách sau xếp hạng được xem là tầng bằng chứng ứng viên của phương pháp. Ở tầng này, hệ thống chưa sinh tóm tắt và cũng chưa kết luận cảm xúc cuối cùng; mục tiêu chỉ là sắp thứ tự các câu theo mức độ phù hợp với từng cặp khách sạn--khía cạnh. Việc giữ danh sách xếp hạng đầy đủ giúp thực hiện phân tích ngưỡng, kiểm tra các câu bị loại và so sánh giữa các biến thể trên cùng một nền dữ liệu.
+
+\subsubsection{Chọn bằng chứng bằng ngưỡng $T$ và ghi truy vết}
+\label{subsec:method2-threshold-provenance}
+
+Sau khi có danh sách câu đã xếp hạng, ngưỡng \(T\) được dùng để chuyển danh sách này thành tập bằng chứng đầu vào cho bước tóm tắt. Với mỗi khách sạn \(e_i\) và khía cạnh \(a_k\), một câu được giữ lại nếu điểm của nó không vượt quá \(T\):
+
+\begin{equation}
+E_{i,k}^{T}
+=
+\{s\in S_i \mid \operatorname{score}(s,a_k)\leq T\}.
+\label{eq:method2-threshold-evidence}
+\end{equation}
+
+Ngưỡng \(T\) không phải ngân sách độ dài của bản tóm tắt. Nó chỉ quyết định độ rộng của tập bằng chứng. Sau đó, SemAE M1--SemAE M4 mới quyết định cách dùng tập bằng chứng này: giữ nguyên câu, sinh trừu tượng, tách cảm xúc bằng từ khóa hoặc tách cảm xúc bằng BERT-ABSA. Nếu \(T\) quá nhỏ, bằng chứng thường chính xác hơn nhưng dễ thiếu ý; nếu \(T\) quá lớn, độ bao phủ tăng nhưng câu nhiễu hoặc câu liên quan bề mặt cũng dễ đi vào đầu vào sinh.
+
+Hệ thống phân biệt hai dạng bằng chứng. Dạng thứ nhất là bằng chứng đã xếp hạng, ghi lại các câu theo thứ hạng và điểm số SemAE. Dạng thứ hai là bằng chứng theo ngưỡng, chỉ gồm những câu thỏa điều kiện \(score \leq T\). Việc tách hai dạng này giúp vừa có đầu vào gọn cho bước tóm tắt, vừa giữ được danh sách đầy đủ để phân tích lỗi và điều chỉnh ngưỡng.
+
+Mỗi dòng bằng chứng lưu các trường truy vết chính sau: \texttt{run\_id}, \texttt{entity\_id}, \texttt{split}, \texttt{aspect}, \texttt{rank}, \texttt{score}, \texttt{sentence}, \texttt{source\_review\_id}, \texttt{source\_sentence\_index}, \texttt{matched\_aspect\_seed} và \texttt{sentiment\_label} nếu đã gán cảm xúc. Các trường này giúp luận án không chỉ trình bày một bảng điểm cuối cùng, mà còn có thể kiểm tra từng câu được chọn: câu đó đến từ đâu, được chọn vì khía cạnh nào, có điểm SemAE bao nhiêu, khớp từ khóa hạt giống nào và sau này được dùng trong biến thể nào.
+
+Truy vết có vai trò đặc biệt quan trọng khi phân tích lỗi. Nếu tóm tắt sai khía cạnh, có thể kiểm tra liệu SemAE đã chọn sai câu hay mô hình sinh đã diễn đạt lệch. Nếu tóm tắt lật cảm xúc, có thể kiểm tra lỗi nằm ở bước gán nhãn cảm xúc hay bước sinh văn bản. Nếu tóm tắt có khẳng định không được hỗ trợ, có thể so sánh từng câu sinh với tập bằng chứng. Như vậy, truy vết không phải chi tiết triển khai phụ, mà là một phần của phương pháp nghiên cứu.
+
+\subsection{Hiện thực suy luận và tổ chức truy vết kết quả}
+\label{subsec:method2-sharded-inference}
+
+Khi số lượng thực thể và khía cạnh lớn, số cặp thực thể--khía cạnh cần xử lý có thể tăng nhanh. Để rút ngắn thời gian suy luận và giữ cấu trúc kết quả rõ ràng, quy trình có thể chia tập thực thể thành nhiều mảnh xử lý (shard). Mỗi mảnh xử lý nhận một phần danh sách khách sạn, chạy cùng mô hình SemAE, cùng mô hình SentencePiece, cùng hệ phân loại và cùng ngưỡng \(T\). Sau khi các mảnh xử lý hoàn tất, hệ thống hợp nhất kết quả thành một lần chạy cuối.
+
+Việc chia mảnh được thực hiện theo thực thể khách sạn, không chia theo câu rời rạc. Cách này giữ nguyên ngữ cảnh tính phân phối nền \(P_i\) của từng khách sạn: tất cả câu của một khách sạn vẫn nằm trong cùng một mảnh xử lý, nên phân phối nền không bị tính sai do tách dữ liệu. Mỗi mảnh tạo ra cây thư mục đầu ra riêng, tệp truy vết riêng và tệp bằng chứng riêng. Bước hợp nhất sau đó sao chép các tệp tóm tắt về thư mục cuối cùng, đồng thời gom các dòng truy vết và bằng chứng thành các tệp cấp lần chạy.
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=0.98\textwidth]{method2_sharded_inference.png}
+\caption{Suy luận SemAE theo mảnh xử lý và hợp nhất thông tin truy vết}
+\label{fig:method2-sharded-inference}
+\end{figure}
+
+Sau bước hợp nhất, mỗi lần chạy chính có ba nhóm kết quả. Nhóm thứ nhất là cây thư mục tóm tắt theo khía cạnh, trong đó mỗi tệp ứng với một khách sạn và một khía cạnh. Nhóm thứ hai là tệp truy vết nguồn (provenance), ghi lại các câu đã đi vào bản tóm tắt trích rút. Nhóm thứ ba là tệp bằng chứng đã xếp hạng và tệp bằng chứng theo ngưỡng, dùng làm đầu vào cho các biến thể sinh SemAE M2--SemAE M4. Cách tổ chức này làm cho kết quả thực nghiệm có thể được kiểm tra lại mà không cần chạy lại toàn bộ mô hình.
+
+Từ điểm này, khóa luận không dùng một hình rẽ nhánh chung cho SemAE M1--SemAE M4. Mỗi biến thể được trình bày bằng một quy trình riêng trong tiểu mục tương ứng, vì phần hậu xử lý của từng biến thể khác nhau về ngân sách, cách dùng bằng chứng, cách tách cảm xúc và cơ chế dự phòng.
+
+\subsection{Các biến thể thực nghiệm của phương pháp SemAE}
+\label{subsec:method2-experimental-variants}
+
+Bốn biến thể SemAE M1--SemAE M4 được thiết kế theo nguyên tắc thay đổi từng nhóm thành phần sau khi đã cố định nền bằng chứng SemAE. Để tránh nhầm lẫn với phương pháp~1, trong phần còn lại của khóa luận các biến thể này được ký hiệu đầy đủ là SemAE M1, SemAE M2, SemAE M3 và SemAE M4; các hình minh họa có thể giữ nhãn ngắn SemAE M1--SemAE M4 để sơ đồ dễ đọc. SemAE M1 giữ nguyên bằng chứng theo hướng trích rút, SemAE M2 kiểm tra tác động của sinh trừu tượng khi chưa tách cảm xúc, SemAE M3 bổ sung tách cảm xúc bằng luật từ khóa, còn SemAE M4 thay luật từ khóa bằng bộ xử lý BERT-ABSA. Cách bố trí này giúp phần thực nghiệm ở Chương~4 có thể so sánh cả chất lượng đầu ra lẫn loại lỗi đặc trưng của từng biến thể.
+
+\subsubsection{SemAE M1: Tóm tắt trích rút}
+\label{subsec:method2-m1}
+
+SemAE M1 là biến thể tóm tắt trích rút (extractive summarization). Biến thể này giữ nguyên các câu bằng chứng do SemAE chọn và không dùng mô hình sinh văn bản. Với mỗi cặp khách sạn--khía cạnh, các câu được lấy theo thứ hạng SemAE từ thấp đến cao về điểm số, sau đó ghép lại cho đến khi đạt ngân sách độ dài. Trong cấu hình trích rút, ngân sách \(B\) quy định số từ tối đa được giữ lại từ các câu bằng chứng.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.98\textwidth]{method2_m1_pipeline.png}
+\caption{Quy trình chi tiết của biến thể SemAE M1}
+\label{fig:method2-m1-pipeline}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Biến thể SemAE M1: tóm tắt trích rút từ bằng chứng SemAE}
+\label{tab:m1-workflow}
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabularx}{\textwidth}{L{0.24\textwidth} Y}
+\toprule
+\textbf{Thành phần} & \textbf{Triển khai trong SemAE M1} \\
+\midrule
+Bằng chứng đầu vào & Các câu đã được SemAE chọn theo cặp khách sạn--khía cạnh, giữ thứ hạng tăng dần theo điểm số. \\
+Cách tạo đầu ra & Giữ nguyên câu gốc, ghép theo thứ hạng và dừng khi đạt ngân sách độ dài \(B\). \\
+Kiểm soát trung thực & Không sinh văn bản mới, vì vậy đầu ra bám trực tiếp vào câu đánh giá gốc và không có rủi ro ảo giác từ bộ sinh. \\
+Truy vết & Dùng bản ghi truy vết nguồn, danh sách bằng chứng đã xếp hạng và tập bằng chứng theo ngưỡng để kiểm tra câu nguồn, thứ hạng và điểm SemAE. \\
+Vai trò phân tích & Là mốc đối chứng để đo chất lượng chọn câu và độ bám nguồn trước khi thêm bước sinh trừu tượng. \\
+Giới hạn chính & Dễ thô, có thể lặp ý, có thể bị cắt giữa ý nếu câu dài, và không khôi phục được thông tin đã bị bộ chọn bằng chứng bỏ sót. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Giá trị của SemAE M1 nằm ở tính bám nguồn. Vì SemAE M1 không tạo câu mới, mọi thông tin trong đầu ra đều đến trực tiếp từ văn bản đánh giá gốc. Điều này làm SemAE M1 trở thành mốc đối chứng quan trọng: nếu các biến thể sinh SemAE M2--SemAE M4 đạt điểm cao hơn SemAE M1 nhưng có nhiều khẳng định không căn cứ, kết quả đó không thuyết phục. Ngược lại, nếu biến thể sinh vượt SemAE M1 trong khi vẫn giữ được độ trung thực với bằng chứng, có thể kết luận rằng bước diễn đạt lại mang lại lợi ích thực sự.
+
+SemAE M1 cũng giúp tách riêng lỗi của bộ chọn câu. Nếu SemAE M1 đã chọn sai câu hoặc bỏ sót ý quan trọng, các biến thể sinh phía sau khó khôi phục thông tin đã mất. Vì vậy, khi phân tích phương pháp~2, SemAE M1 không chỉ là một phương pháp đơn giản hơn, mà là phép kiểm tra chất lượng của tầng SemAE trước khi đưa thêm các thành phần sinh văn bản.
+
+Cần lưu ý rằng SemAE M1 không có tỷ lệ sinh thành công (generation rate), không có tỷ lệ dự phòng (fallback rate) và không có rủi ro ảo giác từ bộ sinh. Nếu SemAE M1 có lỗi, lỗi thường đến từ chọn câu sai, câu quá dài bị cắt, câu chứa nhiều ý kiến lẫn nhau hoặc hệ phân loại/từ khóa hạt giống chưa bao phủ cách diễn đạt của người dùng.
+
+Bảng~\ref{tab:m1-best-example} trình bày một ví dụ tốt tiêu biểu của SemAE M1 được lấy trực tiếp từ tệp dữ liệu đánh giá tự động của phương pháp~2. Phần tóm tắt và bằng chứng trong các bảng ví dụ dưới đây được giữ nguyên tiếng Anh vì đó là câu gốc và đầu ra gốc của hệ thống; phần diễn giải còn lại được trình bày bằng tiếng Việt. Ví dụ này được chọn vì bộ chấm bằng mô hình ngôn ngữ lớn đánh dấu \texttt{pass}, không phát hiện sai khía cạnh, lật cảm xúc hay khẳng định thiếu căn cứ, đồng thời chấm 5/5 ở sáu tiêu chí: đúng khía cạnh, đúng cảm xúc, được bằng chứng hỗ trợ, bao phủ, cụ thể và hữu ích.
+
+\begin{table}[H]
+\centering
+\caption{Ví dụ đầu ra tốt tiêu biểu của biến thể SemAE M1}
+\label{tab:m1-best-example}
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabularx}{\textwidth}{L{0.22\textwidth} Y}
+\toprule
+\textbf{Trường} & \textbf{Nội dung} \\
+\midrule
+Mã truy vết & \texttt{entity\_id=198738}; \texttt{aspect=SER\_ATTITUDE}; \texttt{item\_id=3e4f186cf3fc6c41997dc98f}. \\
+Đầu ra của SemAE M1 & The staff were very friendly and welcoming (in particular Michele), they gave us great recommendations for restaurants and places to see. The staff and manager were very helpful and friendly. The owner and staff were so very friendly and knowledgable. \\
+Bằng chứng tiêu biểu & (1) The staff were very friendly and welcoming (in particular Michele), they gave us great recommendations for restaurants and places to see. (2) The staff and manager were very helpful and friendly. (3) The owner and staff were so very friendly and knowledgable. \\
+Vì sao là ví dụ tốt & SemAE M1 không viết lại câu, nên toàn bộ đầu ra có thể truy ngược về ba câu bằng chứng về thái độ nhân viên. Các câu cùng khía cạnh \texttt{SER\_ATTITUDE}, cùng cực tính tích cực và không chứa thông tin ngoài nguồn. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{SemAE M2: Sinh trừu tượng trước khi tách cảm xúc}
+\label{subsec:method2-m2}
+
+SemAE M2 là biến thể tóm tắt trừu tượng (abstractive summarization) trực tiếp từ tập bằng chứng theo khía cạnh. Sau khi SemAE chọn bằng chứng \(E_{i,k}^{T}\), các câu bằng chứng được đưa vào FLAN-T5 để viết lại thành một bản tóm tắt ngắn. SemAE M2 chưa tách riêng bằng chứng tích cực và tiêu cực; tất cả bằng chứng của cùng một khía cạnh được xem như một nhóm đầu vào.
+
+Trong một cấu hình thực nghiệm cụ thể, SemAE M2 sử dụng ngưỡng chọn bằng chứng \(T\) và ngân sách sinh \(B\). Ở đây \(B\) là số đơn vị từ sinh mới tối đa, tương ứng tham số \texttt{max\_new\_tokens}. Khác với SemAE M1, \(B\) của SemAE M2 không phải số từ trong câu gốc được ghép lại, mà là ngân sách cho mô hình sinh tạo văn bản mới.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.98\textwidth]{method2_m2_pipeline.png}
+\caption{Quy trình chi tiết của biến thể SemAE M2}
+\label{fig:method2-m2-pipeline}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Biến thể SemAE M2: sinh trừu tượng trực tiếp từ bằng chứng theo khía cạnh}
+\label{tab:m2-workflow}
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabularx}{\textwidth}{L{0.24\textwidth} Y}
+\toprule
+\textbf{Thành phần} & \textbf{Triển khai trong SemAE M2} \\
+\midrule
+Bằng chứng đầu vào & Tập bằng chứng theo khía cạnh sau ngưỡng \(T=0{,}0075\), chưa tách thành nhóm cảm xúc tích cực và tiêu cực. \\
+Cách tạo đầu ra & FLAN-T5 viết lại các câu bằng chứng thành tóm tắt trừu tượng ngắn cho từng cặp khách sạn--khía cạnh. \\
+Ngân sách sinh & \(B=128\), tương ứng tham số \texttt{max\_new\_tokens}; đây là số đơn vị từ sinh mới tối đa, không phải số từ trích rút. \\
+Kiểm soát trung thực & Giới hạn số câu đầu vào, khử trùng lặp, yêu cầu chỉ dùng thông tin trong bằng chứng và chuyển sang dự phòng nếu đầu ra rỗng hoặc quá chung chung. \\
+Vai trò phân tích & Kiểm tra lợi ích của việc diễn đạt lại bằng chứng khi chưa có bước tách cảm xúc. \\
+Rủi ro chính & Có thể pha trộn cực tính nếu cùng một khía cạnh chứa cả khen và chê; lỗi chọn bằng chứng sẽ truyền trực tiếp sang bản tóm tắt sinh. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Ưu điểm của SemAE M2 là khả năng tổng hợp và làm gọn bằng chứng. Nếu SemAE M1 ghép nhiều câu rời rạc, SemAE M2 có thể diễn đạt lại thành một câu tóm tắt mạch lạc hơn, giảm lặp ý và nối các nhận xét gần nhau thành một phát biểu tự nhiên. Tuy nhiên, SemAE M2 cũng có rủi ro rõ ràng: nếu tập bằng chứng của một khía cạnh chứa cả khen và chê, mô hình có thể pha trộn cực tính, làm yếu hoặc đảo ý của một nhóm bằng chứng. Vì vậy, SemAE M2 là phép thử quan trọng để xem việc sinh trừu tượng có đủ tốt khi chưa kiểm soát riêng cảm xúc hay không.
+
+Trong luận án, SemAE M2 không được xem là mô hình thay thế hoàn toàn SemAE M1. SemAE M2 là biến thể kiểm tra tác động của việc viết lại bằng chứng. Nếu SemAE M2 cải thiện độ mạch lạc nhưng làm giảm độ trung thực hoặc đúng cảm xúc, điều đó cho thấy cần thêm cơ chế tách cảm xúc và kiểm soát đầu ra, dẫn đến SemAE M3 và SemAE M4.
+
+Bảng~\ref{tab:m2-best-example} minh họa một trường hợp SemAE M2 sinh được tóm tắt gọn và vẫn bám sát bằng chứng. Đây là đầu ra sinh thật của mô hình sinh trong một cấu hình thực nghiệm, không phải câu dự phòng.
+
+\begin{table}[H]
+\centering
+\caption{Ví dụ đầu ra tốt tiêu biểu của biến thể SemAE M2}
+\label{tab:m2-best-example}
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabularx}{\textwidth}{L{0.22\textwidth} Y}
+\toprule
+\textbf{Trường} & \textbf{Nội dung} \\
+\midrule
+Mã truy vết & \texttt{entity\_id=250023}; \texttt{aspect=AM\_ROOM\_UTIL}; \texttt{item\_id=193eaef88aa3977ef45ec46d}; trạng thái \texttt{generated}. \\
+Đầu ra của SemAE M2 & This was a surprisingly comfortable 2 bd 2 bath suite w/ a compact kitchen that included 2 burner stove, mini fridge, microwave and service for 4 in the cabinets. \\
+Bằng chứng tiêu biểu & (1) The kitchenette (stove top, microwave, refrigerator) allowed us to fix breakfasts quickly ``at home'' before going out for early tours and to save money on some easy suppers. (2) The bathroom was very clean and modern (I can't stand fusty old bathrooms), the bed was comfy, you get a desk with wireless access and TV, Microwave and Fridge. \\
+Vì sao là ví dụ tốt & Câu sinh gom được các tiện ích phòng như bếp nhỏ, tủ lạnh và lò vi sóng thành một phát biểu ngắn. Nội dung không vượt ra ngoài bằng chứng, không trộn sang khía cạnh khác và giữ đúng mục tiêu của SemAE M2: diễn đạt lại bằng chứng theo khía cạnh khi chưa tách cảm xúc. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{SemAE M3: Tách cảm xúc bằng từ khóa}
+\label{subsec:method2-m3}
+
+SemAE M3 bổ sung bước gán cảm xúc trước khi sinh tóm tắt. Sau khi SemAE đã chọn tập bằng chứng theo khía cạnh, hệ thống duyệt từng câu bằng chứng và so khớp với các từ khóa cảm xúc trong hệ phân loại mục tiêu. Nếu câu chứa tín hiệu tích cực, câu được gán vào nhóm \texttt{pos}; nếu chứa tín hiệu tiêu cực, câu được gán vào nhóm \texttt{neg}; nếu không có tín hiệu đủ rõ hoặc chỉ mang thông tin mô tả, câu được gán \texttt{neu}. Sau đó, hệ thống gom bằng chứng theo bộ ba khách sạn--khía cạnh--cảm xúc và sinh tóm tắt riêng cho các nhóm hợp lệ, thay vì trộn mọi cực tính vào cùng một đầu vào như SemAE M2.
+
+Trong một cấu hình thực nghiệm cụ thể, SemAE M3 sử dụng ngưỡng chọn bằng chứng \(T\) và ngân sách sinh \(B\) nhỏ hơn SemAE M2 để làm tóm tắt cô đọng hơn, đồng thời giảm khả năng mô hình sinh thêm nội dung không cần thiết. Vì SemAE M3 sinh riêng theo nhóm cảm xúc, mỗi nhóm thường có ít bằng chứng hơn SemAE M2; do đó ngân sách sinh thấp hơn vẫn đủ để mô tả ý chính.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.98\textwidth]{method2_m3_pipeline.png}
+\caption{Quy trình chi tiết của biến thể SemAE M3}
+\label{fig:method2-m3-pipeline}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Biến thể SemAE M3: tách cảm xúc bằng từ khóa trước khi sinh tóm tắt}
+\label{tab:m3-workflow}
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabularx}{\textwidth}{L{0.24\textwidth} Y}
+\toprule
+\textbf{Thành phần} & \textbf{Triển khai trong SemAE M3} \\
+\midrule
+Bằng chứng đầu vào & Tập bằng chứng theo khía cạnh sau ngưỡng \(T\), sau đó được tách bằng từ khóa cảm xúc trong hệ phân loại mục tiêu. \\
+Tách cảm xúc & Gán mỗi câu vào \texttt{pos}, \texttt{neg} hoặc \texttt{neu}; các nhãn này lần lượt biểu diễn tích cực, tiêu cực và trung tính. \\
+Cách tạo đầu ra & FLAN-T5 sinh tóm tắt riêng cho các nhóm cảm xúc hợp lệ, thay vì trộn toàn bộ bằng chứng như SemAE M2. \\
+Ngân sách sinh & \(B\), tương ứng tham số \texttt{max\_new\_tokens}; ngân sách này được áp dụng cho từng lượt sinh theo nhóm cảm xúc. \\
+Vai trò phân tích & Kiểm tra liệu một bộ tách cảm xúc đơn giản, dễ truy vết có giảm lỗi trộn cực tính hay không. \\
+Giới hạn chính & Khó xử lý phủ định, mỉa mai, diễn đạt gián tiếp và các câu không chứa từ khóa cảm xúc rõ ràng. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Mục tiêu của SemAE M3 là kiểm tra một giả thuyết đơn giản: nếu tách bằng chứng tích cực và tiêu cực trước khi sinh, mô hình sẽ ít bị trộn cực tính hơn. Cách tách bằng từ khóa có lợi thế là dễ giải thích và dễ tái lập. Khi một câu được gán nhãn tích cực hoặc tiêu cực, hệ thống có thể ghi lại từ khóa cảm xúc đã khớp. Điều này phù hợp với mục tiêu truy vết của phương pháp~2.
+
+Tuy nhiên, SemAE M3 cũng có giới hạn tự nhiên. Từ khóa khó xử lý phủ định, mỉa mai, diễn đạt gián tiếp hoặc các câu không chứa từ cảm xúc rõ ràng. Ví dụ, một câu như ``ngủ được đúng ba tiếng vì bên ngoài ồn cả đêm'' có thể mang cảm xúc tiêu cực về môi trường hoặc chất lượng phòng, nhưng không nhất thiết chứa từ khóa tiêu cực trực tiếp trong hệ phân loại. Vì vậy, SemAE M3 là biến thể dễ tái lập nhưng không phải bộ phân loại cảm xúc mạnh nhất.
+
+Bảng~\ref{tab:m3-best-example} trình bày một ví dụ tốt của SemAE M3. Điểm quan trọng của ví dụ này là bằng chứng đã được tách vào nhóm tích cực \texttt{pos} trước khi sinh, nhờ đó bản tóm tắt không trộn với các nhận xét tiêu cực về khía cạnh khác.
+
+\begin{table}[H]
+\centering
+\caption{Ví dụ đầu ra tốt tiêu biểu của biến thể SemAE M3}
+\label{tab:m3-best-example}
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabularx}{\textwidth}{L{0.22\textwidth} Y}
+\toprule
+\textbf{Trường} & \textbf{Nội dung} \\
+\midrule
+Mã truy vết & \texttt{entity\_id=100585}; \texttt{aspect=FAC\_BATH}; \texttt{sentiment=pos}; \texttt{item\_id=22b95ca6d5ce7a828c32573e}; trạng thái \texttt{generated}. \\
+Đầu ra của SemAE M3 & The room was decent, but the bathroom was a little small but clean, and well-appointed with Aveda bath products. The room itself was very spacious - the bathroom not so big, but that is not a big deal for us anyway. \\
+Bằng chứng tiêu biểu & (1) The room was decent, maybe a little above, the bathroom clean and nice shower head. (2) The bathroom was a little small but clean, and well-appointed with Aveda bath products. (3) Having gone from the Embassy Suite with a huge room to this tiny room was a shock--tiny closet, small bathroom but clean. \\
+Vì sao là ví dụ tốt & Bản tóm tắt giữ đúng khía cạnh phòng tắm và phản ánh sắc thái tích cực có điều kiện: phòng tắm nhỏ nhưng sạch, có sản phẩm Aveda và không bị xem là vấn đề lớn. Đây là kiểu trường hợp SemAE M3 cần xử lý tốt vì bằng chứng chứa cả mô tả hạn chế và tín hiệu hài lòng. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{SemAE M4: Tách cảm xúc bằng BERT-ABSA}
+\label{subsec:method2-m4}
+
+SemAE M4 giữ nguyên toàn bộ logic chọn bằng chứng của SemAE nhưng thay bước gán cảm xúc bằng BERT-ABSA. Như vậy, câu nào được chọn làm bằng chứng vẫn do SemAE, hệ phân loại và ngưỡng \(T\) quyết định; BERT-ABSA chỉ nhận các câu đã chọn và gán cực tính cho từng cặp câu--khía cạnh trước khi sinh tóm tắt. Nhờ tách vai trò như vậy, khi kết quả SemAE M4 khác SemAE M3, có thể quy sự khác biệt chủ yếu cho chất lượng gán cảm xúc theo ngữ cảnh.
+
+Đầu vào của BERT-ABSA gồm câu đánh giá và thông tin khía cạnh đang xét. Mô hình dự đoán cảm xúc của câu đối với đúng khía cạnh đó, thay vì gán một nhãn chung cho toàn câu. Cách làm này phù hợp với ABSA vì một câu có thể chứa nhiều ý kiến trái chiều. Ví dụ, câu ``phòng sạch nhưng bữa sáng nghèo nàn'' tích cực với khía cạnh phòng nhưng tiêu cực với khía cạnh thức ăn. Bộ phân loại cảm xúc theo ngữ cảnh vì vậy có khả năng xử lý quan hệ câu--khía cạnh tốt hơn so với luật đếm từ khóa của SemAE M3.
+
+Trong một cấu hình thực nghiệm cụ thể, SemAE M4 sử dụng ngưỡng chọn bằng chứng \(T\) chặt hơn các biến thể sinh trước đó vì mục tiêu là ưu tiên độ đúng khía cạnh và độ trung thực bằng chứng. Sau khi BERT-ABSA gán nhãn cảm xúc, hệ thống sinh tóm tắt riêng cho nhóm tích cực và tiêu cực tương tự SemAE M3.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.98\textwidth]{method2_m4_pipeline.png}
+\caption{Quy trình chi tiết của biến thể SemAE M4}
+\label{fig:method2-m4-pipeline}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Biến thể SemAE M4: tách cảm xúc bằng BERT-ABSA trước khi sinh tóm tắt}
+\label{tab:m4-workflow}
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabularx}{\textwidth}{L{0.24\textwidth} Y}
+\toprule
+\textbf{Thành phần} & \textbf{Triển khai trong SemAE M4} \\
+\midrule
+Bằng chứng đầu vào & Tập bằng chứng theo khía cạnh sau ngưỡng \(T\), giữ nguyên logic chọn câu của SemAE. \\
+Tách cảm xúc & BERT-ABSA nhận câu và thông tin khía cạnh để gán cảm xúc theo ngữ cảnh, thay cho cách khớp từ khóa của SemAE M3. \\
+Cách tạo đầu ra & FLAN-T5 sinh tóm tắt riêng theo các nhóm cảm xúc do BERT-ABSA xác định. \\
+Ngân sách sinh & \(B\), tương ứng tham số \texttt{max\_new\_tokens}; ngân sách này được giữ cùng loại với SemAE M3 để so sánh tác động của bộ tách cảm xúc. \\
+Vai trò phân tích & Đo tác động của bộ phân loại cảm xúc theo ngữ cảnh trong khi bộ chọn bằng chứng SemAE được giữ cố định. \\
+Giới hạn chính & Vẫn phụ thuộc vào chất lượng bằng chứng SemAE và cần nhãn chuẩn chi tiết nếu muốn đánh giá độc lập độ chính xác của bộ phân loại cảm xúc. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+SemAE M4 là biến thể quan trọng nhất để phân tích tác động của bộ phân loại cảm xúc theo ngữ cảnh. Nếu SemAE M4 giảm lỗi lật cảm xúc hoặc giảm khẳng định không căn cứ so với SemAE M3, điều đó cho thấy chất lượng tách cảm xúc trước khi sinh có ảnh hưởng trực tiếp đến chất lượng tóm tắt cuối. Tuy vậy, SemAE M4 vẫn phụ thuộc vào chất lượng bằng chứng SemAE và vẫn cần nhãn chuẩn chi tiết hơn nếu muốn đánh giá độc lập độ chính xác của bộ phân loại cảm xúc.
+
+Bảng~\ref{tab:m4-best-example} minh họa một ví dụ tốt của SemAE M4 với nhãn tiêu cực \texttt{neg}. Ví dụ này cho thấy vai trò của BERT-ABSA trong việc giữ cảm xúc theo đúng cặp câu--khía cạnh trước khi FLAN-T5 sinh tóm tắt.
+
+\begin{table}[H]
+\centering
+\caption{Ví dụ đầu ra tốt tiêu biểu của biến thể SemAE M4}
+\label{tab:m4-best-example}
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabularx}{\textwidth}{L{0.22\textwidth} Y}
+\toprule
+\textbf{Trường} & \textbf{Nội dung} \\
+\midrule
+Mã truy vết & \texttt{entity\_id=1722910}; \texttt{aspect=AM\_WELLNESS}; \texttt{sentiment=neg}; \texttt{item\_id=33caa52eff75391d151948cd}; trạng thái \texttt{generated}. \\
+Đầu ra của SemAE M4 & There is no fitness center or spa at this hotel. \\
+Bằng chứng tiêu biểu & breakfast was ok. no fitness center or spa. \\
+Vì sao là ví dụ tốt & Tóm tắt giữ đúng khía cạnh tiện ích chăm sóc sức khỏe, giữ cực tính tiêu cực và chỉ diễn đạt lại thông tin có trong bằng chứng. Đây là trường hợp phù hợp để minh họa SemAE M4 vì BERT-ABSA gán nhãn tiêu cực cho đúng cặp câu--khía cạnh trước khi mô hình sinh tạo câu tóm tắt ngắn. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Cơ chế kiểm soát tính trung thực bằng chứng}
+\label{subsec:method2-faithfulness-controls}
+
+Các biến thể SemAE M2--SemAE M4 có khả năng tạo tóm tắt mạch lạc hơn SemAE M1 vì chúng dùng mô hình sinh để diễn đạt lại bằng chứng. Tuy nhiên, chính khả năng sinh văn bản mới cũng tạo rủi ro ảo giác: mô hình có thể thêm chi tiết không có trong bằng chứng, làm mờ cực tính hoặc viết câu quá chung chung. Vì vậy, phương pháp~2 bổ sung cơ chế trung thực bằng chứng cho các biến thể sinh.
+
+Cơ chế này gồm nhiều lớp kiểm soát. Lớp thứ nhất là giới hạn bằng chứng đầu vào. Mô hình sinh không nhận toàn bộ đánh giá khách sạn, mà chỉ nhận các câu đã được SemAE chọn theo khía cạnh và ngưỡng \(T\). Lớp thứ hai là khử trùng lặp các câu bằng chứng gần giống nhau, giúp giảm lặp ý và giảm khả năng mô hình sinh một tóm tắt dài nhưng nghèo thông tin. Lớp thứ ba là lời nhắc yêu cầu chỉ diễn đạt lại thông tin có trong bằng chứng. Trong luận án, lời nhắc (prompt) được xem là giao diện điều khiển mô hình sinh, nhưng không được phép thay thế vai trò của bằng chứng.
+
+Sau khi mô hình sinh đầu ra, hệ thống tiếp tục kiểm tra hậu xử lý. Nếu đầu ra rỗng, lặp lại lời nhắc hoặc quá chung chung, quy trình chuyển sang dự phòng bằng cách ghép các câu bằng chứng đã chọn. Nếu đầu ra gồm nhiều câu, từng câu sinh được so sánh với tập bằng chứng bằng độ chồng lấp từ nội dung. Câu sinh không đủ hỗ trợ sẽ bị loại hoặc được thay bằng câu bằng chứng có thứ hạng cao. Với SemAE M3 và SemAE M4, hệ thống còn kiểm tra nhất quán cảm xúc: nếu bản tóm tắt của nhóm tích cực lại có cực tính tiêu cực rõ ràng, hoặc ngược lại, quy trình chuyển sang dự phòng để tránh lật cảm xúc.
+
+\begin{table}[tbp]
+\centering
+\caption{Các lớp kiểm soát trung thực bằng chứng trong SemAE M2--SemAE M4}
+\label{tab:method2-faithfulness-controls}
+\small
+\begin{tabularx}{\textwidth}{L{0.25\textwidth} L{0.30\textwidth} Y}
+\toprule
+\textbf{Lớp kiểm soát} & \textbf{Cách thực hiện} & \textbf{Mục đích} \\
+\midrule
+Giới hạn đầu vào & Chỉ đưa bằng chứng SemAE vào mô hình sinh. & Không để mô hình sinh dựa trên toàn bộ đánh giá thô hoặc thông tin ngoài nguồn. \\
+Khử trùng lặp & Loại câu bằng chứng gần giống nhau trước khi sinh hoặc dự phòng. & Giảm lặp ý và tăng mật độ thông tin trong tóm tắt. \\
+Ràng buộc lời nhắc & Yêu cầu chỉ diễn đạt lại nội dung có trong bằng chứng. & Giảm khả năng thêm nhận định không được hỗ trợ. \\
+Kiểm tra đầu ra lỗi & Phát hiện đầu ra rỗng, lặp lời nhắc hoặc quá chung chung. & Tránh xuất bản tóm tắt không có giá trị thông tin. \\
+Lọc câu không hỗ trợ & So sánh câu sinh với bằng chứng bằng chồng lấp nội dung. & Loại hoặc thay câu có nguy cơ ảo giác. \\
+Kiểm soát cảm xúc & Kiểm tra cực tính của bản tóm tắt trong SemAE M3--SemAE M4. & Giảm lỗi lật cảm xúc giữa nhóm tích cực và tiêu cực. \\
+Dự phòng & Dùng câu bằng chứng đã chọn khi sinh thất bại. & Bảo toàn độ bám nguồn ngay cả khi mô hình sinh không ổn định. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Nhờ các lớp kiểm soát này, SemAE M2--SemAE M4 không được hiểu đơn giản là ``đưa bằng chứng vào FLAN-T5 rồi lấy kết quả''. Thay vào đó, đây là quy trình sinh có ràng buộc, trong đó đầu ra cuối cùng phải đi qua các kiểm tra về rỗng, lặp, chung chung, hỗ trợ bằng chứng và nhất quán cảm xúc. Đây là phần quan trọng giải thích cách hệ thống tạo ra kết quả thực nghiệm, thay vì chỉ trình bày thành quả sau cùng.
+
+\subsection{Vai trò của các tham số $T$ và $B$}
+\label{subsec:method2-t-b}
+
+Hai tham số quan trọng nhất trong phương pháp~2 là ngưỡng chọn bằng chứng \(T\) và ngân sách độ dài \(B\). Dù cả hai đều ảnh hưởng đến đầu ra cuối, vai trò của chúng khác nhau. \(T\) tác động đến tập câu nào được xem là bằng chứng; \(B\) tác động đến độ dài văn bản được tạo ra từ tập bằng chứng đó.
+
+Ngưỡng \(T\) kiểm soát độ rộng của tập bằng chứng theo điều kiện \(score \leq T\). Khi \(T\) nhỏ, chỉ các câu có điểm rất tốt mới được giữ lại. Điều này có thể tăng độ chính xác của bằng chứng nhưng dễ bỏ sót các ý kiến diễn đạt khác biệt. Khi \(T\) lớn, tập bằng chứng rộng hơn, giúp tăng độ bao phủ, nhưng cũng tăng khả năng đưa vào câu nhiễu hoặc câu liên quan yếu. Do hệ khía cạnh mục tiêu có thể có mức độ chi tiết khác nhau, một ngưỡng chung cho mọi biến thể không phải lúc nào cũng tối ưu.
+
+Ngân sách \(B\) cần được diễn giải theo từng biến thể. Với SemAE M1, \(B\) là số từ tối đa trong bản tóm tắt trích rút. Hệ thống ghép các câu gốc theo thứ hạng SemAE đến khi đạt giới hạn này. Với SemAE M2--SemAE M4, \(B\) là số đơn vị từ sinh mới tối đa của mô hình sinh, tương ứng tham số \texttt{max\_new\_tokens}. Vì vậy, không nên so sánh trực tiếp \(B=40\) của SemAE M1 với \(B=96\) của SemAE M3 hoặc SemAE M4 như thể chúng là cùng một loại ngân sách.
+
+Các giá trị cụ thể của \(T\) và \(B\) không phải là một phần cố định của phương pháp, mà được chọn qua quá trình quét tham số trong Chương~4. Khi quét tham số, cần giữ mẫu số đánh giá cố định để tránh việc một cấu hình trông tốt hơn chỉ vì tạo ít đầu ra hơn.
+
+\begin{table}[tbp]
+\centering
+\caption{Ý nghĩa của $T$ và $B$ trong các biến thể phương pháp~2}
+\label{tab:method2-t-b-meaning}
+\small
+\begin{tabularx}{\textwidth}{l c c L{0.25\textwidth} Y}
+\toprule
+\textbf{Biến thể} & \textbf{$T$} & \textbf{$B$} & \textbf{Loại ngân sách} & \textbf{Diễn giải} \\
+\midrule
+SemAE M1 & -- & \(B_1\) & Số từ trích rút & Ghép câu gốc theo thứ hạng SemAE; không sinh văn bản mới. \\
+SemAE M2 & \(T_2\) & \(B_2\) & \texttt{max\_new\_tokens} & Sinh trừu tượng từ bằng chứng theo khía cạnh, chưa tách cảm xúc. \\
+SemAE M3 & \(T_3\) & \(B_3\) & \texttt{max\_new\_tokens} & Tách cảm xúc bằng từ khóa rồi sinh riêng theo nhóm cảm xúc. \\
+SemAE M4 & \(T_4\) & \(B_4\) & \texttt{max\_new\_tokens} & Tách cảm xúc bằng BERT-ABSA rồi sinh riêng theo nhóm cảm xúc. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Đánh giá và phạm vi diễn giải kết quả}
+\label{subsec:method2-evaluation-scope}
+
+Đánh giá phương pháp~2 được thiết kế thành ba lớp để tránh phụ thuộc vào một chỉ số duy nhất. Lớp thứ nhất là ROUGE-1/2/L trên phần dữ liệu có tóm tắt tham chiếu. Nếu hệ khía cạnh mục tiêu chi tiết hơn hệ tóm tắt tham chiếu, đầu ra có thể được ánh xạ về các nhóm khía cạnh có tham chiếu trước khi tính ROUGE. Các khía cạnh không có tham chiếu tương ứng không nên được đưa vào mẫu số ROUGE. Cách xử lý này giúp điểm ROUGE phản ánh đúng vùng dữ liệu có cơ sở so sánh.
+
+Lớp thứ hai là các chỉ số vận hành lấy trực tiếp từ tệp kết quả. Nhóm này gồm số dòng hợp lệ, tỷ lệ sinh thành công, tỷ lệ dự phòng, tỷ lệ sao chép bằng chứng, số bằng chứng trung bình, tỷ lệ nén và trùng lặp ở các bằng chứng đầu. Các chỉ số này cho biết cách một biến thể tạo ra kết quả, chứ không chỉ kết quả giống tóm tắt tham chiếu đến đâu. Ví dụ, một biến thể có ROUGE cao nhưng tỷ lệ dự phòng quá lớn cần được diễn giải thận trọng, vì chất lượng có thể đến từ việc quay về câu gốc nhiều hơn là từ khả năng sinh trừu tượng.
+
+Lớp thứ ba là bộ chấm bằng mô hình ngôn ngữ lớn (LLM judge). Bộ chấm nhận vào khía cạnh mục tiêu, cảm xúc mục tiêu nếu có, tập bằng chứng và bản tóm tắt, sau đó chấm theo bộ tiêu chí cố định. Các trục đánh giá gồm mức hỗ trợ bằng chứng, đúng khía cạnh, đúng cảm xúc, độ bao phủ, độ cụ thể, độ hữu ích và các cờ lỗi như khẳng định không căn cứ, rò rỉ khía cạnh, rò rỉ cảm xúc hoặc lật cảm xúc. Tỷ lệ vượt chuẩn của bộ chấm LLM không phải là độ chính xác theo nhãn chuẩn; nó là tỷ lệ đầu ra đạt các điều kiện tối thiểu theo bộ tiêu chí đánh giá.
+
+Do dữ liệu hiện tại không có nhãn chuẩn đầy đủ ở cấp câu hoặc cấp vùng văn bản cho mọi khía cạnh--cảm xúc, luận án không báo chính thức các chỉ số như ABSA Macro-F1, Pair-F1 hoặc Quad F1 cho phương pháp~2. Những chỉ số này cần bộ nhãn chuẩn riêng. Việc không suy diễn F1 từ ROUGE hoặc từ bộ chấm LLM là một quyết định phương pháp luận: mỗi nhóm chỉ số chỉ được dùng trong phạm vi mà dữ liệu cho phép.
+
+\subsection{Bản chất, ưu điểm và giới hạn của phương pháp}
+\label{subsec:method2-value-limitations}
+
+Bản chất của phương pháp~2 là quy trình chọn bằng chứng rồi mới tạo tóm tắt. Quy trình này có ba ưu điểm chính. Thứ nhất, bước chọn bằng chứng có thể tái lập vì dựa trên mô hình SemAE, hệ phân loại và ngưỡng \(T\) xác định. Thứ hai, mọi đầu ra đều có thể truy về câu nguồn, giúp phân tích lỗi cụ thể hơn so với tóm tắt trực tiếp. Thứ ba, việc dùng cùng một nguồn bằng chứng cho SemAE M1--SemAE M4 giúp phân tích tác động của từng thành phần: trích rút, sinh trừu tượng, tách cảm xúc bằng từ khóa và tách cảm xúc bằng BERT-ABSA.
+
+Tuy nhiên, phương pháp~2 cũng có giới hạn. Chất lượng phụ thuộc vào hệ phân loại và từ khóa hạt giống. Nếu người dùng diễn đạt một khía cạnh bằng từ ngữ không nằm trong tập từ khóa hạt giống hoặc bằng cấu trúc gián tiếp, câu quan trọng có thể không được đưa vào tập ứng viên. Ngược lại, câu khớp từ khóa bề mặt nhưng không chứa ý kiến rõ ràng vẫn có thể được xếp hạng cao. Đây là rủi ro của mọi quy trình kết hợp từ khóa hạt giống với mô hình biểu diễn.
+
+Một giới hạn khác là lỗi ở bước chọn bằng chứng sẽ truyền sang bước sinh tóm tắt. Nếu SemAE bỏ sót bằng chứng quan trọng, SemAE M2--SemAE M4 không có cơ chế phục hồi thông tin đã mất vì mô hình sinh chỉ được phép dựa trên bằng chứng đầu vào. Cơ chế trung thực bằng chứng giúp giảm ảo giác, nhưng cũng làm rõ điểm nghẽn: tóm tắt trung thực với bằng chứng sai hoặc thiếu vẫn có thể là tóm tắt chưa tốt.
+
+Sự lệch miền giữa tập huấn luyện biểu diễn và tập mục tiêu cũng cần được nhìn nhận. Nếu mô hình học biểu diễn từ một tập nguồn cùng miền nhưng suy luận trên một tập mục tiêu có hệ khía cạnh chi tiết hơn, kết quả không nên được diễn giải như bằng chứng rằng mô hình đã học hoàn hảo mọi khía cạnh của tập mục tiêu. Kết quả cần được hiểu là đánh giá một quy trình chuyển miền có kiểm soát: dùng biểu diễn học từ tập nguồn, dùng hệ phân loại mục tiêu để điều khiển chọn bằng chứng, rồi dùng SemAE M1--SemAE M4 để phân tích cách biểu diễn bằng chứng thành tóm tắt.
+
+Cuối cùng, phương pháp~2 không thay thế phương pháp~1. Hai phương pháp phục vụ hai góc nhìn bổ sung. Phương pháp~1 mạnh ở khả năng xây dựng quy trình xử lý linh hoạt bằng SLM, có lược đồ và có thể mở rộng định dạng đầu ra. Phương pháp~2 mạnh ở khả năng truy vết, tái lập và phân tích tác động của từng thành phần trong chuỗi chọn bằng chứng--tách cảm xúc--sinh tóm tắt. Do đó, trong phạm vi khóa luận, đóng góp không nằm ở việc chọn một phương pháp duy nhất, mà ở việc đặt hai phương pháp cạnh nhau để hiểu rõ hơn bài toán tóm tắt đánh giá theo khía cạnh.
+
+\section{Thiết kế đánh giá}
+
+\begin{figure}[tbp]
+\centering
+\begin{tikzpicture}[node distance=0.8cm and 0.9cm]
+    \node[block, text width=2.6cm] (outputs) {Đầu ra SemAE M1--SemAE M4};
+    \node[block, right=of outputs, text width=2.7cm] (rouge) {ROUGE\\tóm tắt tham chiếu};
+    \node[block, above=of rouge, text width=2.7cm] (judge) {Bộ chấm LLM\\tiêu chí JSON};
+    \node[block, below=of rouge, text width=2.7cm] (auto) {Chỉ số tệp kết quả\\dự phòng, sao chép, nén};
+    \node[block, right=of rouge, text width=3.0cm] (tables) {Bảng kết quả\\so sánh SemAE M1--SemAE M4};
+    \draw[arrow] (outputs) -- (rouge);
+    \draw[arrow] (outputs) |- (judge);
+    \draw[arrow] (outputs) |- (auto);
+    \draw[arrow] (rouge) -- (tables);
+    \draw[arrow] (judge) -| (tables);
+    \draw[arrow] (auto) -| (tables);
+\end{tikzpicture}
+\caption{Luồng đánh giá kết hợp ROUGE, chỉ số tự động và bộ chấm LLM}
+\label{fig:evaluation-flow}
+\end{figure}
+
+Hình~\ref{fig:evaluation-flow} tóm tắt cách đọc kết quả ở Chương~4. ROUGE trả lời câu hỏi đầu ra giống tóm tắt tham chiếu đến mức nào. Chỉ số tệp kết quả trả lời câu hỏi quy trình có sinh được đầu ra ổn định, ngắn gọn và ít dự phòng hay không. Bộ chấm LLM trả lời câu hỏi tóm tắt có được bằng chứng hỗ trợ, đúng khía cạnh và đúng cảm xúc hay không. Ba lớp này cần được đọc cùng nhau, vì không có lớp nào đủ để kết luận toàn bộ chất lượng phương pháp.

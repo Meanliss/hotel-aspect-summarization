@@ -3,62 +3,82 @@ __pycache__/
 *.py[cod]
 *.pyo
 *.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 .venv/
 venv/
 .env
+.env.*
+!.env.example
 
-# Models & training artifacts
-models/
-checkpoints/*
-!checkpoints/space_full_11402x20_stable_resume_e7/
-checkpoints/space_full_11402x20_stable_resume_e7/*
-!checkpoints/space_full_11402x20_stable_resume_e7/space_full_11402x20_stable_resume_e7_20_model.pt
-logs/
-exports/
-downloads/
-*.tar
-*.tar.gz
-!artifacts/space_hasos_full_e20_results.tar.gz
-*.bak_*
-
-# Datasets — keep only seeds, taxonomy, and SentencePiece vocab
-data/amazon/
-data/space/
-data/hasos/hasos_summ.json
-data/hasos/hasos_summ.source.json
-
-# SentencePiece tokenizer required for SPACE checkpoint inference
-data/sentencepiece/*
-!data/sentencepiece/.gitignore
-!data/sentencepiece/space_unigram_32k.model
-!data/sentencepiece/space_unigram_32k.vocab
-
-# Raw CSVs at any level
-*.csv
-
-# Outputs: ignore everything except curated HASOS/SPACE result runs
-outputs/**
-!outputs/hasos_english_only/
-!outputs/hasos_english_only/**
-!outputs/hasos_aspects_run1/
-!outputs/hasos_aspects_run1/**
-!outputs/hasos_aspects_run1_report.md
-!outputs/hasos_aspects_run1_report.json
-!outputs/hasos_aspects_run1_metrics.md
-!outputs/hasos_aspects_run1_metrics.json
-!outputs/space_hasos_full_e20*/
-!outputs/space_hasos_full_e20*/**
-!outputs/space_hasos_full_e20*
-
-# OS / editor cruft
+# Operating system and editor files
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
 
-# LLM judge request cache (kept local for resume/audit)
-reports/metrics/judge_cache/
-reports/metrics/*judge_cache/
+# Local datasets and model artifacts
+data/amazon/
+data/space/
+data/hasos/hasos_summ.json
+data/hasos/hasos_summ.source.json
+*.csv
+*.tsv.tmp
+models/
+checkpoints/
+downloads/
+logs/
+exports/
+*.tar
+*.tar.gz
 
-# Local dev-server logs
-reports/sweep/_web_dev*.log
+# Generated experiment outputs
+outputs/
+artifacts/
+reports/metrics/*.jsonl
+reports/metrics/*judge_cache*/
+reports/metrics/judge_cache*/
+reports/metrics/space_judge_cache*/
+reports/metrics/*failures*.jsonl
+reports/sweep/*.log
+reports/sweep/*.err.log
+reports/sweep/_*.json
+
+# Thesis local build and temporary assets
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.fdb_latexmk
+paper/*.fls
+paper/*.log
+paper/*.out
+paper/*.synctex.gz
+paper/*.toc
+paper/*.lof
+paper/*.lot
+paper/*.zip
+paper/advisor_feedback_backup_*/
+paper/merge_backup_*/
+paper/figure_candidates/
+paper/overleaf_upload/
+paper/render_method2_figure.py
+
+# Local image-generation helpers may contain personal API credentials.
+scripts/generate_thesis_images.py
+
+# Web app local dependencies and builds
+web/node_modules/
+web/.next/
+web/.vercel/
+web/out/
+web/.env.local
+web/.env*.local
+
+# Miscellaneous local backups
+*.bak
+*.bak_*
+*.tmp
+*.swp

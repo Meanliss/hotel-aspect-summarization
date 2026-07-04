@@ -1,43 +1,30 @@
-# Paper Draft
+# Thesis Paper
 
-This folder contains a clean LaTeX rewrite of the thesis report with the second
-method integrated:
+This folder contains the LaTeX source for the graduation thesis report.
 
-- Method 1: LLM/API pipeline already described in the original draft.
-- Method 2: SPACE-trained SemAE inference on HASOS with M1-M4 variants,
-  threshold/token sweeps, ROUGE evaluation, and DeepSeek judge metrics.
+## Main Files
 
-## Files
+| Path | Purpose |
+| --- | --- |
+| `main.tex` | Thesis entry point, preamble, front matter, and chapter includes. |
+| `Chap_1.tex` - `Chap_5.tex` | Main thesis chapters. |
+| `references.bib` | Bibliography database. |
+| `tables/metrics.tex` | Paper-ready metric tables generated from curated reports. |
+| `figures/method2/` | Final Method 2 figures referenced by the report. |
 
-- `main.tex`: full report draft.
-- `overleaf_latest_patched.tex`: latest Overleaf-ready draft with the M1-M4
-  workflow, M1 token-budget sensitivity table, and interpretation guidance.
-- `overleaf_chapter3_5_replacement.tex`: standalone replacement snippet for the
-  method and evaluation chapters.
-- `tables/metrics.tex`: paper-ready tables derived from repository reports.
-- `figures/README.md`: notes for the inline TikZ figures used in `main.tex`.
+Temporary backup folders, candidate image generations, Overleaf upload bundles,
+and LaTeX build products are intentionally ignored by Git.
 
 ## Build
 
-For Overleaf, upload or paste `overleaf_latest_patched.tex` as the working
-`main.tex` file and recompile there.
-
-For local builds, install a LaTeX distribution with Vietnamese support, then run
-one of:
+Install a LaTeX distribution with Vietnamese support, then run:
 
 ```powershell
-cd paper
+pdflatex -interaction=nonstopmode main.tex
+bibtex main
 pdflatex -interaction=nonstopmode main.tex
 pdflatex -interaction=nonstopmode main.tex
 ```
 
-or, if you adapt the preamble to XeLaTeX fonts:
-
-```powershell
-cd paper
-xelatex -interaction=nonstopmode main.tex
-xelatex -interaction=nonstopmode main.tex
-```
-
-The current workspace did not have `pdflatex` or `xelatex` available at creation
-time, so PDF compilation must be done after installing TeX locally.
+If your local environment uses XeLaTeX fonts, adapt the preamble first and run
+the equivalent `xelatex` sequence.

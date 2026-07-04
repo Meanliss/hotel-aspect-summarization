@@ -1,0 +1,71 @@
+\chapter{GIỚI THIỆU TỔNG QUAN}
+
+\section{Bối cảnh và lý do chọn đề tài}
+
+Trong những năm gần đây, đánh giá trực tuyến trở thành một nguồn dữ liệu quan trọng phản ánh trải nghiệm thực tế của khách hàng sau khi sử dụng dịch vụ lưu trú. Một khách sạn có thể nhận hàng trăm đến hàng nghìn đánh giá, trong đó mỗi đánh giá thường đề cập đồng thời nhiều khía cạnh như vị trí, phòng, nhân viên, bữa sáng, tiện nghi, vệ sinh hoặc giá cả. Nếu chỉ đọc điểm sao trung bình, nhà quản lý khó nhận biết nguyên nhân cụ thể tạo nên sự hài lòng hoặc không hài lòng của khách hàng. Bài toán khai thác và tóm tắt đánh giá khách hàng đã được nghiên cứu từ sớm trong hướng khai phá đánh giá (văn bản đánh giá mining)~\cite{hu2004mining}.
+
+Việc phân tích tự động dữ liệu đánh giá khách sạn có ý nghĩa thực tiễn rõ rệt. Hệ thống có thể giúp phát hiện các vấn đề lặp lại, theo dõi thay đổi chất lượng dịch vụ theo thời gian, so sánh các chi nhánh và tạo báo cáo ngắn gọn cho người quản lý. Ở chiều ngược lại, người dùng mới cũng có thể được hỗ trợ bởi các bản tóm tắt tập trung vào những khía cạnh họ quan tâm thay vì phải đọc nhiều đánh giá dài.
+
+Tuy nhiên, dữ liệu đánh giá có nhiều đặc điểm gây khó cho các phương pháp xử lý tự động. Câu đánh giá thường ngắn hoặc thiếu cấu trúc, có cách diễn đạt đa dạng, chứa tiếng lóng, lỗi chính tả hoặc nhiều ý kiến trong cùng một câu. Một đánh giá có thể tích cực về vị trí nhưng tiêu cực về tiếng ồn, hoặc khen nhân viên nhưng phàn nàn về vệ sinh. Do đó, gán một nhãn cảm xúc chung cho toàn bộ đánh giá sẽ làm mất thông tin chi tiết ở cấp khía cạnh, vốn là trọng tâm của các bộ đánh giá chuẩn ABSA như SemEval-2014 Task 4~\cite{pontiki2014semeval}.
+
+Sự xuất hiện của các mô hình ngôn ngữ lớn mở ra một hướng tiếp cận linh hoạt cho bài toán này. Thông qua lời nhắc và lược đồ phù hợp, SLM có thể trích xuất khía cạnh, xác định cảm xúc, chọn bằng chứng và tạo tóm tắt mà không cần huấn luyện từ đầu. Dù vậy, quy trình SLM cần kiểm soát chi phí, độ trễ, lỗi định dạng, khả năng chạy lại và tính nhất quán của kết quả. Đây là lý do báo cáo không chỉ xem xét một quy trình SLM trực tiếp, mà còn bổ sung phương pháp thứ hai dựa trên SemAE để tách rõ bước chọn bằng chứng khỏi bước sinh văn bản.
+
+\section{Mục tiêu nghiên cứu}
+
+Mục tiêu tổng quát của đề tài là xây dựng và đánh giá quy trình phân tích cảm xúc theo khía cạnh và tóm tắt đánh giá khách sạn. Cụ thể, đề tài hướng tới các mục tiêu sau:
+
+\begin{itemize}[leftmargin=1.2cm]
+    \item Chuẩn hóa dữ liệu đánh giá khách sạn thành các đơn vị xử lý phù hợp cho bài toán ABSA và tóm tắt.
+    \item Thiết kế quy trình SLM có lược đồ đầu ra rõ ràng, có kiểm tra định dạng, bộ nhớ đệm và cơ chế xử lý lỗi.
+    \item Triển khai phương pháp SemAE trên dữ liệu HASOS để chọn bằng chứng theo 6 khía cạnh chính và 29 khía cạnh con của miền khách sạn.
+    \item So sánh các biến thể biểu diễn đầu ra gồm trích rút (extractive), trừu tượng (abstractive), tách cảm xúc bằng từ khóa (keyword) và tách cảm xúc bằng BERT-ABSA.
+    \item Thiết kế cơ chế trung thực bằng chứng cho các biến thể sinh nhằm giảm ảo giác mô hình và cải thiện độ tin cậy theo bộ chấm LLM.
+    \item Đánh giá kết quả bằng ROUGE, chỉ số vận hành và bộ chấm LLM theo bộ tiêu chí chấm cố định.
+\end{itemize}
+
+\section{Câu hỏi nghiên cứu}
+
+Từ mục tiêu trên, khóa luận tập trung trả lời các câu hỏi nghiên cứu sau:
+
+\begin{itemize}[leftmargin=1.2cm]
+    \item Làm thế nào để thiết kế một quy trình phân tích cảm xúc theo khía cạnh cho dữ liệu đánh giá khách sạn có đầu ra rõ ràng, có thể kiểm tra và có khả năng truy vết về bằng chứng gốc?
+    \item Việc tách riêng bước chọn bằng chứng bằng SemAE khỏi bước sinh tóm tắt có giúp cải thiện tính tái lập và khả năng kiểm soát của hệ thống so với quy trình SLM trực tiếp hay không?
+    \item Các biến thể biểu diễn đầu ra SemAE M1--SemAE M4 khác nhau như thế nào về chất lượng tóm tắt, độ trung thực với bằng chứng, chi phí suy luận và khả năng vận hành?
+    \item Bộ tiêu chí đánh giá kết hợp ROUGE, chỉ số vận hành và LLM-as-a-judge có phản ánh được các khía cạnh quan trọng của hệ thống ABSA Summary trong điều kiện không có đầy đủ nhãn chuẩn hay không?
+\end{itemize}
+
+\section{Đối tượng và phạm vi nghiên cứu}
+
+\subsection{Đối tượng nghiên cứu}
+
+Đối tượng nghiên cứu của khóa luận là bài toán phân tích cảm xúc theo khía cạnh và tóm tắt đánh giá khách sạn từ dữ liệu văn bản người dùng. Trọng tâm của đề tài nằm ở ba thành phần: nhận diện khía cạnh và cảm xúc, lựa chọn bằng chứng có liên quan, và sinh hoặc tổ chức bản tóm tắt có khả năng đối chiếu với phản hồi gốc.
+
+\subsection{Phạm vi nghiên cứu}
+
+Phạm vi nghiên cứu tập trung vào dữ liệu đánh giá khách sạn dạng văn bản. Báo cáo không huấn luyện SLM từ đầu, không xây dựng hạ tầng phân tán quy mô sản xuất và không báo các chỉ số yêu cầu nhãn chuẩn không tồn tại trong dữ liệu hiện có, chẳng hạn ABSA Macro-F1 ở cấp câu hoặc Quad F1 ở cấp vùng văn bản.
+
+\section{Phương pháp tiếp cận và đóng góp của đề tài}
+
+Đề tài được tổ chức quanh hai phương pháp. Phương pháp thứ nhất dùng SLM để phân tích đánh giá theo lời nhắc và lược đồ có cấu trúc. Phương pháp này phù hợp khi cần linh hoạt về định dạng đầu ra và muốn tận dụng năng lực suy luận ngôn ngữ của mô hình lớn. Phương pháp thứ hai dùng SemAE để xếp hạng câu theo khía cạnh, sau đó tạo các bản tóm tắt ở nhiều dạng khác nhau. Phương pháp này giúp quá trình chọn bằng chứng có khả năng tái lập tốt hơn, đồng thời tạo điều kiện phân tích ảnh hưởng của việc tách cảm xúc và ngân sách token.
+
+Đóng góp chính của đề tài gồm:
+
+\begin{itemize}[leftmargin=1.2cm]
+    \item Một thiết kế quy trình hai nhánh cho bài toán phân tích và tóm tắt theo khía cạnh trong miền khách sạn.
+    \item Một quy trình chuyển SemAE từ dữ liệu huấn luyện SPACE sang suy luận trên HASOS với hệ phân loại 6 khía cạnh chính được phân rã thành 29 khía cạnh con.
+    \item Một bộ biến thể SemAE M1--SemAE M4 để tách riêng ảnh hưởng của chọn bằng chứng, sinh tóm tắt và tách cảm xúc.
+    \item Một cơ chế trung thực bằng chứng gồm năm thành phần (giới hạn bằng chứng đầu vào, lời nhắc ràng buộc, bộ lọc câu không được hỗ trợ, kiểm tra nhất quán cảm xúc và dự phòng khử trùng lặp) giúp các biến thể sinh giảm ảo giác mô hình và vượt mốc đối chứng nội bộ SemAE M1 theo bộ chấm LLM.
+    \item Một bộ đánh giá kết hợp ROUGE, quét tham số và bộ chấm LLM, có ghi rõ chỉ số nào đủ điều kiện báo cáo chính thức.
+\end{itemize}
+
+\section{Bố cục khóa luận}
+
+Nội dung khóa luận được tổ chức thành năm chương:
+
+\begin{itemize}[leftmargin=1.2cm]
+    \item Chương 1 giới thiệu bối cảnh nghiên cứu, lý do chọn đề tài, mục tiêu, câu hỏi nghiên cứu, đối tượng, phạm vi và các đóng góp chính của khóa luận.
+    \item Chương 2 trình bày cơ sở lý thuyết liên quan đến xử lý ngôn ngữ tự nhiên, phân tích cảm xúc theo khía cạnh, Transformer, mô hình ngôn ngữ lớn, tóm tắt văn bản, chọn bằng chứng và đánh giá hệ thống NLP.
+    \item Chương 3 mô tả phương pháp đề xuất, bao gồm quy trình UASum có kiểm soát dựa trên UOS và ABSA, cùng phương pháp SemAE dựa trên biểu diễn ngữ nghĩa và lựa chọn bằng chứng.
+    \item Chương 4 trình bày thiết lập thực nghiệm, dữ liệu, các biến thể đánh giá, kết quả định lượng, đánh giá bằng LLM và phân tích tổng hợp.
+    \item Chương 5 tổng kết kết quả đạt được, nêu các hạn chế còn tồn tại và định hướng phát triển tiếp theo.
+\end{itemize}

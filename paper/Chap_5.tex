@@ -1,0 +1,124 @@
+\chapter{KẾT LUẬN VÀ HƯỚNG PHÁT TRIỂN}
+\label{chap:ket-luan-huong-phat-trien}
+
+Chương này tổng kết các kết quả chính của khóa luận, làm rõ ý nghĩa của nghiên cứu, trình bày các hạn chế còn tồn tại và đề xuất hướng phát triển tiếp theo. Khác với Chương~4, nơi trọng tâm là phân tích kết quả thực nghiệm, Chương~5 đặt các kết quả đó vào bối cảnh rộng hơn của bài toán phân tích cảm xúc theo khía cạnh và tóm tắt đánh giá khách sạn. Mục tiêu của chương là trả lời ba câu hỏi: khóa luận đã đạt được gì, kết quả có ý nghĩa gì đối với bài toán nghiên cứu, và hệ thống cần được cải thiện theo hướng nào để tiến gần hơn đến một quy trình có khả năng triển khai thực tế.
+
+\section{Kết luận}
+\label{sec:chap5-ket-luan}
+
+Khóa luận đã nghiên cứu bài toán phân tích cảm xúc theo khía cạnh và tóm tắt đánh giá khách sạn theo hai hướng tiếp cận bổ trợ. Hướng thứ nhất xây dựng một quy trình dựa trên SLM, trong đó mô hình ngôn ngữ được dùng để trích xuất khía cạnh, cảm xúc, bằng chứng và bản tóm tắt theo lược đồ đầu ra có cấu trúc. Hướng thứ hai sử dụng SemAE để chọn bằng chứng theo khía cạnh, sau đó triển khai các biến thể SemAE M1--SemAE M4 nhằm phân tích ảnh hưởng của trích rút, sinh trừu tượng, tách cảm xúc bằng từ khóa và tách cảm xúc bằng BERT-ABSA.
+
+Kết quả thực nghiệm cho thấy hai hướng tiếp cận không nên được xem như hai phương án loại trừ nhau. Phương pháp~1 phù hợp để chứng minh khả năng xây dựng một quy trình đầu cuối có truy vết, có kiểm tra định dạng và có thể mở rộng theo quy mô dữ liệu. Trong khi đó, phương pháp~2 cho phép cô lập rõ hơn tác động của bước chọn bằng chứng, tách cảm xúc và kiểm soát độ trung thực trong bài toán tóm tắt theo khía cạnh. Cách kết hợp hai hướng này giúp khóa luận vừa có góc nhìn hệ thống, vừa có góc nhìn thực nghiệm để phân tích thành phần.
+
+Trên tập HASOS, các biến thể sinh SemAE M3 và SemAE M4, khi được trang bị cơ chế trung thực bằng chứng, đã vượt mốc đối chứng nội bộ SemAE M1 theo tỷ lệ vượt chuẩn của bộ chấm LLM. Cụ thể, SemAE M4 đạt \num{0.787}, SemAE M3 đạt \num{0.734}, trong khi SemAE M1 đạt \num{0.720}. Kết quả này cho thấy tóm tắt trừu tượng không nhất thiết kém tin cậy hơn tóm tắt trích rút nếu hệ thống có cơ chế kiểm soát bằng chứng, kiểm tra cảm xúc và xử lý dự phòng phù hợp.
+
+Về chỉ số ROUGE, SemAE M3 đạt ROUGE-1 cao nhất trên HASOS với giá trị \num{0.262}. Điều này cho thấy biến thể tách cảm xúc bằng từ khóa có lợi thế nhất định khi so sánh với tóm tắt tham chiếu ở mức trùng khớp bề mặt. Tuy nhiên, kết quả từ bộ chấm LLM lại cho thấy SemAE M4 mạnh hơn về độ đúng khía cạnh, đúng cảm xúc và độ trung thực với bằng chứng. Sự khác biệt này củng cố nhận định rằng hệ thống tóm tắt đánh giá không nên được đánh giá bằng một nhóm chỉ số duy nhất. ROUGE hữu ích để đo mức gần với tham chiếu, nhưng chưa đủ để phản ánh đầy đủ độ trung thực, độ hữu ích và mức hỗ trợ bằng chứng.
+
+Một kết luận quan trọng khác là cơ chế trung thực bằng chứng đóng vai trò trung tâm trong các biến thể sinh. Cơ chế này gồm năm thành phần: giới hạn bằng chứng đầu vào, lời nhắc ràng buộc, bộ lọc câu không được hỗ trợ, kiểm tra nhất quán cảm xúc và dự phòng khử trùng lặp. Khi các thành phần này được kết hợp, hệ thống có khả năng giảm ảo giác, giảm lỗi lật cảm xúc và tạo ra bản tóm tắt bám sát bằng chứng hơn. Đây là một điểm quan trọng đối với các hệ thống AI Engineering: chất lượng đầu ra không chỉ đến từ mô hình nền, mà còn đến từ thiết kế quy trình, ràng buộc dữ liệu và cơ chế kiểm soát sau sinh.
+
+\section{Ý nghĩa của nghiên cứu}
+\label{sec:chap5-y-nghia}
+
+\subsection{Ý nghĩa học thuật}
+
+Về mặt học thuật, khóa luận đóng góp một cách tiếp cận có cấu trúc cho bài toán tóm tắt đánh giá theo khía cạnh. Thay vì xem tóm tắt là bài toán sinh văn bản độc lập, báo cáo đặt bản tóm tắt trong quan hệ với khía cạnh, cảm xúc và bằng chứng nguồn. Cách đặt vấn đề này phù hợp với đặc thù của dữ liệu đánh giá khách sạn, nơi một văn bản đánh giá có thể đồng thời chứa nhiều ý kiến trái chiều về nhiều khía cạnh khác nhau.
+
+Khóa luận cũng cho thấy sự cần thiết của đánh giá đa chiều trong các bài toán tóm tắt ý kiến. Nếu chỉ dùng ROUGE, hệ thống có thể được ưu tiên vì gần tham chiếu về mặt từ vựng nhưng chưa chắc trung thực với bằng chứng. Ngược lại, nếu chỉ dùng bộ chấm LLM, kết quả có thể phụ thuộc vào rubric và mô hình chấm. Do đó, cách kết hợp ROUGE, chỉ số bằng chứng, chỉ số lỗi và bộ chấm LLM tạo ra một khung đánh giá cân bằng hơn cho bài toán tóm tắt đánh giá.
+
+\subsection{Ý nghĩa kỹ thuật}
+
+Về mặt kỹ thuật, khóa luận nhấn mạnh rằng một hệ thống dùng mô hình ngôn ngữ cần được thiết kế như một quy trình có kiểm soát. Các thành phần như structured output, JSON schema, cache, checkpoint, phương án dự phòng, chọn bằng chứng và kiểm tra tính nhất quán cảm xúc không phải là chi tiết phụ trợ, mà là điều kiện để hệ thống có thể chạy lại, kiểm tra lỗi và phân tích chất lượng đầu ra.
+
+Kết quả của phương pháp~2 cũng cho thấy lợi ích của việc tách bước chọn bằng chứng khỏi bước sinh văn bản. Khi bằng chứng được chọn và lưu lại rõ ràng, hệ thống có thể kiểm tra vì sao một bản tóm tắt được sinh ra, câu nào hỗ trợ nhận định nào, và lỗi phát sinh ở bước chọn bằng chứng hay bước sinh ngôn ngữ. Đây là một đặc điểm quan trọng nếu hệ thống cần được triển khai trong bối cảnh ra quyết định dựa trên dữ liệu người dùng.
+
+\subsection{Ý nghĩa thực tiễn}
+
+Về mặt thực tiễn, khóa luận hướng tới nhu cầu tổng hợp phản hồi khách sạn theo từng nhóm khía cạnh. Thay vì chỉ đọc điểm sao trung bình hoặc từng văn bản đánh giá riêng lẻ, người quản lý có thể xem nhanh các vấn đề nổi bật theo nhóm như vị trí, phòng, dịch vụ, tiện nghi, vệ sinh hoặc trải nghiệm tổng thể. Nếu được hoàn thiện thêm, hệ thống có thể hỗ trợ phát hiện vấn đề lặp lại, theo dõi thay đổi chất lượng dịch vụ và tạo báo cáo ngắn gọn cho hoạt động quản trị khách sạn.
+
+Đối với người dùng cuối, tóm tắt theo khía cạnh cũng có thể giúp giảm chi phí đọc văn bản đánh giá. Người dùng không cần đọc hàng trăm phản hồi mà vẫn có thể nắm các điểm mạnh, điểm yếu và bằng chứng liên quan đến khía cạnh họ quan tâm. Điều này đặc biệt hữu ích trong miền khách sạn, nơi quyết định đặt phòng thường phụ thuộc vào nhiều yếu tố đồng thời.
+
+\section{Hạn chế của nghiên cứu}
+\label{sec:chap5-han-che}
+
+Mặc dù khóa luận đã xây dựng được hai hướng tiếp cận cho bài toán phân tích cảm xúc theo khía cạnh và tóm tắt đánh giá khách sạn, nghiên cứu vẫn còn một số hạn chế cần được nhìn nhận rõ. Các hạn chế này không chỉ liên quan đến kết quả thực nghiệm, mà còn liên quan đến dữ liệu, nhãn chuẩn, phương pháp đánh giá, khả năng vận hành và mức độ tổng quát của hệ thống.
+
+\subsection{Hạn chế về dữ liệu và nhãn chuẩn}
+
+Hạn chế quan trọng nhất nằm ở dữ liệu gán nhãn. Báo cáo không trình bày ABSA Macro-F1, Pair-F1 hoặc Quad F1 như các chỉ số chính thức vì dữ liệu hiện tại chưa có nhãn chuẩn khía cạnh--cảm xúc đầy đủ ở cấp câu hoặc vùng văn bản. Nếu dùng chính nhãn do hệ thống sinh ra để chấm lại hệ thống, kết quả sẽ không phản ánh đúng năng lực mô hình và có nguy cơ tạo đánh giá vòng lặp. Vì vậy, các kết quả liên quan đến ABSA trong báo cáo cần được hiểu trong phạm vi dữ liệu và nhãn hiện có.
+
+Bên cạnh đó, HASOS và SPACE khác nhau về cấu trúc dữ liệu, hệ phân loại khía cạnh và cách tổ chức tóm tắt tham chiếu. SPACE có hệ khía cạnh tương đối gọn hơn, trong khi HASOS dùng hệ phân loại chi tiết hơn cho miền khách sạn. Sự khác biệt này làm cho việc chuyển mô hình, so sánh biến thể và diễn giải kết quả cần được thực hiện thận trọng. Một cấu hình hoạt động tốt trên một hệ phân loại chưa chắc giữ nguyên hiệu quả khi số lượng khía cạnh tăng hoặc cách phân bố văn bản đánh giá thay đổi.
+
+Một điểm cần nhấn mạnh là tập SPACE gốc không sử dụng cùng hệ aspect với hệ thống được thiết kế trong khóa luận. Do đó, khi dùng SPACE để huấn luyện, đối chiếu hoặc phân tích phương pháp SemAE, hệ thống không thể giả định rằng các aspect trong SPACE tương ứng trực tiếp với các aspect trong HASOS hoặc hệ thống phân loại nội bộ. Quá trình này cần bước nghiên cứu, ánh xạ và trong một số trường hợp phải gán lại aspect để bảo đảm rằng bằng chứng, tóm tắt tham chiếu và nhóm khía cạnh được so sánh trong cùng một không gian ý nghĩa. Nếu bước ánh xạ aspect chưa đủ chặt chẽ, kết quả đánh giá có thể bị ảnh hưởng bởi sai khác hệ thống phân loại thay vì phản ánh thuần túy chất lượng của mô hình.
+
+Ngoài ra, dữ liệu đánh giá khách sạn có tính chủ quan cao. Cùng một nhận xét như ``phòng hơi nhỏ'' có thể được xem là tiêu cực với nhóm khách này nhưng chấp nhận được với nhóm khách khác nếu giá phòng thấp hoặc vị trí thuận lợi. Báo cáo hiện chưa mô hình hóa đầy đủ các yếu tố ngữ cảnh như loại khách, mục đích chuyến đi, mức giá, thời điểm lưu trú hoặc tiêu chuẩn kỳ vọng của người đánh giá. Điều này giới hạn khả năng diễn giải cảm xúc ở các trường hợp nhập nhằng.
+
+Dữ liệu đánh giá người dùng (user-generated content, UGC) cũng chứa nhiều nhiễu ngôn ngữ như viết tắt, sai chính tả, trộn mã Việt--Anh, câu thiếu chủ ngữ, cảm thán, mỉa mai hoặc cách diễn đạt phi chuẩn. Các bước làm sạch, chuẩn hóa và phân đoạn câu giúp quy trình ổn định hơn, nhưng đồng thời có thể làm mất một phần sắc thái cảm xúc gốc. Ví dụ, các biểu thức cảm thán, dấu câu lặp, từ nhấn mạnh hoặc cách viết kéo dài âm có thể mang tín hiệu cảm xúc, nhưng dễ bị loại bỏ hoặc làm phẳng trong tiền xử lý. Vì vậy, đầu vào sau chuẩn hóa có thể sạch hơn về mặt kỹ thuật nhưng nghèo hơn về mặt ngữ dụng.
+
+\subsection{Hạn chế về phương pháp và mô hình}
+
+Phương pháp~1 dựa trên SLM có ưu điểm về tính linh hoạt và khả năng sinh đầu ra có cấu trúc, nhưng vẫn phụ thuộc vào chất lượng lời nhắc, lược đồ JSON và khả năng tuân thủ định dạng của mô hình. Trong các trường hợp văn bản đánh giá dài, nhiều khía cạnh hoặc chứa ý kiến trái chiều, mô hình có thể bỏ sót một số chi tiết, trộn nhiều khía cạnh trong cùng một đầu ra hoặc sinh bằng chứng chưa đủ cụ thể. Dù quy trình có cơ chế kiểm tra định dạng và dự phòng, các cơ chế này chưa loại bỏ hoàn toàn lỗi ngữ nghĩa.
+
+Ngoài ra, các bước gọi SLM có chi phí vận hành cao hơn so với các bước xử lý thuần cục bộ. Hệ thống có thể gặp các lỗi thực tế như timeout, lỗi trả về sai định dạng, lỗi JSON không hợp lệ hoặc lỗi suy luận khi lời nhắc quá dài. Một số lớp khía cạnh hiếm, chẳng hạn các khía cạnh xuất hiện rất ít trong dữ liệu, cũng có thể được nhận diện kém ổn định hơn vì mô hình có ít ví dụ hỗ trợ trong ngữ cảnh suy luận. Điều này cho thấy phương pháp~1 cần thêm cơ chế giám sát lỗi, thống kê theo từng lớp khía cạnh và chiến lược retry/phương án dự phòng rõ ràng hơn nếu triển khai ở quy mô lớn.
+
+Phương pháp~2 dùng SemAE để chọn bằng chứng giúp tăng khả năng tái lập, nhưng hiệu quả phụ thuộc vào chất lượng biểu diễn câu, vector nguyên mẫu và hệ từ khóa hạt giống. Nếu một khía cạnh được diễn đạt bằng từ ngữ khác xa seed words hoặc bằng cấu trúc câu gián tiếp, SemAE có thể xếp hạng thấp các câu thực sự quan trọng. Ngược lại, một số câu có độ tương đồng bề mặt cao với khía cạnh nhưng không chứa ý kiến đủ rõ vẫn có thể được chọn làm bằng chứng.
+
+Các biến thể SemAE M1--SemAE M4 cũng có những giới hạn riêng. SemAE M1 ít rủi ro ảo giác vì giữ nguyên câu gốc, nhưng có thể dài, lặp ý hoặc thiếu khả năng tổng hợp. SemAE M2 sinh trừu tượng trực tiếp từ bằng chứng nhưng dễ bị pha trộn cảm xúc khi bằng chứng chứa cả ý tích cực và tiêu cực. SemAE M3 tách cảm xúc bằng luật hoặc từ khóa nên dễ gặp lỗi với phủ định, mỉa mai hoặc diễn đạt gián tiếp. SemAE M4 cải thiện bằng BERT-ABSA, nhưng vẫn cần nhãn chuẩn chi tiết hơn để xác định lỗi còn lại đến từ bước tách cảm xúc, chọn bằng chứng hay sinh tóm tắt.
+
+Đối với các biến thể có kiểm soát cảm xúc như SemAE M3 và SemAE M4, tỷ lệ phải dùng cơ chế dự phòng có thể cao hơn vì hệ thống chuyển sang phương án dự phòng khi phát hiện lật cảm xúc, đầu ra không đủ cụ thể hoặc tóm tắt quá chung chung. Riêng SemAE M4 có thể có tỷ lệ sao chép nội dung cao hơn một số biến thể sinh khác trong các trường hợp mô hình sinh không đạt điều kiện kiểm soát, vì cơ chế dự phòng thường ghép trực tiếp các câu bằng chứng để bảo toàn độ trung thực. Điều này phản ánh một đánh đổi quan trọng: tăng kiểm soát độ trung thực có thể làm giảm mức độ trừu tượng và tự nhiên của bản tóm tắt.
+
+\subsection{Hạn chế về kiến trúc quy trình và lỗi dây chuyền}
+
+Kiến trúc extract-then-abstract giúp giảm ảo giác vì mô hình sinh bị ràng buộc bởi tập bằng chứng đầu vào, nhưng kiến trúc này cũng tạo ra một điểm nghẽn nghiêm trọng: mọi lỗi ở bước chọn bằng chứng sẽ truyền trực tiếp sang bước sinh tóm tắt. Nếu SemAE bỏ sót bằng chứng quan trọng, xếp hạng sai câu do nhiễu ngôn ngữ hoặc chọn các câu chỉ tương đồng bề mặt nhưng không chứa ý kiến thực sự, mô hình sinh phía sau không có cơ chế khôi phục thông tin đã mất. Khi đó, bản tóm tắt có thể mạch lạc về ngôn ngữ nhưng thiếu ý quan trọng, làm giảm coverage.
+
+Vấn đề này đặc biệt nghiêm trọng trong các trường hợp bằng chứng phân tán qua nhiều câu hoặc khi một ý kiến chỉ được hiểu đầy đủ bằng cách kết hợp nhiều câu liên tiếp. Nếu quy trình cắt nhỏ văn bản đánh giá thành các đơn vị câu độc lập, quan hệ liên câu có thể bị mất. Khi đó, câu được chọn làm bằng chứng có thể thiếu tiền đề, thiếu đối tượng được nhắc đến hoặc thiếu cực tính cảm xúc rõ ràng. Đây là giới hạn của cách xử lý dựa trên câu khi dữ liệu người dùng thường viết theo mạch tự nhiên, không theo cấu trúc câu đơn ý.
+
+Ngoài ra, quy trình hiện tại gồm nhiều module nối tiếp: chuẩn hóa dữ liệu, phân đoạn, chọn bằng chứng, tách cảm xúc, sinh tóm tắt, kiểm tra trung thực và phương án dự phòng. Mỗi module có thể giảm lỗi cục bộ, nhưng toàn bộ hệ thống vẫn có nguy cơ tích lũy lỗi. Một lỗi nhỏ ở bước đầu, chẳng hạn phân đoạn sai hoặc gán aspect sai, có thể làm bước chọn bằng chứng sai, sau đó kéo theo tóm tắt sai và bộ chấm đánh giá sai nguyên nhân. Báo cáo hiện chưa có cơ chế phân rã lỗi cuối-cuối để định lượng tỷ lệ lỗi đến từ từng module.
+
+Độ cứng nhắc của biến thể dựa trên từ khóa cũng là một hạn chế rõ rệt. Trong SemAE M3, keyword-based split khó xử lý các trường hợp phủ định kép, mỉa mai, ý kiến gián tiếp hoặc implicit aspects, nơi người dùng không nhắc trực tiếp từ khóa khía cạnh. Ví dụ, một câu như ``ngủ được đúng ba tiếng vì bên ngoài ồn cả đêm'' có thể liên quan đến khía cạnh tiếng ồn hoặc chất lượng phòng, nhưng không nhất thiết chứa từ khóa trùng với hệ thống phân loại. Các trường hợp này làm giảm hiệu quả của luật tách cảm xúc và có thể dẫn đến thiếu bằng chứng quan trọng.
+
+\subsection{Hạn chế về đánh giá tự động}
+
+Bộ chấm LLM giúp đánh giá các tiêu chí khó đo bằng ROUGE, chẳng hạn đúng khía cạnh, đúng cảm xúc, độ trung thực, độ bao phủ và tính hữu ích. Tuy nhiên, bộ chấm này vẫn phụ thuộc vào rubric, mô hình chấm và cách thiết kế lời nhắc đánh giá. Do đó, chỉ số dựa trên LLM-as-a-judge không thể thay thế hoàn toàn đánh giá thủ công của con người.
+
+Một rủi ro khác là bộ chấm có thể ưu tiên các bản tóm tắt có văn phong mạch lạc hoặc diễn đạt tự nhiên, ngay cả khi một số chi tiết chưa được hỗ trợ đầy đủ bởi bằng chứng. Ngược lại, tóm tắt trích rút có thể trung thực hơn nhưng kém mượt hơn về ngôn ngữ, khiến việc so sánh giữa trích rút và sinh trừu tượng trở nên nhạy cảm với rubric. Báo cáo đã sử dụng các cờ lỗi như khẳng định không căn cứ và lật cảm xúc để giảm rủi ro này, nhưng vẫn cần kiểm định thêm bằng đánh giá thủ công.
+
+Các chỉ số ROUGE cũng có giới hạn cố hữu trong bài toán tóm tắt đánh giá. Một bản tóm tắt có thể diễn đạt đúng ý bằng từ ngữ khác với tham chiếu nhưng vẫn nhận điểm ROUGE thấp. Ngược lại, một bản tóm tắt có độ trùng khớp từ vựng cao chưa chắc trung thực với bằng chứng hoặc đúng cảm xúc. Vì vậy, kết quả ROUGE trong báo cáo nên được xem là một lát cắt về độ gần tham chiếu, không phải thước đo đầy đủ của chất lượng tóm tắt.
+
+Nói cách khác, ROUGE đo mạnh mức độ xuất hiện lại của từ, cụm từ hoặc chuỗi con trong tóm tắt tham chiếu hơn là đo trực tiếp mức độ đúng ý, đúng bằng chứng hoặc đúng cảm xúc. Với bài toán tóm tắt đánh giá khách sạn, hai bản tóm tắt có thể cùng phản ánh đúng một phàn nàn về dịch vụ nhưng dùng cách diễn đạt khác nhau; khi đó ROUGE có thể đánh giá thấp một đầu ra vẫn hữu ích về mặt ngữ nghĩa. Đây là lý do báo cáo cần đặt ROUGE bên cạnh các chỉ số về bằng chứng, độ trung thực và đánh giá bằng LLM thay vì dùng ROUGE như chỉ số quyết định duy nhất.
+
+Bên cạnh đó, LLM-as-a-judge có thể phát sinh các thiên lệch hệ thống. Bộ chấm có thể ưu tiên bằng chứng xuất hiện ở đầu đầu vào (position bias), ưu tiên bản tóm tắt dài và nhiều chi tiết hơn (length bias), hoặc ưu tiên văn phong mạch lạc hơn ngay cả khi thông tin chưa chắc được hỗ trợ đầy đủ. Báo cáo hiện chưa có thí nghiệm đảo thứ tự bằng chứng, chuẩn hóa độ dài tóm tắt hoặc so sánh nhiều mô hình chấm để bóc tách các thiên lệch này khỏi điểm số cuối cùng.
+
+Một hạn chế khác là bộ chấm LLM có thể bị ảnh hưởng bởi chính cách trình bày bằng chứng trong lời nhắc. Nếu bằng chứng được đưa vào theo thứ tự đã xếp hạng bởi SemAE, bộ chấm có thể vô tình tin tưởng hơn các câu đầu tiên. Nếu lời nhắc đánh giá yêu cầu mô hình tìm lỗi quá mạnh, bộ chấm có thể trở nên khắt khe hơn với bản tóm tắt sinh; ngược lại, nếu rubric ưu tiên tính hữu ích, bộ chấm có thể chấm cao các bản tóm tắt diễn đạt tốt nhưng có mức hỗ trợ bằng chứng chưa tối ưu. Do đó, điểm LLM judge nên được xem là tín hiệu đánh giá có kiểm soát, không phải chân lý tuyệt đối.
+
+\subsection{Hạn chế về vận hành và khả năng triển khai}
+
+Báo cáo đã đề cập đến các chỉ số vận hành như độ trễ p95, throughput, tỷ lệ retry, tỷ lệ cache hit, phương án dự phòng rate và chi phí suy luận. Tuy nhiên, các chỉ số này chưa được đo đầy đủ trong một môi trường triển khai ổn định với tải thực tế. Do đó, nghiên cứu mới chứng minh được thiết kế quy trình và xu hướng vận hành, chưa đủ để kết luận hệ thống đã sẵn sàng cho môi trường sản xuất.
+
+Phạm vi khóa luận cũng không bao gồm việc huấn luyện SLM từ đầu hoặc xây dựng hạ tầng phân tán để phục vụ ở quy mô sản xuất. Các thí nghiệm chủ yếu tập trung vào thiết kế quy trình, kiểm soát đầu ra, chọn bằng chứng và đánh giá chất lượng. Vì vậy, báo cáo chưa giải quyết đầy đủ các vấn đề của một hệ thống production-grade như cân bằng tải, autoscaling, giám sát dịch vụ, hàng đợi bất đồng bộ, phục hồi sau lỗi hạ tầng hoặc quản trị chi phí theo lưu lượng thực tế.
+
+Ngoài ra, các tối ưu suy luận như KV Cache, lượng tử hóa, batching hoặc xử lý bất đồng bộ mới được trình bày ở mức nền tảng và định hướng kỹ thuật. Báo cáo chưa thực hiện so sánh định lượng giữa các cấu hình suy luận, chẳng hạn FP16 so với 8-bit/4-bit, có cache so với không cache, hoặc batch nhỏ so với batch lớn. Đây là khoảng trống quan trọng nếu hệ thống cần được tối ưu theo chi phí, độ trễ và tài nguyên phần cứng.
+
+Một hạn chế thực tế khác là quy trình hiện vẫn phụ thuộc vào nhiều bước nối tiếp. Khi một bước trước đó tạo đầu ra sai hoặc thiếu, các bước sau có thể khuếch đại lỗi, đặc biệt trong các chuỗi xử lý gồm trích xuất khía cạnh, chọn bằng chứng, tách cảm xúc và sinh tóm tắt. Báo cáo đã có cơ chế kiểm tra và phương án dự phòng, nhưng chưa có mô hình giám sát toàn cục để phát hiện lỗi tích lũy qua nhiều bước.
+
+\subsection{Hạn chế về phạm vi miền và khả năng tổng quát}
+
+Phạm vi nghiên cứu tập trung vào đánh giá khách sạn. Các khía cạnh như phòng, vị trí, dịch vụ, tiện nghi hoặc vệ sinh có đặc thù riêng, khác với các miền như nhà hàng, thương mại điện tử, giáo dục hoặc chăm sóc sức khỏe. Do đó, chưa thể khẳng định quy trình hiện tại sẽ giữ nguyên hiệu quả khi chuyển sang miền dữ liệu khác.
+
+Khi mở rộng sang miền mới, hệ thống cần xây dựng lại hệ thống phân loại, seed words, tiêu chí bằng chứng và có thể cả lời nhắc. Những thành phần này ảnh hưởng trực tiếp đến chất lượng chọn bằng chứng và sinh tóm tắt. Vì vậy, khả năng tổng quát của phương pháp cần được kiểm tra bằng thí nghiệm đa miền thay vì suy luận trực tiếp từ kết quả trên HASOS.
+
+Hạn chế chuyển giao miền cũng xuất hiện ngay trong phạm vi khách sạn khi dùng SPACE và HASOS. SemAE được huấn luyện hoặc đối chiếu trên SPACE nhưng suy luận trên HASOS, trong khi hai tập này khác nhau về văn phong, độ dài văn bản đánh giá, cách định nghĩa aspect và mức chi tiết của hệ thống phân loại. SPACE có các nhóm khía cạnh khái quát hơn, còn HASOS phân rã thành nhiều khía cạnh chi tiết hơn. Sự lệch phân phối này có thể làm các prototype học được kém sắc nét khi áp dụng sang HASOS, đặc biệt với các khía cạnh con có ít mẫu hoặc có cách diễn đạt khác với dữ liệu huấn luyện.
+
+Việc phụ thuộc vào hệ thống phân loại và seed words thủ công cũng làm tăng chi phí chuyển giao sang miền mới. Nếu chuyển từ khách sạn sang nhà hàng, sản phẩm điện tử hoặc dịch vụ y tế, hệ thống không chỉ cần thay danh sách aspect mà còn phải thiết kế lại cách gom nhóm aspect, từ khóa hạt giống, tiêu chí bằng chứng và lời nhắc đánh giá. Đây là chi phí tri thức chuyên gia đáng kể, làm cho quy trình chưa phải là một hệ thống có thể mở rộng miền hoàn toàn tự động.
+
+\subsection{Hạn chế về đánh giá người dùng cuối}
+
+Khóa luận tập trung vào đánh giá định lượng và đánh giá bằng bộ chấm tự động, nhưng chưa thực hiện đánh giá với người dùng cuối như quản lý khách sạn, khách du lịch hoặc người vận hành nền tảng văn bản đánh giá. Do đó, báo cáo chưa đo được mức độ hữu ích thực sự của bản tóm tắt trong các tình huống sử dụng cụ thể, chẳng hạn phát hiện vấn đề dịch vụ, so sánh khách sạn hoặc hỗ trợ ra quyết định đặt phòng.
+
+Một hệ thống tóm tắt đánh giá chỉ có giá trị thực tiễn khi đầu ra giúp người dùng tiết kiệm thời gian, ra quyết định tốt hơn hoặc phát hiện vấn đề nhanh hơn so với đọc văn bản đánh giá thủ công. Đây là một khía cạnh quan trọng nhưng chưa được kiểm chứng đầy đủ trong phạm vi khóa luận.
+\section*{Tóm tắt chương 5}
+\addcontentsline{toc}{section}{Tóm tắt chương 5}
+\label{sec:chap5-tom-tat}
+
+Chương này đã tổng kết các đóng góp chính của khóa luận, bao gồm thiết kế quy trình SLM có kiểm soát, phương pháp chọn bằng chứng bằng SemAE, các biến thể SemAE M1--SemAE M4 và cơ chế trung thực bằng chứng cho tóm tắt sinh. Kết quả cho thấy các biến thể sinh có kiểm soát, đặc biệt là SemAE M4, có thể vượt mốc đối chứng nội bộ SemAE M1 theo tiêu chí của bộ chấm LLM, trong khi SemAE M3 đạt lợi thế về ROUGE-1 trên HASOS.
+
+Chương cũng phân tích ý nghĩa của nghiên cứu ở ba cấp độ: học thuật, kỹ thuật và thực tiễn. Các hạn chế chính nằm ở việc thiếu nhãn chuẩn chi tiết cho ABSA, sự phụ thuộc vào bộ chấm LLM, việc chưa đo đầy đủ chỉ số vận hành và phạm vi dữ liệu còn tập trung vào miền khách sạn. Từ các hạn chế đó, chương đề xuất các hướng phát triển gồm xây dựng bộ nhãn chuẩn, kiểm định bộ chấm LLM bằng đánh giá thủ công, hoàn thiện đo lường vận hành, cải thiện bộ xử lý cảm xúc, mở rộng chọn bằng chứng và phát triển hệ thống thành dashboard phân tích văn bản đánh giá.

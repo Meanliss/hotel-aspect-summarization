@@ -1,0 +1,666 @@
+\chapter{CƠ SỞ LÝ THUYẾT}
+\label{chap:co-so-ly-thuyet}
+
+Chương này trình bày các nền tảng lý thuyết cần thiết cho đề tài phân tích cảm xúc theo khía cạnh và tóm tắt đánh giá khách sạn. Khác với chương giới thiệu, nơi mục tiêu là nêu vấn đề và phạm vi nghiên cứu, chương cơ sở lý thuyết có nhiệm vụ xác lập các khái niệm, ký hiệu và phương pháp làm nền cho hệ thống được đề xuất ở các chương sau. Nội dung chương được tổ chức theo luồng từ mô hình hóa ngôn ngữ tự nhiên, phân tích cảm xúc theo khía cạnh, kiến trúc Transformer, mô hình ngôn ngữ, đến tóm tắt, chọn bằng chứng và đánh giá chất lượng. Cách trình bày này nhằm làm rõ mối liên hệ giữa các thành phần lý thuyết và các quyết định thiết kế trong hệ thống ABSA Summary.
+\section{Tổng quan về xử lý ngôn ngữ tự nhiên và dữ liệu người dùng}
+\label{sec:chap2-nlp-overview}
+
+Trước khi đi vào phân tích cảm xúc theo khía cạnh và tóm tắt đánh giá khách sạn, cần xác định bài toán xử lý ngôn ngữ tự nhiên dưới góc độ mô hình hóa \cite{jurafsky2000speech}. Một văn bản có thể được biểu diễn như chuỗi đơn vị từ $X=(w_1,w_2,\ldots,w_n)$, trong đó mục tiêu của nhiều mô hình NLP là học biểu diễn hoặc ước lượng phân phối xác suất liên quan đến chuỗi này, chẳng hạn $P(w_1,w_2,\ldots,w_n)$ hoặc $P(Y|X)$ với $Y$ là đầu ra của tác vụ \cite{manning1999foundations}. Trong miền đánh giá khách sạn, $Y$ có thể là nhãn khía cạnh, nhãn cảm xúc, tập bằng chứng hoặc bản tóm tắt.
+
+\subsection{Mô hình hóa bài toán NLP tổng quát}
+\label{subsec:chap2-nlp-concept}
+
+Xử lý ngôn ngữ tự nhiên (Natural Language Processing, NLP) là lĩnh vực nghiên cứu các phương pháp biểu diễn, suy luận và sinh ngôn ngữ tự nhiên bằng mô hình tính toán \cite{jurafsky2000speech}. Ở mức tổng quát, một hệ thống NLP nhận đầu vào là chuỗi đơn vị từ $X=(w_1,\ldots,w_n)$ và học một hàm $f_\theta$ để ánh xạ chuỗi này sang đầu ra mong muốn:
+\begin{equation}
+f_\theta(X) \rightarrow Y,
+\label{eq:chap2-nlp-task}
+\end{equation}
+trong đó $\theta$ là tham số mô hình và $Y$ có thể là nhãn phân loại, tập thực thể, vector biểu diễn hoặc chuỗi văn bản mới. Cách mô hình hóa này cho phép đặt các tác vụ khác nhau như phân loại cảm xúc, trích xuất khía cạnh và tóm tắt vào cùng một khung kỹ thuật.
+
+Ngôn ngữ tự nhiên có tính nhập nhằng, phụ thuộc ngữ cảnh và biến thiên mạnh theo người viết \cite{manning1999foundations}. Cùng một ý có thể được diễn đạt bằng nhiều cách khác nhau; ngược lại, cùng một từ có thể mang sắc thái khác nhau trong từng ngữ cảnh \cite{jurafsky2000speech}. Với dữ liệu khách sạn, các cụm như ``nhân viên rất nhiệt tình'', ``lễ tân hỗ trợ tốt'' và ``staff were helpful'' có thể cùng thuộc nhóm dịch vụ tích cực dù khác nhau về bề mặt từ ngữ. Do đó, hệ thống NLP cần biểu diễn được quan hệ ngữ nghĩa, không chỉ đếm sự xuất hiện của từ khóa. Mục tiêu của NLP trong khóa luận này là xây dựng chuỗi mô hình hóa đủ ổn định để chuyển phản hồi thô thành dữ liệu có thể truy vấn, tổng hợp và kiểm chứng.
+
+\subsection{Đặc thù ngữ nghĩa của văn bản phản hồi người dùng (UGC)}
+\label{subsec:chap2-ugc}
+
+Dữ liệu văn bản người dùng (User Generated Content, UGC) trong miền khách sạn bao gồm đánh giá sau lưu trú, bình luận trên nền tảng đặt phòng, phản hồi mạng xã hội và khảo sát ngắn. Đây là nguồn dữ liệu có giá trị vì phản ánh trực tiếp trải nghiệm thực tế, nhưng cũng khó xử lý do nhiễu, thiếu cấu trúc và phụ thuộc mạnh vào kỳ vọng cá nhân \cite{baccianella2010sentiwordnet}. Các đặc điểm cốt lõi bao gồm:
+
+\begin{itemize}
+    \item \textbf{Nhiễu bề mặt ngôn ngữ:} Sai chính tả, thiếu dấu câu, viết tắt (ks - khách sạn, nv - nhân viên), lặp ký tự, biểu tượng cảm xúc và trộn mã ngôn ngữ. Nếu bước chuẩn hóa yếu, lỗi sẽ truyền sang tách câu, nhận diện khía cạnh và phân loại cảm xúc \cite{liu2012sentiment}.
+    \item \textbf{Tính không cấu trúc đa khía cạnh:} Người dùng có thể liệt kê nhiều vấn đề trong một câu, đảo thứ tự khen--chê hoặc chỉ viết nhận xét rất ngắn. Hệ thống không thể giả định mỗi câu chỉ chứa một khía cạnh hoặc mỗi phản hồi chỉ có một cảm xúc; tiền xử lý và tách đơn vị ý kiến vì vậy trở thành bước quan trọng \cite{hu2004mining}.
+    \item \textbf{Tính chủ quan cao:} Cùng một nhận xét như ``phòng hơi nhỏ'' có thể được xem là chấp nhận được nếu giá rẻ, nhưng là điểm trừ lớn với khách hàng khác. Hệ thống cần xem xét quan hệ giữa aspect term, opinion term và toàn bộ câu thay vì chỉ tra từ điển cảm xúc \cite{liu2012sentiment}.
+\end{itemize}
+
+\subsection{Vai trò của NLP trong hệ thống ABSA Summary}
+\label{subsec:chap2-nlp-role-absa-summary}
+
+Trong phạm vi khóa luận, NLP không chỉ là nền tảng lý thuyết chung mà còn là lớp kỹ thuật xuyên suốt toàn bộ hệ thống dưới dạng một chuỗi xử lý nhiều tầng. Từ lúc phản hồi được thu thập, chuẩn hóa, tách thành đơn vị ý kiến, gán khía cạnh, nhận diện cảm xúc, chọn bằng chứng cho đến khi sinh bản tóm tắt, mỗi bước đều tương ứng với một phép biến đổi từ dữ liệu văn bản tự do sang biểu diễn có cấu trúc hơn.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    node distance=0.42cm and 0.38cm,
+    nlpstep/.style={rectangle, rounded corners=2pt, draw=linegray, fill=methodblue!7, align=center, minimum height=0.82cm, text width=2.25cm, font=\footnotesize},
+    nlpoutput/.style={rectangle, rounded corners=2pt, draw=methodgreen!80!black, fill=methodgreen!10, align=center, minimum height=0.82cm, text width=2.25cm, font=\footnotesize}
+]
+\node[nlpstep] (raw) {Phản hồi\\người dùng};
+\node[nlpstep, right=of raw] (clean) {Chuẩn hóa\\văn bản};
+\node[nlpstep, right=of clean] (segment) {Tách đơn vị\\ý kiến};
+\node[nlpstep, right=of segment] (absa) {Phân tích\\khía cạnh--cảm xúc};
+\node[nlpstep, below=of absa] (evidence) {Chọn\\bằng chứng};
+\node[nlpstep, left=of evidence] (summary) {Sinh\\tóm tắt};
+\node[nlpoutput, left=of summary] (eval) {Đánh giá\\chất lượng};
+\draw[arrow] (raw) -- (clean);
+\draw[arrow] (clean) -- (segment);
+\draw[arrow] (segment) -- (absa);
+\draw[arrow] (absa) -- (evidence);
+\draw[arrow] (evidence) -- (summary);
+\draw[arrow] (summary) -- (eval);
+\end{tikzpicture}
+\caption{Vai trò của NLP trong luồng xử lý ABSA Summary}
+\label{fig:chap2-nlp-role}
+\end{figure}
+
+Việc đặt NLP ở đầu Chương~2 giúp liên kết các khái niệm như aspect term, attention, mô hình ngôn ngữ và hiện tượng ảo giác vào cùng một chuỗi xử lý. Tầng đầu tiên là chuẩn hóa và phân đoạn văn bản. Tầng thứ hai là hiểu nội dung theo khía cạnh (xác định category, aspect term, opinion term và cảm xúc cực tính) \cite{pontiki2014semeval}. Tầng thứ ba là chọn bằng chứng đủ cụ thể, đúng khía cạnh và đại diện cho nhóm ý kiến. Tầng cuối cùng là sinh và đánh giá summary với yêu cầu bản tóm tắt phải bám sát bằng chứng thay vì chỉ mạch lạc về ngôn ngữ. Đây là nền tảng để giải thích vì sao hệ thống cần hệ thống phân loại, bước chọn bằng chứng và cơ chế đánh giá độ trung thực.
+\section{Phân tích cảm xúc và Phân tích cảm xúc theo khía cạnh}
+\label{sec:chap2-absa}
+
+Phân tích cảm xúc là một trong những ứng dụng phổ biến của NLP trong khai thác phản hồi người dùng. Về mặt mô hình hóa, hệ thống nhận một văn bản $X$ và dự đoán nhãn cảm xúc $y\in\mathcal{S}$, trong đó $\mathcal{S}$ thường gồm các nhãn như tích cực, tiêu cực, trung tính hoặc hỗn hợp. Với dữ liệu khách sạn, nhãn cảm xúc chung chưa đủ để trả lời các câu hỏi quản trị như khách hài lòng về khía cạnh nào, phàn nàn về điểm nào và vấn đề nào cần ưu tiên cải thiện.
+
+\subsection{Phân tích cảm xúc truyền thống}
+\label{subsec:chap2-traditional-cảm xúc}
+
+Phân tích cảm xúc truyền thống thường được tổ chức theo hai cấp độ: cấp tài liệu và cấp câu. Ở cấp tài liệu, toàn bộ văn bản đánh giá được gán một nhãn chung. Ở cấp câu, từng câu được phân loại riêng. Hai cấp độ này phù hợp khi văn bản tương đối đơn chủ đề, nhưng gặp hạn chế với phản hồi có nhiều ý kiến trái chiều trong cùng một câu.
+
+Ngoài cách phân chia theo cấp độ, phân tích cảm xúc truyền thống còn có thể chia theo phương pháp tiếp cận. Hướng dựa trên từ điển (lexicon-based) dùng danh sách từ tích cực/tiêu cực và các luật xử lý phủ định hoặc tăng giảm mức độ. Hướng dựa trên học máy (machine learning-based) học hàm phân loại từ dữ liệu gán nhãn, ban đầu với đặc trưng n-gram, TF-IDF, sau đó với embedding và mô hình học sâu. Hướng học máy linh hoạt hơn khi có dữ liệu đủ tốt, nhưng vẫn có thể mất thông tin nếu đầu ra chỉ là một nhãn cảm xúc duy nhất.
+
+Ví dụ duy nhất được dùng xuyên suốt phần này là câu: ``phòng sạch nhưng wifi yếu''. Nếu gán một nhãn tích cực, hệ thống bỏ sót phàn nàn về wifi; nếu gán nhãn tiêu cực, hệ thống bỏ sót lời khen về phòng; nếu gán nhãn hỗn hợp, hệ thống vẫn chưa biết phần nào tích cực và phần nào tiêu cực. Đây là điểm yếu cốt lõi của phân tích cảm xúc không xét khía cạnh.
+
+\begin{table}[htbp]
+\centering
+\caption{So sánh các mức phân tích cảm xúc}
+\label{tab:chap2-cảm xúc-levels}
+\begin{tabular}{p{0.22\textwidth}p{0.34\textwidth}p{0.34\textwidth}}
+\toprule
+\textbf{Mức phân tích} & \textbf{Đầu ra chính} & \textbf{Hạn chế trong dữ liệu khách sạn} \\
+\midrule
+Mức tài liệu & Một nhãn cảm xúc cho toàn bộ văn bản đánh giá & Dễ mất thông tin khi văn bản đánh giá có nhiều ý kiến trái chiều \\
+Mức câu & Một nhãn cảm xúc cho từng câu & Vẫn khó xử lý câu chứa nhiều khía cạnh \\
+Mức khía cạnh & Cảm xúc gắn với từng aspect hoặc category & Cần hệ thống phân loại và bước nhận diện khía cạnh chính xác \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Giới hạn của phương pháp truyền thống và sự ra đời của ABSA}
+\label{subsec:chap2-absa-motivation}
+
+Giới hạn của phân tích cảm xúc truyền thống không nằm ở việc mô hình không dự đoán được cảm xúc, mà ở độ hạt của đầu ra. Người quản lý khách sạn không chỉ cần biết một văn bản đánh giá là tích cực hay tiêu cực; họ cần biết cảm xúc đó gắn với phòng, dịch vụ, vị trí, tiện ích hay trải nghiệm tổng thể. Các bộ dữ liệu SemEval về ABSA đã góp phần chuẩn hóa hướng đặt bài toán này trong nghiên cứu xử lý ngôn ngữ tự nhiên~\cite{pontiki2014semeval,pontiki2015semeval}.
+
+Aspect-Based Sentiment Analysis (ABSA) giải quyết vấn đề bằng cách dự đoán cảm xúc theo từng khía cạnh. Với một đơn vị văn bản $X$, đầu ra chuẩn của ABSA có thể được mô hình hóa như một tập các bộ ý kiến:
+
+\begin{equation}
+\mathcal{O}(X)=\{(a_i,c_i,o_i,p_i)\}_{i=1}^{m},
+\label{eq:chap2-absa-tuples}
+\end{equation}
+
+trong đó $a_i$ là aspect term xuất hiện trong văn bản, $c_i$ là aspect category trong hệ thống phân loại, $o_i$ là opinion term, và $p_i\in\{+, -, 0, \text{mixed}\}$ là cảm xúc cực tính. Với câu ``phòng sạch nhưng wifi yếu'', đầu ra có thể gồm $(\text{phòng}, \text{cơ sở vật chất}, \text{sạch}, +)$ và $(\text{wifi}, \text{tiện ích}, \text{yếu}, -)$. Cách biểu diễn này giữ được quan hệ giữa đối tượng được đánh giá và cảm xúc tương ứng.
+
+Trong khóa luận này, ABSA không được xem như mục tiêu cuối cùng độc lập mà là bước tổ chức thông tin cho ABSA Summary. Các bộ $(a,c,o,p)$ được dùng để nhóm bằng chứng, kiểm soát nội dung tóm tắt và đánh giá xem tóm tắt có đúng khía cạnh, đúng cảm xúc và đúng nguồn hay không.
+
+\subsection{Cấu trúc một đơn vị ý kiến trong ABSA}
+\label{subsec:chap2-absa-components}
+
+Một đơn vị ý kiến trong ABSA gồm bốn thành phần chính. Aspect term là cụm từ biểu thị đối tượng hoặc thuộc tính được đánh giá. Aspect category là nhãn khái quát trong hệ thống phân loại, giúp gom nhiều cách diễn đạt vào cùng một nhóm vấn đề. Opinion term là từ hoặc cụm từ thể hiện nhận xét. Cảm xúc cực tính là cực tính cảm xúc gắn với aspect hoặc category.
+
+
+\begin{table}[htbp]
+\centering
+\caption{Các thành phần chính trong một đơn vị ý kiến ABSA}
+\label{tab:chap2-absa-components}
+\begin{tabular}{p{0.26\textwidth}p{0.34\textwidth}>{\raggedright\arraybackslash}p{0.34\textwidth}}
+\toprule
+\textbf{Thành phần} & \textbf{Ý nghĩa} & \textbf{Ví dụ minh họa} \\
+\midrule
+Aspect term ($a$) & Cụm từ khía cạnh xuất hiện trực tiếp trong văn bản & $a$ = ``phòng'', ``wifi'', ``nhân viên'' \\ \addlinespace[2pt]
+Aspect category ($c$) & Nhóm khía cạnh trong hệ thống phân loại & $c$ = Cơ sở vật chất, tiện ích, dịch vụ \\ \addlinespace[2pt]
+Opinion term ($o$) & Từ hoặc cụm từ thể hiện nhận xét & $o$ = ``sạch'', ``yếu'', ``nhiệt tình'' \\ \addlinespace[2pt]
+Sentiment polarity ($p$) & Cực tính cảm xúc gắn với khía cạnh & $p$ = tích cực, tiêu cực, trung tính, hỗn hợp \\ \addlinespace[2pt]
+Evidence ($e$) & Câu hoặc đoạn làm căn cứ cho kết luận & $e$ = ``nhân viên hỗ trợ rất nhanh'' \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    node distance=0.9cm and 1.0cm,
+    sent/.style={rectangle, draw=linegray, fill=methodblue!7, rounded corners=2pt, align=center, minimum height=0.8cm, text width=5.1cm},
+    item/.style={rectangle, draw=linegray, fill=methodgreen!10, rounded corners=2pt, align=left, minimum height=1.05cm, text width=4.5cm, font=\footnotesize}
+]
+\node[sent] (s) {``phòng sạch nhưng wifi yếu''};
+\node[item, below left=of s] (room) {
+    Aspect term ($a$): phòng\\
+    Category ($c$): cơ sở vật chất\\
+    Opinion ($o$): sạch\\
+    Polarity ($p$): tích cực
+};
+\node[item, below right=of s] (wifi) {
+    Aspect term ($a$): wifi\\
+    Category ($c$): tiện ích\\
+    Opinion ($o$): yếu\\
+    Polarity ($p$): tiêu cực
+};
+\draw[arrow] (s.south west) -- (room.north);
+\draw[arrow] (s.south east) -- (wifi.north);
+\end{tikzpicture}
+\caption{Phân rã một câu thành các đơn vị ý kiến theo cấu trúc ABSA}
+\label{fig:chap2-absa-decomposition}
+\end{figure}
+
+Trong thực tế, các thành phần này không luôn xuất hiện đầy đủ. Một câu như ``rất đáng tiền'' thể hiện cảm xúc tích cực nhưng aspect term có thể bị ẩn, thường liên quan đến giá trị hoặc giá cả. Do đó, hệ thống cần xử lý cả aspect được nêu rõ và aspect được suy ra từ ngữ cảnh. Việc phân biệt aspect term và aspect category cũng quan trọng: nếu ``bữa sáng'' bị ánh xạ sai sang ``dịch vụ'' thay vì ``tiện ích'', tóm tắt theo category có thể bị lệch dù cảm xúc được dự đoán đúng.
+
+\subsection{Các bài toán con trong ABSA}
+\label{subsec:chap2-absa-subtasks}
+
+Trong thực tế xử lý ngôn ngữ tự nhiên, một văn bản đánh giá thường chứa đồng thời nhiều luồng ý kiến về các đặc tính khác nhau của cùng một thực thể. Vì vậy, ABSA không chỉ là một bài toán phân lớp duy nhất, mà thường được phân rã thành nhiều bài toán con chuyên biệt hoặc các thiết lập trích xuất tổ hợp~\cite{pontiki2014semeval,pontiki2015semeval}. Ở mức đơn lẻ, hệ thống có thể chỉ cần nhận diện cụm từ khía cạnh, nhóm khía cạnh, từ thể hiện ý kiến hoặc cực tính cảm xúc. Ở mức cao hơn, hệ thống cần ghép đúng các thành phần thuộc cùng một ý kiến dưới dạng cặp, bộ ba hoặc bộ bốn~\cite{pontiki2014semeval}.
+
+Dựa trên tập ký hiệu đã quy ước gồm cụm từ khía cạnh ($a$), nhóm khía cạnh ($c$), từ thể hiện ý kiến ($o$) và cực tính cảm xúc ($p$), Bảng~\ref{tab:chap2-absa-subtasks} tóm tắt một số bài toán con thường gặp trong ABSA.
+
+\begin{table}[htbp]
+\centering
+\caption{Hệ thống các bài toán con và định dạng đầu ra thường gặp trong ABSA}
+\label{tab:chap2-absa-subtasks}
+\begin{tabular}{l p{0.42\textwidth} >{\raggedright\arraybackslash}p{0.28\textwidth}}
+\toprule
+\textbf{Mã tác vụ} & \textbf{Tên đầy đủ} & \textbf{Định dạng đầu ra} \\
+\midrule
+ATE & Aspect Term Extraction & $\{a\}$ \\
+ACD & Aspect Category Detection & $\{c\}$ \\
+OTE & Opinion Term Extraction & $\{o\}$ \\
+ATSC / ASC & Aspect Term Sentiment Classification & $(a,p)$ hoặc $p$ khi biết $a$ \\
+ACPE & Aspect--Category Pair Extraction & $\{(a,c)\}$ \\
+AOPE & Aspect--Opinion Pair Extraction & $\{(a,o)\}$ \\
+AESC & Aspect Extraction and Sentiment Classification & $\{(a,p)\}$ \\
+ACSD & Aspect Category Sentiment Detection & $\{(c,p)\}$ \\
+ASTE & Aspect Sentiment Triplet Extraction & $\{(a,o,p)\}$ \\
+TASD & Target--Aspect--Sentiment Detection & $\{(a,c,p)\}$ \\
+ACOS / ASQP & Aspect--Category--Opinion--Sentiment Extraction & $\{(a,c,o,p)\}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Trong khóa luận này, các bài toán con được hiểu theo hướng phục vụ tóm tắt. Hệ thống không chỉ cần nhãn đúng, mà cần nhãn đó giúp chọn bằng chứng và sinh tóm tắt đúng. Vì vậy, đánh giá ABSA không nên tách rời hoàn toàn khỏi đánh giá tóm tắt. Một cấu hình có F1 cao ở bước category nhưng vẫn tạo tóm tắt thiếu thông tin quan trọng thì chưa đáp ứng mục tiêu cuối cùng của đề tài.
+
+\subsection{Tóm tắt văn bản dựa trên khía cạnh}
+\label{subsec:chap2-absa-summarization}
+
+Bên cạnh các bài toán trích xuất có cấu trúc, tóm tắt dựa trên khía cạnh là bước xử lý cấp cao nhằm cô đọng thông tin từ tập hợp nhiều đánh giá của người dùng~\cite{angelidis2021extractive}. Khác với tóm tắt văn bản truyền thống, vốn thường tạo một đoạn tóm tắt chung cho toàn bộ đầu vào, tác vụ này yêu cầu nội dung đầu ra được tổ chức theo từng khía cạnh và phản ánh đúng cực tính cảm xúc tương ứng.
+
+Một cách biểu diễn đơn giản cho đầu ra của hệ thống tóm tắt theo khía cạnh là:
+\begin{equation}
+S = \{c_j : (p_j, t_j)\}_{j=1}^{K},
+\label{eq:chap2-aspect-summary-output}
+\end{equation}
+trong đó $c_j$ là nhóm khía cạnh, $p_j$ là cực tính cảm xúc tổng quát và $t_j$ là đoạn tóm tắt được tạo từ tập bằng chứng nguồn. Tùy thiết kế hệ thống, $t_j$ có thể được tạo theo hướng trích rút hoặc trừu tượng~\cite{amplayo2021aspect}.
+
+\subsection{Vai trò của ABSA trong tóm tắt đánh giá khách sạn}
+\label{subsec:chap2-absa-summary-role}
+
+ABSA đóng vai trò như tầng tổ chức thông tin trước khi tóm tắt. Nếu coi tập phản hồi là kho dữ liệu thô, ABSA chia kho dữ liệu đó thành các nhóm có ý nghĩa như dịch vụ, cơ sở vật chất, vị trí và tiện ích; trong mỗi nhóm, cảm xúc cực tính tiếp tục tách nội dung được khen, bị chê hoặc hỗn hợp. Cách tổ chức này giúp summary không chỉ nói rằng trải nghiệm ``tốt nhưng còn hạn chế'', mà chỉ rõ dịch vụ được khen vì nhân viên thân thiện, vị trí thuận tiện, nhưng tiện ích bị phàn nàn do wifi yếu hoặc bữa sáng ít lựa chọn.
+
+Tuy nhiên, ABSA cũng có thể truyền lỗi sang bước tóm tắt. Nếu category sai, tóm tắt sẽ sai chủ đề; nếu cảm xúc sai, tóm tắt có thể đảo ngược ý nghĩa phản hồi. Vì vậy, trong hệ thống ABSA Summary, cần phân tích lỗi theo chuỗi xử lý thay vì chỉ nhìn kết quả cuối cùng. Chương thực nghiệm cần chỉ rõ lỗi đến từ phân nhóm khía cạnh, chọn bằng chứng, sinh tóm tắt hay đánh giá.
+
+\section{Biểu diễn ngôn ngữ và Kiến trúc Transformer}
+\label{sec:dev-chap2-transformer}
+
+Trong xử lý ngôn ngữ tự nhiên, các mô hình học máy không thể trực tiếp tính toán trên chuỗi ký tự. Bài toán biểu diễn ngôn ngữ nhằm mục tiêu ánh xạ các đơn vị văn bản rời rạc vào một không gian vector liên tục, cho phép mô hình hóa các quan hệ ngữ nghĩa và ngữ pháp làm cơ sở cho tác vụ phân tích cảm xúc và sinh tóm tắt.
+
+\subsection{Phân đoạn từ vựng và Biểu diễn vector ngữ nghĩa}
+\label{subsec:dev-chap2-embedding-tokenization}
+
+Trước khi ánh xạ thành vector ngữ nghĩa, văn bản thô cần được phân rã thành các mã token. Phương pháp tokenization cấp độ từ vựng phụ (subword-level) như Byte Pair Encoding (BPE) \cite{sennrich2016neural} hoặc mô hình Unigram cài đặt qua thư viện SentencePiece \cite{kudo2018sentencepiece} được sử dụng để xử lý dữ liệu UGC miền khách sạn nhằm giải quyết triệt để vấn đề từ ngoài từ vựng (OOV) do lỗi chính tả hoặc từ viết tắt. Thuật toán tìm cách tối đa hóa xác suất của chuỗi phân đoạn subword $\mathbf{x} = (x_1, \dots, x_M)$:
+\begin{equation}
+P(\mathbf{x}) = \prod_{i=1}^{M} P(x_i)
+\label{eq:dev-chap2-unigram-prob}
+\end{equation}
+
+Sau bước phân đoạn, phương pháp biểu diễn từ ngữ cảnh (contextualized embeddings) vượt qua giới hạn của các phương pháp nhúng tĩnh truyền thống như Word2Vec \cite{mikolov2013efficient} bằng cách tính toán linh hoạt vector thực $v \in \mathbb{R}^d$ của một từ dựa trên toàn bộ chuỗi đầu vào thông qua kiến trúc Transformer, thay vì gán một biểu diễn cố định không xử lý được hiện tượng đa nghĩa.
+
+\subsection{Cơ chế Attention và Không gian phân tầng Transformer}
+\label{subsec:dev-chap2-attention-architecture}
+
+Cơ chế Self-Attention cho phép các đơn vị từ tương tác lẫn nhau để cập nhật biểu diễn vector dựa trên ngữ cảnh toàn cục \cite{vaswani2017attention}. Cho ma trận đầu vào $X \in \mathbb{R}^{n \times d_{model}}$, mô hình tính toán ba ma trận Truy vấn ($Q$), Khóa ($K$), và Giá trị ($V$) qua các phép chiếu tuyến tính: $Q = XW^Q, K = XW^K, V = XW^V$ \cite{vaswani2017attention}. Đầu ra được xác định bởi hàm Scaled Dot-Product Attention \cite{vaswani2017attention}:
+\begin{equation}
+\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V
+\label{eq:dev-chap2-attention}
+\end{equation}
+Nhân tố $\sqrt{d_k}$ giúp đưa phương sai của tích vô hướng về xấp xỉ 1, giữ cho hàm softmax không rơi vào vùng bão hòa và ổn định quá trình học trong không gian nhiều chiều \cite{vaswani2017attention}. Để đa dạng hóa không gian biểu diễn phụ song song, cơ chế Multi-head Attention được áp dụng bằng cách nối kết quả từ $h$ đầu độc lập chiếu qua ma trận trọng số $W^O$ \cite{vaswani2017attention}:
+\begin{equation}
+\text{MultiHead}(Q, K, V) = \text{Concat}(\text{head}_1, \dots, \text{head}_h)W^O
+\label{eq:dev-chap2-multihead}
+\end{equation}
+
+Trong cấu trúc khối Transformer hoàn chỉnh, mạng nơ-ron truyền thẳng Position-wise FFN \cite{vaswani2017attention} kết hợp với vector mã hóa vị trí (Positional Encoding - $PE$) được cộng trực tiếp vào ma trận nhúng nhằm lưu giữ thông tin thứ tự chuỗi văn bản \cite{vaswani2017attention}: $X_{\text{input}} = \text{Embedding}(X) + PE$.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[node distance=0.65cm and 0.65cm]
+\node[block, text width=3.0cm] (input) {Chuỗi đơn vị từ\\đầu vào};
+\node[block, right=of input, text width=3.1cm] (embed) {Embedding +\\vị trí};
+\node[block, right=of embed, text width=3.1cm] (attn) {Multi-head\\Attention};
+\node[block, below=of attn, text width=3.1cm] (ffn) {Feed-forward\\Network};
+\node[block, left=of ffn, text width=3.1cm] (output) {Biểu diễn\\ngữ cảnh};
+\draw[arrow] (input) -- (embed);
+\draw[arrow] (embed) -- (attn);
+\draw[arrow] (attn) -- (ffn);
+\draw[arrow] (ffn) -- (output);
+\end{tikzpicture}
+\caption{Minh họa đơn giản một khối xử lý trong kiến trúc Transformer}
+\label{fig:dev-chap2-transformer-block}
+\end{figure}
+
+Dựa trên cấu hình mặt nạ chú ý (Attention Masking), kiến trúc Transformer được phân thành ba nhánh ứng dụng trực tiếp trong hệ thống \cite{vaswani2017attention}:
+\begin{itemize}
+\item \textbf{Encoder-only (Ví dụ: BERT \cite{devlin2019bert}):} Sử dụng cơ chế Self-Attention hai chiều, tối ưu cho bài toán hiểu ngôn ngữ và phân loại cảm xúc phụ thuộc mục tiêu thông qua chuỗi đầu vào ghép nối $X = [\text{CLS}] \oplus \text{Câu đánh giá} \oplus [\text{SEP}] \oplus \text{Khía cạnh} \oplus [\text{SEP}]$. Phân phối xác suất nhãn cảm xúc $\mathcal{S}$ được dự đoán qua vector trạng thái ẩn $\mathbf{h}_{[\text{CLS}]}$:
+\begin{equation}
+\hat{y} = \text{softmax}(W_c \mathbf{h}_{[\text{CLS}]} + b_c)
+\label{eq:dev-chap2-bert-absa-output}
+\end{equation}
+\item \textbf{Decoder-only (Ví dụ: Qwen):} Sử dụng Masked Self-Attention để chặn các đơn vị từ trong tương lai, thực hiện dự đoán tuần tự tự hồi quy phục vụ các bài toán sinh chuỗi phân bố điều kiện ngữ cảnh \cite{vaswani2017attention, brown2020language}.
+\item \textbf{Encoder-Decoder (Ví dụ: FLAN-T5):} Encoder mã hóa đầu vào liên tục và Decoder kết hợp Cross-Attention để tra cứu thông tin từ biểu diễn của Encoder, sinh đầu ra điều kiện hiệu quả trong bài toán sinh tóm tắt trừu tượng có cơ chế lọc bằng tập bằng chứng SemAE \cite{vaswani2017attention, angelidis2021extractive}.
+\end{itemize}
+\section{Mô hình ngôn ngữ lớn và kỹ thuật gợi ý}
+\label{sec:dev-chap2-llm-prompt}
+
+Mô hình ngôn ngữ lớn (Large Language Model, LLM) là nhóm mô hình được huấn luyện để ước lượng phân phối xác suất của đơn vị từ tiếp theo dựa trên ngữ cảnh trước đó. Với chuỗi đầu ra $Y=(y_1,\ldots,y_T)$ và đầu vào điều kiện $X$, mô hình sinh phân rã xác suất theo công thức tự hồi quy:
+\begin{equation}
+P(Y|X)=\prod_{t=1}^{T}P(y_t|y_{<t},X).
+\label{eq:dev-chap2-llm-generation}
+\end{equation}
+Trong khóa luận này, các mô hình ngôn ngữ lớn hoặc mô hình ngôn ngữ nhỏ (Small Language Model, SLM) được đặt trong quy trình có kiểm soát của hệ thống AI Engineering nhằm biến đổi dữ liệu thô thành các đầu ra có cấu trúc chặt chẽ.
+
+\subsection{Cơ chế phân phối xác suất và Khả năng học trong ngữ cảnh}
+\label{subsec:dev-chap2-llm-core}
+
+Mô hình LLM quy mô lớn mang khả năng thực hiện đa tác vụ thông qua hướng dẫn bằng ngôn ngữ tự nhiên \cite{brown2020language}, trong khi các dòng SLM nhỏ hơn mang lại lợi thế tối ưu về thông lượng, chi phí suy luận và khả năng triển khai cục bộ. Một mô hình ngôn ngữ gốc (Base LLM) chỉ được tiền huấn luyện để hoàn thành chuỗi thống kê, do đó không tự nhiên sở hữu khả năng tuân thủ định dạng khắt khe hay thực hiện chính xác một tác vụ phân tích cảm xúc theo yêu cầu.
+
+Để thu hẹp khoảng cách này, mô hình trải qua giai đoạn Tinh chỉnh theo chỉ dẫn (Instruction Tuning) hoặc Tinh chỉnh có giám sát (Supervised Fine-Tuning - SFT) giúp chuyển đổi hành vi thành một trợ lý có năng lực tuân thủ các chỉ dẫn phức tạp. Quá trình căn chỉnh này mang lại năng lực Học trong ngữ cảnh (In-context Learning), cho phép mô hình sinh đầu ra $y$ cho đầu vào $x$ dựa trên mô tả nhiệm vụ và $k$ ví dụ mẫu $P_1,\ldots,P_k$ được tích hợp trực tiếp trong lời nhắc:
+\begin{equation}
+P(y|x,P_1,P_2,\ldots,P_k).
+\label{eq:dev-chap2-icl}
+\end{equation}
+Trong thiết lập \textit{Zero-shot} ($k=0$), mô hình hoàn toàn dựa vào mô tả nhiệm vụ để suy luận. Ngược lại, thiết lập \textit{Few-shot} ($k>0$) cung cấp các cặp mẫu cụ thể để giúp mô hình định hình ranh giới phân loại đối với các khía cạnh dễ nhầm lẫn (như tiện ích và cơ sở vật chất), giúp giảm thiểu biến thiên mà không cần cập nhật tham số mô hình.
+
+\subsection{Kỹ thuật gợi ý và Ràng buộc cấu trúc dữ liệu đầu ra}
+\label{subsec:dev-chap2-prompt-structured-output}
+
+Kỹ thuật gợi ý (Prompt Engineering) là quá trình thiết kế điều kiện đầu vào nhằm điều khiển phân phối sinh của mô hình ngôn ngữ. Trong hệ thống ABSA Summary, một lời nhắc có chất lượng kỹ thuật đóng vai trò như một giao diện hệ thống: thiết lập không gian ràng buộc rõ ràng bao gồm định nghĩa nhiệm vụ, hệ thống phân loại nhóm khía cạnh, quy tắc xử lý ngữ cảnh nhập nhằng, và nguồn bằng chứng được phép sử dụng.
+
+Để tích hợp kết quả sinh vào quy trình xử lý tự động, hệ thống áp dụng kỹ thuật ràng buộc cấu trúc đầu ra (Structured Output), yêu cầu mô hình trả về dữ liệu tuân thủ schema xác định như định dạng JSON. Ngoài các giải pháp hậu xử lý và kích hoạt cơ chế thử lại (retry), cấu trúc này có thể được đảm bảo bằng kỹ thuật giải mã có ràng buộc (Constrained Decoding / Guided Generation). Tại mỗi bước giải mã, hệ thống giới hạn không gian đơn vị từ hợp lệ dựa trên quy tắc của JSON Schema đang được thỏa mãn. Kỹ thuật này ngăn chặn triệt để các lỗi định dạng bề mặt (như thiếu dấu ngoặc, sai kiểu dữ liệu hoặc sinh nhãn nằm ngoài tập hợp cho phép).
+
+Mặc dù mang lại khả năng diễn đạt mạch lạc, mô hình ngôn ngữ vẫn tiềm ẩn rủi ro sinh thông tin sai lệch về nguồn, sai lệch khía cạnh hoặc hiện tượng đảo ngược cực tính cảm xúc. Trong cấu trúc ABSA Summary, các rủi ro này được kiểm soát đa tầng bằng cách thu hẹp không gian phân phối xác suất sinh thông qua tập bằng chứng đầu vào nghiêm ngặt, kết hợp bộ lọc schema đầu ra và bước đánh giá độ trung thực (faithfulness) ở giai đoạn hậu xử lý. Cách tiếp cận này chuyển đổi mô hình ngôn ngữ từ một hộp đen sinh chữ tự do thành một thành phần có thể quan sát, kiểm thử và cô lập lỗi trong hệ thống dữ liệu.
+\section{Lý thuyết về tóm tắt văn bản tự động}
+\label{sec:dev-chap2-summarization}
+
+Tóm tắt văn bản là bài toán biến đổi đầu vào dài $X$ thành đầu ra ngắn hơn $Y$ nhưng vẫn giữ thông tin trọng yếu. Trong ABSA Summary, yêu cầu này chặt hơn tóm tắt thông thường vì tóm tắt phải phản ánh đúng khía cạnh, đúng cảm xúc và đúng bằng chứng nguồn. Một bản tóm tắt mạch lạc nhưng thêm chi tiết không có trong văn bản đánh giá là đầu ra không đạt yêu cầu.
+
+\subsection{Tóm tắt đơn văn bản và đa văn bản}
+\label{subsec:dev-chap2-single-multi-doc}
+
+Tóm tắt đơn văn bản xử lý một tài liệu đầu vào, còn tóm tắt đa văn bản tổng hợp thông tin từ nhiều tài liệu. Dữ liệu đánh giá khách sạn thường thuộc thiết lập đa văn bản: hệ thống cần gom nhiều phản hồi của nhiều người dùng, sau đó sinh tóm tắt theo từng category. Thách thức chính là thông tin có thể trùng lặp, mâu thuẫn hoặc phân bố không đều giữa các khía cạnh.
+
+\subsection{Tóm tắt trích rút và tóm tắt trừu tượng}
+\label{subsec:dev-chap2-extractive-abstractive}
+
+Tóm tắt trích rút (extractive summarization) có thể được mô hình hóa như bài toán phân loại nhị phân ở cấp câu. Với tập câu $\mathcal{C}=\{c_1,c_2,\ldots,c_n\}$, mô hình học hàm:
+
+\begin{equation}
+f(c_i) \rightarrow y_i \in \{0,1\},
+\label{eq:dev-chap2-extractive}
+\end{equation}
+
+trong đó $y_i=1$ nghĩa là câu $c_i$ được chọn vào tóm tắt hoặc tập bằng chứng. Trong hệ thống ABSA Summary, bước chọn bằng chứng có thể xem là một biến thể của tóm tắt trích rút có điều kiện theo category và cảm xúc.
+
+Tóm tắt trừu tượng (abstractive summarization) là bài toán sinh chuỗi. Với văn bản đầu vào $X$ và tóm tắt đầu ra $Y=(y_1,\ldots,y_T)$, mô hình tối đa hóa xác suất có điều kiện:
+
+\begin{equation}
+P(Y|X)=\prod_{t=1}^{T}P(y_t|y_{<t},X).
+\label{eq:dev-chap2-abstractive}
+\end{equation}
+
+Tóm tắt trừu tượng linh hoạt hơn vì có thể diễn đạt lại nội dung, nhưng cũng có rủi ro cao hơn về sai lệch nguồn. Do đó, trong khóa luận này, sinh tóm tắt cần được đặt sau bước chọn bằng chứng và đi kèm kiểm tra faithfulness.
+
+\subsection{Mô hình kết hợp Trích rút và Trừu tượng (Extract-then-Abstract)}
+\label{subsec:dev-chap2-extract-then-abstract}
+
+Mặc dù tóm tắt trừu tượng (Abstractive) có ưu điểm về độ trôi chảy và khả năng tổng hợp cao, việc yêu cầu mô hình sinh văn bản đọc trực tiếp một khối lượng lớn đánh giá thô thường dẫn đến giới hạn về bộ nhớ ngữ cảnh và làm tăng mạnh rủi ro ảo giác.
+
+Để khắc phục, một hệ hình (paradigm) hiện đại là kết hợp cả hai phương pháp: Trích rút trước, Trừu tượng sau (Extract-then-Abstract). Kiến trúc này chia bài toán làm hai pha rõ rệt. Pha thứ nhất (Trích rút) đóng vai trò như một bộ lọc truy hồi thông tin (Retrieval), sử dụng các mô hình như SemAE để thu hẹp văn bản nguồn thành một tập bằng chứng lõi $\mathcal{E}$. Pha thứ hai (Trừu tượng) sử dụng tập $\mathcal{E}$ làm ngữ cảnh đầu vào duy nhất cho khối Decoder để sinh văn bản. Thiết kế này chính là nền tảng của Phương pháp 2 trong khóa luận, giúp mô hình kế thừa được khả năng diễn đạt tự nhiên nhưng bị ép phải trung thành với bằng chứng đã được sàng lọc nghiêm ngặt từ pha trích rút.
+
+\subsection{Cơ chế giải mã (Decoding Strategies)}
+\label{subsec:dev-chap2-decoding}
+
+Quá trình sinh chuỗi trong tóm tắt trừu tượng phụ thuộc mạnh vào cách mô hình duyệt qua phân phối xác suất ở mỗi bước $t$. Greedy Search là chiến lược đơn giản nhất: luôn chọn đơn vị từ có xác suất cao nhất tại mỗi bước, $y_t = \arg\max_y P(y|y_{<t},X)$. Dù nhanh và có chi phí tính toán thấp, Greedy Search dễ rơi vào các chuỗi tối ưu cục bộ, dẫn đến văn bản lặp từ hoặc cụt lủn.
+
+Beam Search giải quyết vấn đề này bằng cách giữ lại $k$ chuỗi ứng viên (beams) tốt nhất tại mỗi bước thay vì chỉ một đơn vị từ duy nhất. Điểm số của mỗi beam thường là tổng log xác suất của các đơn vị từ trong chuỗi. Khi kết thúc, chuỗi có điểm cao nhất được chọn làm tóm tắt cuối cùng. Trong ABSA Summary, nếu mô hình (như FLAN-T5 hoặc Qwen) được yêu cầu sinh JSON, Beam Search kết hợp với Constrained Decoding có thể bảo đảm cấu trúc đầu ra hợp lệ đồng thời giữ được chất lượng ngôn ngữ tốt hơn Greedy Search.
+
+\subsection{Hiện tượng ảo giác (hallucination) trong sinh văn bản}
+\label{subsec:dev-chap2-hallucination}
+
+Hiện tượng ảo giác (hallucination) là hiện tượng mô hình sinh thông tin không được hỗ trợ bởi đầu vào. Dưới góc độ xác suất, lỗi này có thể xảy ra khi phân phối $P(y_t|y_{<t},X)$ bị chi phối quá mạnh bởi tri thức tiên nghiệm học được trong tiền huấn luyện, thay vì bằng chứng $X$ ở ngữ cảnh hiện tại. Nói cách khác, đơn vị từ được sinh có thể hợp lý theo prior của mô hình nhưng không được entail bởi nguồn đầu vào.
+
+Trong tóm tắt đánh giá khách sạn, hiện tượng ảo giác có thể xuất hiện khi tóm tắt thêm tiện ích, địa điểm hoặc nguyên nhân mà văn bản đánh giá gốc không nhắc đến. Nếu bằng chứng chỉ nói ``vị trí thuận tiện'' nhưng tóm tắt viết ``khách sạn gần biển và gần chợ đêm'', mô hình đã thêm chi tiết ngoài nguồn. Đây là lỗi nghiêm trọng vì tóm tắt có thể được dùng để ra quyết định quản trị.
+
+\subsection{Độ trung thực với bằng chứng (Faithfulness) và NLI}
+\label{subsec:dev-chap2-faithfulness}
+
+Faithfulness là yêu cầu mọi mệnh đề quan trọng trong tóm tắt phải được hỗ trợ bởi bằng chứng đầu vào. Với ABSA Summary, faithfulness cần được kiểm tra ở ba mức: đúng evidence, đúng category và đúng cảm xúc. Một câu tóm tắt về tiện ích nhưng dựa trên bằng chứng dịch vụ vẫn là lỗi, dù nội dung nghe hợp lý trong toàn bộ tập văn bản đánh giá.
+
+Để đo lường độ trung thực một cách tự động, một phương pháp phổ biến là sử dụng mô hình Suy luận Ngôn ngữ Tự nhiên (Natural Language Inference - NLI). Bài toán NLI nhận đầu vào là một cặp câu (Premise - Hypothesis) và phân loại mối quan hệ ngữ nghĩa giữa chúng thành ba nhãn: Entailment (Suy diễn - Hypothesis đúng nếu Premise đúng), Contradiction (Mâu thuẫn - Hypothesis sai nếu Premise đúng) và Neutral (Trung tính).
+
+Trong bối cảnh đánh giá tóm tắt, tập bằng chứng được xem là Premise và câu tóm tắt sinh ra được xem là Hypothesis. Nếu mô hình NLI dự đoán nhãn là Contradiction, điều đó có nghĩa là bản tóm tắt chứa thông tin mâu thuẫn với bằng chứng gốc, là dấu hiệu rõ ràng của hiện tượng ảo giác. Tỷ lệ NLI Contradiction thấp là một chỉ báo quan trọng cho thấy mô hình sinh văn bản tuân thủ chặt chẽ nguồn dữ liệu đầu vào.
+
+\subsection{Tóm tắt theo khía cạnh trong miền khách sạn}
+\label{subsec:dev-chap2-hotel-aspect-summary}
+
+Trong miền khách sạn, summary theo khía cạnh cần phản ánh cả điểm mạnh và điểm yếu. Category dịch vụ có thể được khen vì nhân viên thân thiện nhưng bị chê vì dọn phòng chậm; category tiện ích có thể được khen về hồ bơi nhưng bị chê về wifi hoặc bữa sáng. Vì vậy, hệ thống nên giữ cấu trúc theo category--cảm xúc và truy vết được từ từng câu summary về các câu bằng chứng tương ứng.
+
+\section{Biểu diễn ngữ nghĩa và các phương pháp chọn bằng chứng}
+\label{sec:dev-chap2-evidence-selection}
+
+Chọn bằng chứng là bước bản lề kết nối giữa tầng phân tích cấu trúc và tầng sinh văn bản tóm tắt \cite{angelidis2021extractive}. Nếu mô hình sinh nhận đầu vào chứa quá nhiều nhiễu hoặc sai lệch ngữ nghĩa, bản tóm tắt cuối cùng rất dễ gặp hiện tượng ảo giác dù sử dụng mô hình ngôn ngữ lớn mạnh. Trong hệ thống ABSA Summary, một tập bằng chứng đạt tiêu chuẩn cần đồng thời đảm bảo tính liên quan khía cạnh (category), đúng cực tính cảm xúc, đủ cụ thể, mang tính đại diện cho nhóm ý kiến và có khả năng truy vết nguồn gốc \cite{angelidis2021extractive}.
+
+\subsection{Biểu diễn không gian câu và Bài toán sàng lọc bằng chứng}
+\label{subsec:dev-chap2-sentence-embedding-ir}
+
+Sàng lọc bằng chứng có thể được mô hình hóa như một bài toán truy hồi thông tin có điều kiện (Conditional Information Retrieval) \cite{angelidis2021extractive}. Với tập các câu ứng viên thô $\mathcal{E}=\{e_1,\ldots,e_n\}$ trích từ phản hồi của người dùng và một truy vấn điều kiện $q=(c,p)$ đại diện cho cặp nhóm khía cạnh $c$ và cảm xúc $p$, hệ thống cần xác định một hàm số xếp hạng để tính toán điểm liên quan $s(e_i,q)$ \cite{angelidis2021extractive}.
+
+Để thực hiện phép toán so khớp ngữ nghĩa mềm thay vì tra cứu từ khóa bề mặt, mỗi câu bằng chứng $e_i$ cần được mã hóa thành một vector liên tục $z_i \in \mathbb{R}^{d}$ \cite{angelidis2021extractive}. Khi mạng Encoder là một khối Transformer \cite{vaswani2017attention}, đầu ra trực tiếp của chuỗi là ma trận trạng thái ẩn $H_i=[h_1,\ldots,h_{n_i}]\in\mathbb{R}^{n_i\times d}$, với $n_i$ là số lượng token của câu và $h_k$ là biểu diễn của token thứ $k$. Hệ thống áp dụng phép toán tích hợp Mean Pooling nhằm biến đổi ma trận thành vector câu đại diện duy nhất $z_i$:
+\begin{equation}
+z_i=\frac{1}{n_i}\sum_{k=1}^{n_i}h_k.
+\label{eq:dev-chap2-mean-pooling}
+\end{equation}
+Một hướng tiếp cận thay thế khác là \texttt{[CLS]} pooling ($z_i=h_{\mathrm{CLS}}$), tận dụng token đại diện đứng đầu chuỗi đã được huấn luyện để tổng hợp thông tin toàn cục \cite{devlin2019bert}. Vector câu $z_i$ sau đó được dùng làm cầu nối để tính toán khoảng cách Cosine hoặc tích vô hướng đối với các vector nguyên mẫu (Prototype Vectors) $p_j \in \mathbb{R}^{d}$ đại diện cho từng nhóm khía cạnh mục tiêu \cite{angelidis2021extractive}:
+\begin{equation}
+s(e_i,c_j)=\frac{z_i^T p_j}{\|z_i\|\|p_j\|}.
+\label{eq:dev-chap2-cosine-evidence}
+\end{equation}
+
+\subsection{Kiến trúc Semantic AutoEncoder và Cơ chế mã hóa thưa}
+\label{subsec:dev-chap2-semae-framework}
+
+Mô hình AutoEncoder cơ bản bao gồm mạng mã hóa $g_\phi$ để tạo biểu diễn ẩn $z=g_\phi(x)$ và mạng giải mã $h_2$ thực hiện tái tạo $\hat{x}=h_\psi(z)$ thông qua việc tối thiểu hóa hàm mất mát lỗi bình phương trung bình: $\mathcal{L}_{rec}=\|x-\hat{x}\|_2^2$. Tuy nhiên, nếu chỉ tối ưu hóa dựa trên hàm mất mát tái tạo này, không gian ẩn $z$ hoàn toàn không đảm bảo được tính phân tách để tạo thành các cụm khía cạnh có nghĩa phục vụ bài toán lọc bằng chứng.
+
+Để giải quyết giới hạn đó, mô hình Semantic AutoEncoder (SemAE) định hướng học không gian ẩn được ràng buộc trực tiếp bởi ma trận các nguyên mẫu khía cạnh $P=[p_1,\ldots,p_K]\in\mathbb{R}^{K\times d}$ tương ứng với $K$ nhóm phân loại \cite{angelidis2021extractive}. Phân phối xác suất gán một câu $e_i$ vào các nguyên mẫu được tính toán bằng hàm softmax điều chỉnh qua hệ số nhiệt độ $\tau$ \cite{angelidis2021extractive}:
+\begin{equation}
+r_{ij}=P(c_j|e_i)=\frac{\exp(z_i^T p_j/\tau)}{\sum_{k=1}^{K}\exp(z_i^T p_k/\tau)}.
+\label{eq:dev-chap2-prototype-assignment}
+\end{equation}
+Khi hệ số nhiệt độ $\tau \to 0$, hàm softmax tiệm cận phép toán $\arg\max$, đưa phân phối gán hội tụ về dạng vector one-hot dứt khoát (\textit{Hard Assignment}) \cite{angelidis2021extractive}. Trong kiến trúc SemAE, thuộc tính ngữ nghĩa phân biệt được bảo toàn thông qua việc áp dụng \textbf{Cơ chế Mã hóa Thưa (Sparse Coding)} nhờ vào thành phần phạt \textbf{Entropy Regularization} trong hàm mục tiêu tối ưu hóa tổng quát \cite{angelidis2021extractive}:
+\begin{equation}
+\mathcal{L}=\mathcal{L}_{rec}+\lambda\mathcal{L}_{proto}+\beta\mathcal{L}_{reg},
+\label{eq:dev-chap2-semae-loss}
+\end{equation}
+trong đó, số hạng $\mathcal{L}_{reg}$ chịu trách nhiệm ép độ thưa thớt của phân phối gán cụm $R_i = (r_{i1}, \ldots, r_{iK})$, được định nghĩa thông qua công thức tính entropy \cite{angelidis2021extractive}:
+\begin{equation}
+H(R_i) = - \sum_{j=1}^{K} r_{ij} \log r_{ij}.
+\label{eq:dev-chap2-entropy-reg}
+\end{equation}
+Khi mạng tối thiểu hóa giá trị entropy này, phân phối gán buộc phải triệt tiêu tính mờ, ép mỗi câu đánh giá chỉ được gắn chặt với duy nhất một hoặc rất ít nguyên mẫu khía cạnh cố định \cite{angelidis2021extractive}. Sự ràng buộc thưa thớt này ngăn chặn hiện tượng chồng chéo và mờ nhạt thông tin giữa các nhóm category, giúp các vector nguyên mẫu học được không gian đặc trưng sắc nét \cite{angelidis2021extractive}.
+
+\begin{figure}[htbp]
+\centering
+\begin{adjustbox}{max width=\textwidth}
+\begin{tikzpicture}[node distance=0.72cm and 0.65cm]
+    \node[smallblock, text width=2.4cm] (sent) {Câu đánh giá};
+    \node[smallblock, text width=2.6cm, right=of sent] (enc) {Transformer\\encoder};
+    \node[smallblock, text width=2.6cm, right=of enc] (quant) {Quantizer\\multi-head};
+    \node[smallblock, text width=2.4cm, right=of quant] (dist) {Phân phối $D_z$};
+    \node[smallblock, text width=2.8cm, below=0.8cm of dist] (score) {Xếp hạng theo\\công thức KL};
+    \node[smallblock, text width=2.6cm, left=of score] (proto) {Prototype $P_k$\\+ nền $P_z$};
+    \node[smallblock, text width=2.4cm, below=0.75cm of score] (pool) {Tập bằng chứng\\$\mathrm{score} \leq T$};
+    \draw[arrow] (sent) -- (enc);
+    \draw[arrow] (enc) -- (quant);
+    \draw[arrow] (quant) -- (dist);
+    \draw[arrow] (dist) -- (score);
+    \draw[arrow] (proto) -- (score);
+    \draw[arrow] (score) -- (pool);
+\end{tikzpicture}
+\end{adjustbox}
+\caption{Kiến trúc SemAE: từ câu đánh giá đến tập bằng chứng xếp hạng \cite{angelidis2021extractive}}
+\label{fig:semae-architecture}
+\end{figure}
+
+\begin{table}[htbp]
+\centering
+\caption{Tham số kiến trúc SemAE mẫu trong thực nghiệm}
+\label{tab:semae-params}
+\small
+\begin{tabularx}{\textwidth}{L{0.28\textwidth} L{0.14\textwidth} Y}
+\toprule
+\textbf{Tham số} & \textbf{Giá trị} & \textbf{Ý nghĩa} \\
+\midrule
+\texttt{d\_model} & 256 & Số chiều biểu diễn của Transformer encoder \cite{angelidis2021extractive}. \\
+\texttt{sentence\_output\_nheads} & 8 & Số đầu phân phối sau bộ lượng tử hóa ($H$) \cite{angelidis2021extractive}. \\
+\texttt{sentence\_internal\_nheads} & 4 & Số đầu attention bên trong encoder \cite{angelidis2021extractive}. \\
+\texttt{sentence\_nlayers} & 2 & Số lớp Transformer của encoder \cite{angelidis2021extractive}. \\
+SentencePiece & 32k & Từ vựng unigram huấn luyện trên SPACE \cite{kudo2018sentencepiece, angelidis2021extractive}. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Tiêu chí xếp hạng bằng chứng dựa trên Phân kỳ Kullback-Leibler}
+\label{subsec:dev-chap2-kl-ranking}
+
+Để liên hệ trực tiếp cấu trúc không gian ẩn của SemAE với bước lọc bằng chứng thực nghiệm, hệ thống mô hình hóa điểm xếp hạng dựa trên giá trị phân kỳ Kullback-Leibler ($D_{KL}$) nhằm đo lường độ lệch giữa các phân phối xác suất dự đoán và mục tiêu \cite{angelidis2021extractive}.
+
+Gọi $D_z$ là phân phối ngữ nghĩa của câu ẩn sau bộ lượng tử hóa; $P_k$ là phân phối nguyên mẫu mục tiêu của khía cạnh $k$; và $P_0$ là phân phối ngữ nghĩa nền (Background Distribution) đại diện cho xu hướng chung của toàn bộ tập văn bản đánh giá thuộc thực thể khách sạn hiện tại \cite{angelidis2021extractive}. Công thức tính điểm xếp hạng cho một câu được thiết lập như sau \cite{angelidis2021extractive}:
+\begin{equation}
+\mathrm{score}(z,k)=D_{KL}(D_z\|P_k)-\gamma D_{KL}(D_z\|P_0),
+\label{eq:dev-chap2-semae-ranking-score}
+\end{equation}
+trong đó $\gamma \geq 0$ là trọng số điều chỉnh mức độ tác động của phân phối nền, và công thức tính phân kỳ $D_{KL}$ tổng quát giữa hai phân phối bất kỳ $Q_i$ và $R_i$ trên không gian trạng thái $K$ chiều được định nghĩa \cite{angelidis2021extractive}:
+\begin{equation}
+D_{KL}(Q_i\|R_i)=\sum_{j=1}^{K} Q_i(j)\log\frac{Q_i(j)}{R_i(j)}.
+\label{eq:dev-chap2-kl-defined}
+\end{equation}
+Bản chất của toán thức tính điểm \eqref{eq:dev-chap2-semae-ranking-score} chứa đựng hai cơ chế hoạt động đồng thời: số hạng thứ nhất đóng vai trò ưu tiên giữ lại các câu có khoảng cách phân phối tiệm cận gần với khía cạnh đích $k$; số hạng thứ hai đóng vai trò là một bộ lọc phạt, làm giảm độ ưu tiên của các câu mang nội dung quá chung chung (tức các câu có phân phối gần với phân phối nền $P_0$ nhưng không mang thông tin đặc trưng cho khía cạnh mục tiêu) \cite{angelidis2021extractive}. Khi điểm số được diễn giải dưới dạng độ lệch bất đối xứng, những câu có giá trị $\mathrm{score}(z,k) \leq T$ (với $T$ là ngưỡng động quy định) sẽ được trích xuất thành công vào tập dữ liệu chứng cứ lõi \cite{angelidis2021extractive}.
+
+Quy trình lọc này giúp tập bằng chứng cuối cùng loại bỏ được hiện tượng trùng lặp ý, gia tăng tính đa dạng ngữ nghĩa, đồng thời lưu trữ được siêu dữ liệu liên kết ngược (Back-tracing metadata) từ tầng câu sinh của bản tóm tắt về chính xác vị trí câu đánh giá thô ban đầu của người dùng \cite{angelidis2021extractive}.
+\section{Đánh giá chất lượng hệ thống NLP}
+\label{sec:dev-chap2-nlp-evaluation}
+
+Đánh giá hệ thống ABSA Summary cần bao phủ nhiều tầng: nhãn category, nhãn cảm xúc, bằng chứng được chọn, chất lượng tóm tắt và chỉ số vận hành. Một chỉ số đơn lẻ không đủ vì tóm tắt có thể mạch lạc nhưng sai bằng chứng, hoặc chọn đúng bằng chứng nhưng diễn đạt chưa tốt.
+
+\subsection{Precision, Recall và F1}
+\label{subsec:dev-chap2-prf1}
+
+Precision, Recall và F1 được dùng để đánh giá các bước có đầu ra dạng nhãn hoặc tập mục tiêu như ATE, ACD và SPC:
+
+\begin{equation}
+\text{Precision}=\frac{\text{TP}}{\text{TP}+\text{FP}},\quad \text{Recall}=\frac{\text{TP}}{\text{TP}+\text{FN}},
+\label{eq:chap2-pr}
+\end{equation}
+
+\begin{equation}
+\text{F1}=2\cdot\frac{\text{Precision}\cdot \text{Recall}}{\text{Precision}+\text{Recall}}.
+\label{eq:chap2-f1}
+\end{equation}
+
+Trong đó $\text{TP}$ (True Positive) là số dự đoán đúng, $\text{FP}$ (False Positive) là số dự đoán sai nhưng hệ thống vẫn đưa ra, và $\text{FN}$ (False Negative) là số kết quả đúng bị hệ thống bỏ sót. Với ABSA Summary, F1 cao ở bước category là điều kiện cần nhưng chưa đủ để bảo đảm tóm tắt cuối cùng tốt.
+
+\subsection{Đánh giá tương đồng bề mặt và ngữ nghĩa}
+\label{subsec:dev-chap2-rouge}
+
+ROUGE đo mức độ trùng khớp giữa tóm tắt sinh ra và tóm tắt tham chiếu~\cite{lin2004rouge}. Với n-gram, ROUGE Precision và Recall có thể viết:
+
+\begin{equation}
+\text{ROUGE-P}=\frac{|S_{gen}\cap S_{ref}|}{|S_{gen}|}, \quad \text{ROUGE-R}=\frac{|S_{gen}\cap S_{ref}|}{|S_{ref}|}.
+\label{eq:chap2-rouge-pr}
+\end{equation}
+
+Tương tự với công thức F1 tổng quát, ROUGE F1-Score được tính từ trung bình điều hòa của ROUGE-P và ROUGE-R:
+
+\begin{equation}
+\text{ROUGE-F1} = 2 \cdot \frac{\text{ROUGE-P} \cdot \text{ROUGE-R}}{\text{ROUGE-P} + \text{ROUGE-R}}.
+\label{eq:chap2-rouge-f1}
+\end{equation}
+
+Trong các bảng kết quả ở Chương~4, các giá trị ROUGE-1 và ROUGE-2 được báo cáo đều là giá trị ROUGE F1-Score theo công thức này.
+
+ROUGE-L dựa trên Longest Common Subsequence (LCS). Với hai chuỗi $X=(x_1,\ldots,x_m)$ và $Y=(y_1,\ldots,y_n)$, độ dài LCS có thể tính bằng quy hoạch động:
+
+\begin{equation}
+L_{i,j}=\begin{cases}
+0, & i=0 \text{ hoặc } j=0,\\
+L_{i-1,j-1}+1, & x_i=y_j,\\
+\max(L_{i-1,j},L_{i,j-1}), & x_i\neq y_j.
+\end{cases}
+\label{eq:chap2-lcs}
+\end{equation}
+
+Bên cạnh ROUGE, BERTScore đánh giá sự tương đồng bằng cách so sánh trực tiếp các biểu diễn ngữ cảnh (contextual embeddings) sinh ra từ mô hình ngôn ngữ lớn~\cite{zhang2020bertscore}. Thay vì yêu cầu khớp chính xác bề mặt n-gram, BERTScore sử dụng phép so khớp tham lam (greedy matching) để tìm độ tương đồng cosine cực đại giữa từng đơn vị từ của chuỗi hệ thống sinh ra $S_{gen}$ và chuỗi tham chiếu $S_{ref}$:
+
+\begin{equation}
+R_{\text{BERT}} = \frac{1}{|S_{gen}|} \sum_{x_i \in S_{gen}} \max_{y_j \in S_{ref}} \frac{\mathbf{e}_{x_i}^\top \mathbf{e}_{y_j}}{\|\mathbf{e}_{x_i}\| \|\mathbf{e}_{y_j}\|}
+\label{eq:dev-chap2-bertscore-recall}
+\end{equation}
+
+Cách đo lường này giúp hệ thống đánh giá cao những bản tóm tắt có cùng ý nghĩa ngữ nghĩa (semantic equivalence) với tham chiếu nhưng sử dụng từ vựng đồng nghĩa hoặc cấu trúc câu khác. BLEURT bổ sung thêm góc nhìn bằng mô hình đánh giá học được~\cite{sellam2020bleurt}. Tuy nhiên, các chỉ số này vẫn không thay thế được đánh giá đúng category, đúng cảm xúc và không hiện tượng ảo giác.
+
+\subsection{Đo lường độ trung thực bằng NLI Contradiction Rate}
+\label{subsec:dev-chap2-nli-eval}
+
+Như đã trình bày ở Mục~\ref{subsec:dev-chap2-faithfulness}, Suy luận Ngôn ngữ Tự nhiên (NLI) cho phép phát hiện câu tóm tắt mâu thuẫn với bằng chứng gốc. Để biến NLI thành một chỉ số đánh giá định lượng chính thức, ta định nghĩa \textbf{tỷ lệ mâu thuẫn} (Contradiction Rate) trên tập $N$ cặp (bằng chứng, tóm tắt) bằng công thức trung bình của hàm chỉ thị:
+
+\begin{equation}
+\text{Contradiction Rate} = \frac{1}{N} \sum_{i=1}^{N} \mathbb{I}\bigl(\text{NLI}(E_i, S_i) = \text{Contradiction}\bigr)
+\label{eq:dev-chap2-nli-contradiction-rate}
+\end{equation}
+
+trong đó $E_i$ là tập bằng chứng (đóng vai trò Premise), $S_i$ là câu tóm tắt sinh ra (đóng vai trò Hypothesis), và $\mathbb{I}(\cdot)$ là hàm chỉ thị nhận giá trị 1 khi mô hình NLI dự đoán nhãn Contradiction, 0 trong các trường hợp còn lại. Tỷ lệ Contradiction Rate thấp (tiệm cận 0) là điều kiện cần để khẳng định hệ thống sinh tóm tắt trung thực với nguồn dữ liệu. Chỉ số này bổ sung trực tiếp cho ROUGE và BERTScore --- vốn chỉ đo tương đồng bề mặt/ngữ nghĩa mà không phát hiện được lỗi hiện tượng ảo giác.
+
+\subsection{LLM-as-a-judge}
+\label{subsec:dev-chap2-llm-judge}
+
+LLM-as-a-judge dùng mô hình ngôn ngữ để chấm tóm tắt theo rubric. Một hướng tiêu biểu như G-Eval yêu cầu mô hình đánh giá theo tiêu chí rõ ràng và có thể tính kỳ vọng điểm số từ xác suất các đơn vị từ điểm. Nếu thang điểm là $1$ đến $5$, điểm kỳ vọng có thể viết:
+
+\begin{equation}
+\text{Score}=\sum_{s=1}^{5}s\cdot P(s).
+\label{eq:chap2-geval-score}
+\end{equation}
+
+Trong đó $P(s)$ là xác suất biên (marginal probability) mà mô hình ngôn ngữ gán cho đơn vị từ chuỗi tương ứng với điểm số $s$, thường được trích xuất từ phân phối Softmax ở bước sinh đơn vị từ cuối cùng của quá trình đánh giá. Giá trị $\text{Score}$ do đó là kỳ vọng toán học của điểm số theo phân phối xác suất sinh của mô hình.
+
+Để tăng độ ổn định của đánh giá, LLM-as-a-judge thường được kết hợp với kỹ thuật suy luận chuỗi (Chain-of-Thought, CoT). Thay vì yêu cầu mô hình sinh trực tiếp một điểm số, lời nhắc buộc mô hình phân rã quá trình chấm thành các bước trung gian: đọc tập bằng chứng $E$, đối chiếu với tóm tắt $S$, kiểm tra từng tiêu chí trong rubric, phát hiện lỗi như unsupported claim hoặc cảm xúc flip, sau đó mới sinh đơn vị từ điểm số hoặc phán quyết cuối cùng. Dưới góc nhìn xác suất, CoT mở rộng điều kiện sinh từ $P(s|E,S,R)$ thành quá trình có biến trung gian lập luận $C$:
+
+\begin{equation}
+P(s|E,S,R)=\sum_{C}P(s|C,E,S,R)P(C|E,S,R),
+\label{eq:dev-chap2-cot-judge}
+\end{equation}
+
+trong đó $R$ là rubric đánh giá và $C$ là chuỗi lập luận trung gian. Công thức này không yêu cầu hệ thống liệt kê toàn bộ không gian $C$ trong triển khai thực tế, mà làm rõ vai trò của CoT: đưa quá trình chấm điểm từ phản xạ sinh đơn vị từ trực tiếp sang kiểm tra có cấu trúc dựa trên bằng chứng và tiêu chí.
+
+Trong ABSA Summary, rubric cần bao gồm độ bao phủ, đúng category, đúng cảm xúc, faithfulness và tính hữu ích. LLM judge hữu ích vì có thể phát hiện lỗi ngữ nghĩa mà ROUGE bỏ qua, nhưng vẫn cần kiểm soát lời nhắc chấm điểm, tính nhất quán giữa các lần chạy và nguy cơ thiên lệch của mô hình đánh giá.
+
+Đối với phương pháp chọn bằng chứng, hai chỉ số top-$K$ thường được dùng để đọc chất lượng bằng chứng trước khi kết luận về tóm tắt. Với $E_K$ là tập $K$ bằng chứng đầu tiên được chọn cho một mục đánh giá, $A(e)$ là hàm chỉ thị bằng chứng $e$ đúng khía cạnh mục tiêu, và $U(e,S)$ là hàm chỉ thị bằng chứng $e$ hỗ trợ nhận định trong tóm tắt $S$, ta có:
+
+\begin{equation}
+\mathrm{P@}K=\frac{1}{K}\sum_{e\in E_K}A(e),
+\label{eq:dev-chap2-p-at-k}
+\end{equation}
+
+\begin{equation}
+\mathrm{Support@}K=\frac{1}{K}\sum_{e\in E_K}U(e,S).
+\label{eq:dev-chap2-support-at-k}
+\end{equation}
+
+Trong thực nghiệm, $K=5$ được dùng để báo cáo P@5 và Support@5. P@5 tập trung vào độ đúng khía cạnh của năm bằng chứng đầu, còn Support@5 kiểm tra liệu các bằng chứng đó có thực sự hỗ trợ nội dung tóm tắt hay không. Hai chỉ số này bổ sung cho ROUGE và LLM judge vì chúng đánh giá trực tiếp tầng bằng chứng, nơi lỗi thường truyền sang bước sinh tóm tắt.
+
+\begin{table}[htbp]
+\centering
+\caption{Bộ tiêu chí LLM judge: các trường điểm, cờ lỗi và phán quyết}
+\label{tab:rubric}
+\small
+\begin{tabularx}{\textwidth}{L{0.34\textwidth} L{0.13\textwidth} Y}
+\toprule
+\textbf{Trường} & \textbf{Kiểu} & \textbf{Ý nghĩa} \\
+\midrule
+\multicolumn{3}{l}{\textit{Điểm (thang 1--5)}} \\
+\addlinespace
+\texttt{evidence\_support} & int 1--5 & Mức độ tóm tắt được bằng chứng hỗ trợ. \\
+\texttt{aspect\_correctness} & int 1--5 & Mức độ tóm tắt đúng khía cạnh mục tiêu. \\
+\texttt{sentiment\_alignment} & int 1--5 & Mức độ tóm tắt đúng cực tính mục tiêu. \\
+\texttt{coverage} & int 1--5 & Mức độ tóm tắt bao phủ ý kiến quan trọng. \\
+\texttt{specificity} & int 1--5 & Mức độ tóm tắt cụ thể, không chung chung. \\
+\texttt{usefulness} & int 1--5 & Mức độ tóm tắt hữu ích cho người đọc. \\
+\addlinespace
+\multicolumn{3}{l}{\textit{Cờ lỗi (boolean)}} \\
+\addlinespace
+\texttt{unsupported\_claim} & bool & Có nhận định không được bằng chứng hỗ trợ. \\
+\texttt{aspect\_mismatch} & bool & Tóm tắt chủ yếu nói khía cạnh khác. \\
+\texttt{sentiment\_flip} & bool & Cực tính tóm tắt trái với bằng chứng/mục tiêu. \\
+\texttt{major\_theme\_missing} & bool & Thiếu chủ đề quan trọng trong bằng chứng. \\
+\texttt{generic\_summary} & bool & Tóm tắt quá chung chung. \\
+\addlinespace
+\multicolumn{3}{l}{\textit{Phán quyết}} \\
+\addlinespace
+\texttt{verdict} & pass/warn/fail & Phán quyết tổng thể của judge. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Một item có thể được tính là \textbf{đạt chuẩn} (pass) nếu thỏa đồng thời các điều kiện cốt lõi, ví dụ:
+\begin{equation}
+\label{eq:pass-rule}
+\mathrm{pass} \iff \begin{cases}
+\texttt{evidence\_support} \geq 4 \\
+\texttt{aspect\_correctness} \geq 4 \\
+\texttt{sentiment\_alignment} \geq 4 \\
+\texttt{coverage} \geq 3 \\
+\texttt{unsupported\_claim} = \text{false} \\
+\texttt{sentiment\_flip} = \text{false}
+\end{cases}
+\end{equation}
+Cách tiếp cận này giúp chuyển từ một điểm trung bình đơn lẻ sang phân tích chi tiết từng khía cạnh chất lượng của tóm tắt.
+
+\subsection{Chỉ số vận hành hệ thống}
+\label{subsec:dev-chap2-operational-metrics}
+
+Ngoài chất lượng nội dung, hệ thống cần được đánh giá bằng độ trễ, chi phí suy luận, tỷ lệ lỗi schema, phương án dự phòng rate và compression ratio. Các chỉ số này phản ánh khả năng triển khai thực tế: một cấu hình có điểm tóm tắt cao nhưng latency quá lớn hoặc thường xuyên lỗi JSON có thể không phù hợp cho quy trình sản xuất.
+
+Ở tầng suy luận LLM/SLM, hai kỹ thuật ảnh hưởng trực tiếp đến độ trễ và chi phí bộ nhớ là KV Cache và lượng tử hóa. Trong quá trình sinh tự hồi quy, tại bước $t$ mô hình sinh đơn vị từ $y_t$ dựa trên các đơn vị từ trước đó $y_{<t}$ và ngữ cảnh đầu vào. Nếu không dùng bộ nhớ đệm, các ma trận Key và Value của toàn bộ prefix phải được tính lại ở nhiều bước sinh. KV Cache lưu các tensor $K_{1:t-1}$ và $V_{1:t-1}$ đã tính từ những đơn vị từ trước, nên tại bước mới hệ thống chỉ cần tính thêm $K_t,V_t$ rồi nối vào cache. Với độ dài sinh $T$, cơ chế này không làm thay đổi phân phối xác suất của mô hình, nhưng giảm đáng kể phần tính toán lặp lại trong decode và cải thiện latency của quy trình.
+
+Lượng tử hóa (quantization) là kỹ thuật biểu diễn trọng số hoặc activation bằng số bit thấp hơn, chẳng hạn chuyển từ FP16/BF16 sang INT8 hoặc 4-bit. Nếu một mô hình có $N$ tham số, bộ nhớ lưu trọng số xấp xỉ tỷ lệ với $N\times b$, trong đó $b$ là số bit cho mỗi tham số. Do đó, giảm $b$ giúp mô hình vừa với VRAM nhỏ hơn và tăng khả năng triển khai cục bộ, đổi lại có thể làm suy giảm nhẹ chất lượng sinh hoặc độ ổn định của reasoning. Trong hệ thống ABSA Summary, lựa chọn lượng tử hóa cần được đọc cùng các chỉ số chất lượng nội dung, vì một cấu hình nhanh và rẻ hơn chỉ phù hợp khi không làm tăng lỗi category, cảm xúc hoặc hiện tượng ảo giác.
+
+\begin{table}[htbp]
+\centering
+\caption{Các nhóm chỉ số đánh giá trong hệ thống ABSA Summary}
+\label{tab:dev-chap2-eval-metrics}
+\begin{tabular}{p{0.24\textwidth}p{0.34\textwidth}p{0.32\textwidth}}
+\toprule
+\textbf{Nhóm chỉ số} & \textbf{Mục tiêu} & \textbf{Ví dụ} \\
+\midrule
+ABSA & Đánh giá nhãn khía cạnh và cảm xúc & Precision, Recall, F1 \\
+Bằng chứng & Đánh giá relevance và truy vết & Similarity, coverage, diversity \\
+Bề mặt/ngữ nghĩa & So sánh với tóm tắt tham chiếu & ROUGE, BERTScore, BLEURT \\
+Trung thực & Đo lỗi hiện tượng ảo giác / mâu thuẫn & NLI Contradiction Rate \\
+Judge & Đánh giá rubric nội dung & LLM-as-a-judge, G-Eval-style score \\
+Vận hành & Đánh giá khả năng triển khai & Latency, cost, phương án dự phòng rate \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Liên hệ với đánh giá thực nghiệm}
+\label{subsec:dev-chap2-evaluation-link}
+
+Các chỉ số trên cần được đọc cùng nhau. ROUGE cao không bảo đảm tóm tắt đúng cảm xúc; LLM judge cao nhưng chi phí quá lớn cũng khó triển khai; phương án dự phòng rate thấp chưa nói gì về chất lượng nội dung. Vì vậy, Chương~4 cần trình bày kết quả theo nhiều góc nhìn, bao gồm chất lượng tóm tắt, lỗi nội dung và chỉ số vận hành.
+
+\section*{Tóm tắt chương}
+\addcontentsline{toc}{section}{Tóm tắt chương}
+\label{sec:dev-chap2-summary}
+
+Chương này đã xây dựng nền tảng lý thuyết cho hệ thống ABSA Summary theo bảy nhóm nội dung chính. Phần 2.1 mô hình hóa NLP như quá trình ánh xạ chuỗi đơn vị từ sang đầu ra có cấu trúc và trình bày các bước phát triển từ luật thủ công đến Transformer. Phần 2.2 định nghĩa ABSA bằng tập các bộ ý kiến $(a,c,o,p)$, bổ sung giới hạn của phân tích cảm xúc truyền thống và trực quan hóa việc phân rã câu thành các đơn vị ý kiến.
+
+Phần 2.3 trình bày biểu diễn ngôn ngữ và Transformer với định nghĩa rõ $Q,K,V$, kích thước ma trận, scaled dot-product attention và multi-head attention. Phần 2.4 đặt LLM/SLM trong khung sinh xác suất có điều kiện, giải thích in-context learning, prompt engineering, structured output và các ràng buộc kiểm soát đầu ra dưới góc độ triển khai quy trình. Phần 2.5 mô hình hóa tóm tắt trích rút, tóm tắt trừu tượng và hiện tượng ảo giác bằng ngôn ngữ xác suất.
+
+Phần 2.6 trình bày chọn bằng chứng, sentence pooling, AutoEncoder, Semantic AutoEncoder, prototype vector, công thức xếp hạng SemAE dựa trên KL-divergence và các phân phối được định nghĩa cụ thể. Phần 2.7 hệ thống hóa các nhóm chỉ số đánh giá gồm Precision/Recall/F1, ROUGE, BERTScore, BLEURT, NLI Contradiction Rate, P@5, Support@5, LLM-as-a-judge, Chain-of-Thought trong đánh giá và các chỉ số vận hành; đồng thời liên hệ latency và chi phí suy luận với KV Cache và lượng tử hóa. Các nền tảng này sẽ được dùng để giải thích phương pháp ở Chương~3 và đọc kết quả thực nghiệm ở Chương~4.

@@ -5,7 +5,7 @@
 
 \begin{table}[H]
 \centering
-\caption{Tóm tắt dữ liệu HASOS sử dụng trong phương pháp 2}
+\caption{Tóm tắt dữ liệu HASOS sử dụng trong SemAE}
 \label{tab:hasos-data-summary}
 \begin{tabularx}{0.92\textwidth}{l r X}
 \toprule
@@ -14,7 +14,8 @@
 Khách sạn / thực thể & 50 & Mỗi thực thể gồm nhiều đánh giá người dùng. \\
 Đánh giá & 5,000 & Dữ liệu đầu vào dạng văn bản tự nhiên. \\
 Câu đánh giá & 45,529 & Đơn vị được SemAE xếp hạng làm bằng chứng. \\
-Khía cạnh HASOS & 29 & Taxonomy chi tiết theo miền khách sạn. \\
+Nhóm khía cạnh chính & 6 & Facility, Amenity, Service, Experience, Branding và Loyalty. \\
+Khía cạnh con HASOS & 29 & Các khía cạnh con được tổ chức dưới 6 nhóm chính để phục vụ tóm tắt chi tiết. \\
 Nhóm khía cạnh có tóm tắt tham chiếu & 4 & Facility, Amenity, Service, Experience. \\
 \bottomrule
 \end{tabularx}
@@ -29,15 +30,15 @@ Nhóm khía cạnh có tóm tắt tham chiếu & 4 & Facility, Amenity, Service,
 \toprule
 \textbf{Biến thể} & \textbf{Ngưỡng $T$} & \textbf{Token $B$} & \textbf{Diễn giải} \\
 \midrule
-M1 & 0.0050 & 120 từ & Baseline trích rút SemAE; không sinh văn bản mới. \\
-M2 & 0.0075 & 128 & Tóm tắt trừu tượng trước khi tách cảm xúc. \\
-M3 & 0.0055 & 96 & Tách cảm xúc bằng luật/từ khóa, sau đó sinh tóm tắt. \\
-M4 & 0.0050 & 96 & Tách cảm xúc bằng BERT-ABSA, sau đó sinh tóm tắt. \\
+SemAE M1 & 0.0050 & 120 từ & Baseline trích rút SemAE; không sinh văn bản mới. \\
+SemAE M2 & 0.0075 & 128 & Tóm tắt trừu tượng trước khi tách cảm xúc. \\
+SemAE M3 & 0.0055 & 96 & Tách cảm xúc bằng luật/từ khóa, sau đó sinh tóm tắt. \\
+SemAE M4 & 0.0050 & 96 & Tách cảm xúc bằng BERT-ABSA, sau đó sinh tóm tắt. \\
 \bottomrule
 \end{tabular}
 \begin{tablenotes}
 \footnotesize
-\item Với M1, \(T=0.005\) là ngưỡng xuất pool bằng chứng của run SemAE và \(B=120\) là giới hạn số từ của bản tóm tắt trích rút. M1 không được tối ưu bằng cùng sweep hậu kỳ như M2--M4; M2--M4 dùng \(B\) là \texttt{max\_new\_tokens} của mô hình sinh.
+\item Với SemAE M1, \(T=0.005\) là ngưỡng xuất pool bằng chứng của run SemAE và \(B=120\) là giới hạn số từ của bản tóm tắt trích rút. SemAE M1 không được tối ưu bằng cùng sweep hậu kỳ như SemAE M2--SemAE M4; SemAE M2--SemAE M4 dùng \(B\) là \texttt{max\_new\_tokens} của mô hình sinh.
 \end{tablenotes}
 \end{threeparttable}
 \end{table}
@@ -52,10 +53,10 @@ M4 & 0.0050 & 96 & Tách cảm xúc bằng BERT-ABSA, sau đó sinh tóm tắt. 
 \toprule
 \textbf{Phương pháp} & \textbf{N} & \textbf{P@5} & \textbf{Support@5} & \textbf{Leak A} & \textbf{Leak S} & \textbf{Support} & \textbf{Unsup.} & \textbf{Flip} \\
 \midrule
-M1 & 1372 & 0.872 & \textbf{0.894} & 0.067 & 0.001 & 4.170 & 0.208 & 0.011 \\
-M2 & 1372 & 0.874 & 0.653 & 0.029 & \textbf{0.000} & 3.928 & 0.338 & \textbf{0.009} \\
-M3 &  907 & 0.925 & 0.823 & 0.041 & 0.008 & 4.364 & 0.197 & 0.084 \\
-M4 &  804 & \textbf{0.945} & 0.874 & \textbf{0.021} & 0.001 & \textbf{4.552} & \textbf{0.129} & 0.030 \\
+SemAE M1 & 1372 & 0.872 & \textbf{0.894} & 0.067 & 0.001 & 4.170 & 0.208 & 0.011 \\
+SemAE M2 & 1372 & 0.874 & 0.653 & 0.029 & \textbf{0.000} & 3.928 & 0.338 & \textbf{0.009} \\
+SemAE M3 &  907 & 0.925 & 0.823 & 0.041 & 0.008 & 4.364 & 0.197 & 0.084 \\
+SemAE M4 &  804 & \textbf{0.945} & 0.874 & \textbf{0.021} & 0.001 & \textbf{4.552} & \textbf{0.129} & 0.030 \\
 \bottomrule
 \end{tabular}
 \begin{tablenotes}
@@ -75,10 +76,10 @@ M4 &  804 & \textbf{0.945} & 0.874 & \textbf{0.021} & 0.001 & \textbf{4.552} & \
 \toprule
 \textbf{Phương pháp} & \textbf{Pass} & \textbf{Aspect} & \textbf{Sent.} & \textbf{Cov.} & \textbf{Spec.} & \textbf{Useful} & \textbf{Theme} & \textbf{Generic} \\
 \midrule
-M1 & 0.734 & 4.650 & 4.372 & 4.000 & 4.070 & 4.065 & 0.950 & \textbf{0.012} \\
-M2 & 0.610 & 4.473 & 4.239 & 3.600 & 3.738 & 3.840 & 0.920 & 0.079 \\
-M3 & 0.736 & 4.573 & 4.456 & 4.090 & 4.117 & 4.236 & 0.940 & 0.069 \\
-M4 & \textbf{0.842} & \textbf{4.680} & \textbf{4.726} & \textbf{4.340} & \textbf{4.275} & \textbf{4.469} & \textbf{0.965} & 0.063 \\
+SemAE M1 & 0.734 & 4.650 & 4.372 & 4.000 & 4.070 & 4.065 & 0.950 & \textbf{0.012} \\
+SemAE M2 & 0.610 & 4.473 & 4.239 & 3.600 & 3.738 & 3.840 & 0.920 & 0.079 \\
+SemAE M3 & 0.736 & 4.573 & 4.456 & 4.090 & 4.117 & 4.236 & 0.940 & 0.069 \\
+SemAE M4 & \textbf{0.842} & \textbf{4.680} & \textbf{4.726} & \textbf{4.340} & \textbf{4.275} & \textbf{4.469} & \textbf{0.965} & 0.063 \\
 \bottomrule
 \end{tabular}
 \begin{tablenotes}
@@ -98,15 +99,15 @@ M4 & \textbf{0.842} & \textbf{4.680} & \textbf{4.726} & \textbf{4.340} & \textbf
 \toprule
 \textbf{Phương pháp} & \textbf{Rows} & \textbf{Gen.} & \textbf{Fallback} & \textbf{Copy} & \textbf{Ev.} & \textbf{Comp.} & \textbf{R-1} & \textbf{R-2} & \textbf{R-L} \\
 \midrule
-M1 & 1372 & -- & -- & 1.000 & 6.931 & 1.000 & 0.203 & 0.055 & 0.122 \\
-M2 & 1372 & \textbf{0.630} & \textbf{0.370} & 0.125 & 18.389 & 0.560 & 0.232 & 0.044 & 0.150 \\
-M3 &  907 & 0.589 & 0.411 & 0.456 &  2.834 & 0.730 & \textbf{0.262} & \textbf{0.071} & \textbf{0.168} \\
-M4 &  804 & 0.519 & 0.481 & 0.563 &  1.919 & 0.823 & 0.209 & 0.040 & 0.137 \\
+SemAE M1 & 1372 & -- & -- & 1.000 & 6.931 & 1.000 & 0.203 & 0.055 & 0.122 \\
+SemAE M2 & 1372 & \textbf{0.630} & \textbf{0.370} & 0.125 & 18.389 & 0.560 & 0.232 & 0.044 & 0.150 \\
+SemAE M3 &  907 & 0.589 & 0.411 & 0.456 &  2.834 & 0.730 & \textbf{0.262} & \textbf{0.071} & \textbf{0.168} \\
+SemAE M4 &  804 & 0.519 & 0.481 & 0.563 &  1.919 & 0.823 & 0.209 & 0.040 & 0.137 \\
 \bottomrule
 \end{tabular}
 \begin{tablenotes}
 \footnotesize
-\item \textit{Rows} = số bản ghi; \textit{Gen.} = tỷ lệ sinh trừu tượng thành công (generation rate); \textit{Fallback} = tỷ lệ dự phòng (thấp hơn là tốt hơn); \textit{Copy} = tỷ lệ sao chép bằng chứng (copy rate); \textit{Ev.} = số bằng chứng trung bình (evidence count); \textit{Comp.} = tỷ lệ nén (compression ratio); \textit{R-1} / \textit{R-2} / \textit{R-L} = ROUGE-1 / ROUGE-2 / ROUGE-L. Với M1, \textit{Gen.} và \textit{Fallback} không áp dụng vì đây là baseline trích rút. Giá trị tốt nhất ở các cột có chiều rõ ràng được in đậm.
+\item \textit{Rows} = số bản ghi; \textit{Gen.} = tỷ lệ sinh trừu tượng thành công (generation rate); \textit{Fallback} = tỷ lệ dự phòng (thấp hơn là tốt hơn); \textit{Copy} = tỷ lệ sao chép bằng chứng (copy rate); \textit{Ev.} = số bằng chứng trung bình (evidence count); \textit{Comp.} = tỷ lệ nén (compression ratio); \textit{R-1} / \textit{R-2} / \textit{R-L} = ROUGE-1 / ROUGE-2 / ROUGE-L. Với SemAE M1, \textit{Gen.} và \textit{Fallback} không áp dụng vì đây là baseline trích rút. Giá trị tốt nhất ở các cột có chiều rõ ràng được in đậm.
 \end{tablenotes}
 \end{threeparttable}
 \end{table}
@@ -119,10 +120,10 @@ M4 &  804 & 0.519 & 0.481 & 0.563 &  1.919 & 0.823 & 0.209 & 0.040 & 0.137 \\
 \toprule
 \textbf{Phương pháp} & \textbf{ROUGE-1} & \textbf{ROUGE-2} & \textbf{ROUGE-L} \\
 \midrule
-M1 trích rút (extractive) & 0.304 & 0.087 & 0.222 \\
-M2 trừu tượng (abstractive) & 0.307 & 0.086 & 0.235 \\
-M3 tách cảm xúc bằng từ khóa & \textbf{0.309} & \textbf{0.089} & \textbf{0.240} \\
-M4 tách cảm xúc bằng BERT-ABSA & 0.308 & \textbf{0.089} & 0.239 \\
+SemAE M1 trích rút (extractive) & 0.304 & 0.087 & 0.222 \\
+SemAE M2 trừu tượng (abstractive) & 0.307 & 0.086 & 0.235 \\
+SemAE M3 tách cảm xúc bằng từ khóa & \textbf{0.309} & \textbf{0.089} & \textbf{0.240} \\
+SemAE M4 tách cảm xúc bằng BERT-ABSA & 0.308 & \textbf{0.089} & 0.239 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -135,8 +136,8 @@ M4 tách cảm xúc bằng BERT-ABSA & 0.308 & \textbf{0.089} & 0.239 \\
 \toprule
 \textbf{Nhóm chỉ số} & \textbf{Trạng thái} & \textbf{Diễn giải} \\
 \midrule
-ROUGE-1/2/L & Tính trực tiếp & Dùng tóm tắt tham chiếu theo nhóm khía cạnh; HASOS được gom 29 khía cạnh con về 4 nhóm có tham chiếu. \\
-Bằng chứng và độ trung thực & Dựa trên judge & DeepSeek Flash chấm 4,455 item M1--M4 theo cùng rubric cố định, output JSON được validate và cache. \\
+ROUGE-1/2/L & Tính trực tiếp & Dùng tóm tắt tham chiếu theo nhóm khía cạnh; đầu ra của 29 khía cạnh con trong HASOS được ánh xạ về 4 nhóm khía cạnh chính có tham chiếu. \\
+Bằng chứng và độ trung thực & Dựa trên judge & DeepSeek Flash chấm 4,455 item SemAE M1--SemAE M4 theo cùng rubric cố định, output JSON được validate và cache. \\
 Tỷ lệ nén / dự phòng / sao chép & Tính trực tiếp & Lấy từ artifact sinh tóm tắt và tệp bằng chứng JSONL. \\
 ABSA Macro-F1 / Pair-F1 & Chưa báo chính thức & Dữ liệu hiện tại không có nhãn gold khía cạnh--cảm xúc ở cấp câu, nên không giả lập F1 như chỉ số gold. \\
 Quad exact/partial F1 & Chưa báo chính thức & Cần nhãn gold ở cấp span, hiện không tồn tại trong artifact. \\

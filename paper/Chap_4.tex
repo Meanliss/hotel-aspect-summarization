@@ -1,0 +1,1044 @@
+\chapter{THỰC NGHIỆM VÀ ĐÁNH GIÁ}
+\section{Tập dữ liệu thực nghiệm}
+\label{sec:experiments-two-methods}
+
+Chương này trình bày thiết lập thực nghiệm và kết quả đánh giá cho hai phương pháp được đề xuất trong Chương~3. Trọng tâm của chương không phải là xếp hạng hai phương pháp như hai mô hình cạnh tranh tuyệt đối, mà là làm rõ sự đánh đổi giữa chất lượng tóm tắt, chi phí vận hành, khả năng kiểm soát lỗi và khả năng truy vết bằng chứng.
+
+Phương pháp~1 UASum là quy trình ABSA--tóm tắt có kiểm soát, sử dụng mô hình ngôn ngữ ở nhiều bước để tách đơn vị ý kiến, gán khía cạnh--cảm xúc, tổ chức bằng chứng và sinh tóm tắt. Do đó, phương pháp này có chi phí vận hành cao hơn, nhưng được kỳ vọng tạo ra bản tóm tắt giàu thông tin hơn và có chất lượng tổng hợp tốt hơn. Phương pháp~2 SemAE tập trung vào lựa chọn bằng chứng và phân tích các biến thể SemAE M1--SemAE M4 trên cùng nền bằng chứng. Trong nhóm này, SemAE M4 được xem là biến thể cần kiểm chứng toàn diện vì kết hợp SemAE với BERT-ABSA nhằm cân bằng giữa đúng khía cạnh, đúng cảm xúc và trung thực bằng chứng.
+
+Các câu hỏi thực nghiệm chính của chương gồm: (i) UASum có chứng minh được lợi thế chất lượng so với chi phí vận hành cao hơn hay không; (ii) trong các biến thể SemAE, SemAE M4 có phải cấu hình toàn diện nhất khi xét đồng thời ROUGE, đánh giá LLM và truy vết bằng chứng hay không; và (iii) hai phương pháp phù hợp với những bối cảnh ứng dụng khác nhau như thế nào.
+
+\subsection{Mô tả dữ liệu}
+
+
+Thực nghiệm sử dụng hai nhóm dữ liệu chính cho phương pháp~2 là SPACE và HASOS, đồng thời sử dụng thêm tập đánh giá khách sạn đầy đủ và tập ABSA gán nhãn thủ công để kiểm tra phương pháp~1. SPACE được dùng ở hai vai trò khác nhau: (i) corpus huấn luyện SemAE trong miền khách sạn tiếng Anh và (ii) tập summary đối chiếu có tóm tắt tham chiếu. HASOS là cấu hình đánh giá mục tiêu cho phương pháp~2, trong đó cùng bài toán tóm tắt khách sạn được tổ chức theo hệ khía cạnh chi tiết gồm 29 khía cạnh con và các nhóm cha dùng khi tính ROUGE. Vì vậy, khi đọc kết quả, cần phân biệt rõ dữ liệu dùng để huấn luyện mô hình biểu diễn, dữ liệu dùng để suy luận và dữ liệu dùng làm tham chiếu đánh giá.
+
+SPACE là tập dữ liệu đánh giá khách sạn được công bố kèm nghiên cứu SemAE~\cite{angelidis2021extractive}, xây dựng từ các đánh giá khách sạn tiếng Anh trên TripAdvisor. Trong kho thực nghiệm, corpus huấn luyện SPACE đầy đủ có \num{11402} khách sạn và \num{1135806} đánh giá. Tập summary SPACE dùng để đối chiếu trong báo cáo gồm \num{50} khách sạn, \num{5000} đánh giá, tức đúng \num{100} đánh giá cho mỗi khách sạn; tổng số câu sau tách câu là \num{45529}. File chia tập của SPACE summary gồm \num{25} khách sạn dev và \num{25} khách sạn test. HASOS trong phương pháp~2 được dùng như tập suy luận/đánh giá mục tiêu sau khi SemAE đã được huấn luyện trên SPACE; tập hiện thực trong thí nghiệm gồm \num{50} khách sạn, \num{5000} đánh giá, trung bình \num{100} đánh giá/khách sạn và \num{45529} câu sau tách câu. Hệ HASOS dùng \num{29} khía cạnh con; khi tính ROUGE, đầu ra khía cạnh con được gom về các nhóm cha có tóm tắt tham chiếu như \texttt{facility}, \texttt{amenity}, \texttt{service} và \texttt{experience}.
+
+\begin{table}[tbp]
+\centering
+\caption{Nguồn gốc, quy mô và vai trò của các tập dữ liệu chính}
+\label{tab:experimental-datasets}
+\small
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.12}
+\begin{tabularx}{\textwidth}{L{0.20\textwidth} R{0.12\textwidth} R{0.14\textwidth} R{0.14\textwidth} Y}
+\toprule
+\textbf{Dữ liệu} & \textbf{Khách sạn} & \textbf{Đánh giá} & \textbf{Review/KS} & \textbf{Vai trò trong thực nghiệm} \\
+\midrule
+SPACE train & \num{11402} & \num{1135806} & -- & Corpus huấn luyện SemAE và SentencePiece trong miền khách sạn. \\
+SPACE summary & \num{50} & \num{5000} & \num{100} & Tập đối chiếu có tóm tắt tham chiếu; dùng để kiểm tra ROUGE và so sánh phụ lục. \\
+HASOS target & \num{50} & \num{5000} & \num{100} & Tập suy luận/đánh giá chính cho SemAE M1--SemAE M4 với hệ 29 khía cạnh con. \\
+Tập ABSA thủ công & -- & -- & -- & Tập kiểm tra riêng cho bước gán khía cạnh--cảm xúc của UASum. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[tbp]
+\centering
+\caption{Cách chia và cách sử dụng dữ liệu trong thực nghiệm}
+\label{tab:dataset-splits}
+\small
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.12}
+\begin{tabularx}{\textwidth}{L{0.20\textwidth} L{0.24\textwidth} Y}
+\toprule
+\textbf{Tập dữ liệu} & \textbf{Chia dữ liệu} & \textbf{Diễn giải} \\
+\midrule
+SPACE train & Huấn luyện SemAE & Dùng để học biểu diễn và vector nguyên mẫu; không dùng trực tiếp làm tập đánh giá chính trong các bảng HASOS. \\
+SPACE summary & \num{25} dev / \num{25} test & Có tóm tắt tham chiếu, dùng làm đối chiếu phụ để xem các biến thể SemAE hoạt động thế nào trên tập SPACE. \\
+HASOS target & Không huấn luyện SemAE; dùng suy luận/đánh giá & SemAE sau huấn luyện trên SPACE được chạy trên cấu hình HASOS. Các bảng SemAE M1--SemAE M4 trong Chương~4 chủ yếu báo cáo trên tập này. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Phân chia dữ liệu và phạm vi đánh giá}
+
+Điểm cần lưu ý là các tập dữ liệu này không tạo thành một bộ đánh giá chuẩn duy nhất cho cả hai phương pháp. Tập đầy đủ đánh giá khách sạn nhấn mạnh năng lực vận hành và khả năng truy vết của quy trình UASum. Tập ABSA gán nhãn kiểm tra chất lượng phân loại ở cấp câu hoặc đoạn. SPACE cho phép đối chiếu với tóm tắt tham chiếu, nhưng cần phân biệt corpus huấn luyện SPACE với tập SPACE summary 50 khách sạn. HASOS cung cấp bối cảnh đánh giá chi tiết hơn cho phương pháp~2, vì nó dùng hệ 29 khía cạnh con và các biến thể SemAE M1--SemAE M4 trên cùng nền bằng chứng. Vì vậy, phần kết quả bên dưới được tách theo từng phương pháp trước khi đưa ra so sánh chung.
+
+\subsection{Dữ liệu đầu vào và dữ liệu tham chiếu}
+
+Dữ liệu đầu vào của cả hai phương pháp là các đánh giá khách sạn ở dạng văn bản tự nhiên. Với UASum, mỗi đánh giá được phân rã thành các đơn vị ý kiến, sau đó được gán khía cạnh, cảm xúc và cụm bằng chứng trước khi sinh tóm tắt. Với SemAE, mỗi đánh giá được tách thành các câu ứng viên, mã hóa bằng SemAE và xếp hạng theo từng khía cạnh. Dữ liệu tham chiếu bao gồm các tóm tắt vàng ở SPACE summary hoặc các nhóm cha trong HASOS khi có sẵn; trong các trường hợp không có tham chiếu trực tiếp ở cấp khía cạnh con, khóa luận sử dụng đánh giá bằng LLM và truy vết bằng chứng để bổ sung cho ROUGE.
+
+Ví dụ, đánh giá ``phòng sạch nhưng nhân viên phản hồi chậm'' có thể được tách thành hai ý kiến: khía cạnh cơ sở vật chất với cảm xúc tích cực về ``phòng sạch'', và khía cạnh dịch vụ với cảm xúc tiêu cực về ``phản hồi chậm''. Ví dụ này minh họa lý do bài toán cần đánh giá theo khía cạnh và cảm xúc thay vì chỉ tóm tắt toàn bộ đánh giá thành một nhận định chung.
+
+\section{Cấu hình hệ thống và môi trường thực nghiệm}
+\label{subsec:experimental-environment}
+
+Các thử nghiệm tính toán và suy luận mô hình trong khóa luận được triển khai trên môi trường phần cứng và phần mềm thống nhất nhằm bảo đảm khả năng tái lập tương đối giữa các lần chạy. Phần này mô tả môi trường thực nghiệm, cấu hình mô hình và quy trình chạy cho hai phương pháp.
+
+\subsection{Môi trường phần cứng và phần mềm}
+
+\begin{itemize}[leftmargin=0.6cm]
+    \item \textbf{Hạ tầng phần cứng:} Hệ thống sử dụng máy trạm trang bị card đồ họa kiến trúc Blackwell thế hệ mới \textit{NVIDIA RTX PRO 6000 Blackwell Workstation Edition} với dung lượng bộ nhớ đồ họa 96~GB GDDR7 ECC (tương ứng khoảng \num{97887}~MiB bộ nhớ khả dụng trong môi trường chạy). Cấu hình này cung cấp băng thông tính toán lớn và giảm đáng kể nguy cơ tràn bộ nhớ (Out-Of-Memory) khi tải các mô hình ngôn ngữ cùng các bộ phân loại học sâu chạy song song trong phạm vi thực nghiệm.
+
+    \item \textbf{Môi trường phần mềm và thư viện:} Nền tảng thực thi chính dựa trên ngôn ngữ Python và hệ sinh thái tính toán song song PyTorch CUDA. Các thư viện chuyên dụng phục vụ việc gọi mô hình, xử lý dữ liệu và tính toán chỉ số bao gồm: HuggingFace Transformers, vLLM (hỗ trợ cổng giao tiếp tương thích cấu trúc OpenAI API), pandas, scikit-learn, sentence-transformers và bert-score.
+
+    \item \textbf{Danh mục phiên bản phân phối (Cập nhật năm 2026):} Nhằm mục đích đảm bảo khả năng tái lập kết quả thực nghiệm một cách chính xác nhất, các phiên bản thư viện được cố định nghiêm ngặt bao gồm: PyTorch 2.11.0+cu130, Transformers 4.57.6, vLLM 0.19.1rc1, pandas 3.0.2, NumPy 2.2.6, scikit-learn 1.8.0, sentence-transformers 5.4.1 và bert-score 0.3.13.
+\end{itemize}
+
+\subsection{Cấu hình mô hình và tham số thực nghiệm}
+
+Mô hình ngôn ngữ nhỏ nền tảng \texttt{Qwen/Qwen3.5-9B} được khởi tạo và phục vụ thông qua một endpoint cục bộ dạng OpenAI-compatible tại địa chỉ \texttt{localhost:8000/v1}. Với UASum, hệ thống xử lý dữ liệu theo lô, dùng nhiều worker cho các bước định tuyến bằng chứng, sinh tóm tắt theo khía cạnh và sinh tóm tắt tổng thể. Số bằng chứng tối đa cho mỗi lượt sinh được giới hạn để tránh vượt ngữ cảnh, đồng thời độ dài đầu ra được kiểm soát ở mức tóm tắt ngắn theo khía cạnh và tóm tắt tổng thể theo khách sạn.
+
+Với SemAE, cấu hình chính bao gồm checkpoint SemAE huấn luyện trên SPACE, mô hình tách từ SentencePiece tương ứng, ngưỡng chọn bằng chứng $T$ và ngân sách sinh $B$. Các biến thể SemAE M1--SemAE M4 dùng cùng nền bằng chứng SemAE nhưng khác nhau ở cách tạo đầu ra: SemAE M1 trích rút, SemAE M2 sinh trừu tượng trực tiếp, SemAE M3 tách cảm xúc bằng từ khóa và SemAE M4 tách cảm xúc bằng BERT-ABSA.
+
+\subsection{Quy trình chạy thực nghiệm}
+
+Quy trình UASum đi theo chuỗi: đánh giá thô $\rightarrow$ tách đơn vị ý kiến $\rightarrow$ trích xuất ABSA $\rightarrow$ gom cụm bằng chứng $\rightarrow$ sinh tóm tắt $\rightarrow$ đánh giá. Quy trình SemAE đi theo chuỗi: đánh giá thô $\rightarrow$ tách câu $\rightarrow$ mã hóa và xếp hạng bằng SemAE $\rightarrow$ lọc bằng chứng theo ngưỡng $T$ $\rightarrow$ tạo tóm tắt bằng SemAE M1--SemAE M4 $\rightarrow$ đánh giá. Cách tổ chức này làm rõ điểm đánh đổi chính: UASum có nhiều bước gọi mô hình và hậu kiểm hơn nên chi phí cao hơn, trong khi SemAE cố định tầng chọn bằng chứng nên dễ phân tích biến thể và tái lập hơn.
+\section{Thước đo đánh giá}
+\label{sec:evaluation-metrics}
+
+Để đánh giá hai phương pháp một cách phù hợp, khóa luận sử dụng ba nhóm thước đo bổ sung cho nhau. Nhóm thứ nhất là thước đo tự động, gồm ROUGE và các chỉ số bao phủ dùng để so sánh tóm tắt hệ thống với tóm tắt tham chiếu hoặc với tập bằng chứng đã chọn. Nhóm thứ hai là đánh giá bằng mô hình ngôn ngữ lớn, dùng rubric cố định để chấm đúng khía cạnh, đúng cảm xúc, mức hỗ trợ bằng chứng, độ bao phủ, độ cụ thể và độ hữu ích. Nhóm thứ ba là đánh giá định tính và khả năng truy vết, trong đó các ví dụ cụ thể được lần ngược từ tóm tắt cuối về câu đánh giá gốc nhằm kiểm tra lỗi chọn bằng chứng, lỗi gán cảm xúc và lỗi sinh văn bản.
+
+\subsection{Thước đo tự động}
+ROUGE-1, ROUGE-2 và ROUGE-L được dùng để đo mức độ trùng khớp giữa tóm tắt hệ thống và tóm tắt tham chiếu. Với phương pháp~2, các tóm tắt theo 29 khía cạnh con của HASOS được gom về bốn nhóm cha có tham chiếu trước khi tính ROUGE. Ngoài ROUGE, các chỉ số vận hành như tỷ lệ sinh thành công, tỷ lệ dự phòng, số bằng chứng trung bình và tỷ lệ nén được dùng để phân tích hành vi của từng biến thể.
+
+\subsection{Đánh giá bằng LLM}
+Bộ chấm LLM được sử dụng như một tầng đánh giá ngữ nghĩa bổ sung cho ROUGE. Mỗi mục được chấm theo cùng một bộ tiêu chí gồm mức hỗ trợ bằng chứng, đúng khía cạnh, đúng cảm xúc, bao phủ, cụ thể và hữu ích; đồng thời ghi nhận các lỗi như lệch khía cạnh, lệch cảm xúc, khẳng định không căn cứ và lật cảm xúc.
+
+\subsection{Đánh giá định tính và khả năng truy vết bằng chứng}
+Đánh giá định tính tập trung vào các ví dụ có thể truy vết đầy đủ. Với phương pháp~1, chuỗi truy vết đi từ đánh giá gốc, tiền phân đoạn, đơn vị ABSA, cụm bằng chứng đến tóm tắt cuối. Với phương pháp~2, chuỗi truy vết đi từ câu đánh giá, điểm SemAE, tập bằng chứng theo ngưỡng, nhãn cảm xúc và tóm tắt của từng biến thể SemAE M1--SemAE M4. Cách đánh giá này giúp giải thích vì sao một bản tóm tắt đúng hoặc sai, thay vì chỉ báo điểm số tổng hợp.
+
+\section{Kết quả thực nghiệm}
+\label{sec:experimental-results}
+
+\subsection{Kết quả phương pháp 1: UASum}
+\label{sec:phuong-phap-1-absa}
+
+Phương pháp~1 UASum được đánh giá như một quy trình tóm tắt có kiểm soát dựa trên bằng chứng, không chỉ như một mô hình sinh văn bản. Như đã trình bày ở Chương~3, bài toán đầu vào là tập đánh giá khách sạn thô $D=\{(h_i,r_i)\}_{i=1}^{N}$, trong đó $h_i$ là định danh khách sạn và $r_i$ là văn bản đánh giá. Đầu ra mong muốn không chỉ là một đoạn tóm tắt $y_h$, mà là một chuỗi kết quả có thể truy vết gồm đơn vị ý kiến, bản ghi ABSA, cụm bằng chứng và tóm tắt theo khía cạnh. Vì vậy, phần thực nghiệm này kiểm tra xem cách tiếp cận đã đề xuất có thực sự biến bài toán tóm tắt tự do thành bài toán sinh có điều kiện trên bằng chứng được tổ chức hay không.
+
+Trọng tâm đánh giá của UASum gồm ba giả thiết. Thứ nhất, tiền phân đoạn và ABSA giúp giữ lại quan hệ giữa đối tượng được nhận xét, khía cạnh và cảm xúc tốt hơn so với cách gán nhãn trực tiếp ở cấp câu. Thứ hai, việc gom bằng chứng theo khách sạn--khía cạnh--cảm xúc--cụm tạo ra một tầng trung gian đủ rõ để sinh tóm tắt có kiểm soát. Thứ ba, nếu mỗi nhận định trong tóm tắt có thể lần ngược về cụm bằng chứng và đánh giá gốc, hệ thống sẽ giảm tính hộp đen của mô hình ngôn ngữ và hỗ trợ phân tích lỗi theo từng tầng. Các giả thiết này không được kiểm chứng bằng một chỉ số duy nhất, mà bằng tổ hợp giữa quy mô xử lý, độ chính xác ABSA, truy vết định tính, ROUGE khi có tóm tắt tham chiếu và đánh giá bằng bộ chấm LLM.
+
+\subsubsection{Mục tiêu đánh giá và giả thiết kiểm chứng}
+\label{subsubsec:method1-evaluation-objectives}
+
+Để tránh biến phần thực nghiệm thành một báo cáo vận hành thông thường, các kết quả của phương pháp~1 được đọc theo chuỗi suy luận sau:
+
+\begin{equation}
+r_i
+\rightarrow
+u_{ij}
+\rightarrow
+z_k
+\rightarrow
+B_{h,a,p,c}
+\rightarrow
+y_{h,a,p}
+\rightarrow
+y_h.
+\label{eq:method1-evaluation-chain}
+\end{equation}
+
+Trong đó $r_i$ là đánh giá gốc; $u_{ij}$ là đơn vị ý kiến được tách từ đánh giá $r_i$; $z_k$ là bản ghi ABSA đã chuẩn hóa gồm khía cạnh, cảm xúc, cụm và bằng chứng; $B_{h,a,p,c}$ là bucket bằng chứng của khách sạn $h$, khía cạnh $a$, cảm xúc $p$ và cụm $c$; $y_{h,a,p}$ là tóm tắt theo khía cạnh--cảm xúc; còn $y_h$ là tóm tắt tổng thể của khách sạn. Giả định nền tảng của chuỗi này là mỗi bước chỉ được phép sử dụng thông tin từ bước trước hoặc từ taxonomy đã định nghĩa, nhờ đó kết quả cuối có thể được kiểm tra bằng truy vết ngược.
+
+\begin{table}[tbp]
+\centering
+\caption{Câu hỏi đánh giá và bằng chứng thực nghiệm cho phương pháp 1}
+\label{tab:method1-evaluation-map}
+\small
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.12}
+\begin{tabularx}{\textwidth}{L{0.30\textwidth} L{0.31\textwidth} Y}
+\toprule
+\textbf{Câu hỏi cần trả lời} & \textbf{Giả thiết được kiểm chứng} & \textbf{Bằng chứng trong Chương 4} \\
+\midrule
+Pipeline có vận hành được ở quy mô lớn mà không đứt chuỗi dữ liệu hay không? & Các tầng UOS, ABSA, gán cụm và sinh tóm tắt có thể kết nối thành quy trình đầu cuối. & Bảng quy mô xử lý, số dòng ABSA cuối, số dòng gán cụm, số bucket và số tóm tắt cuối. \\
+ABSA bằng SLM có đủ tốt để làm nền cho tóm tắt không? & Kết quả ABSA cần đủ ổn định ở cả khía cạnh và cảm xúc, đặc biệt ở chỉ số đúng kết hợp. & Bảng đánh giá ABSA trên tập gán nhãn thủ công. \\
+Tóm tắt có thể truy vết về bằng chứng gốc không? & Mỗi nhận định quan trọng trong tóm tắt có thể lần ngược qua bucket, cụm, bản ghi ABSA và review gốc. & Case study khách sạn \texttt{10638}, bảng truy vết ABSA--cụm và bảng roll-up ba cảm xúc. \\
+UASum tạo ra tóm tắt có chất lượng tổng hợp ra sao khi có tham chiếu? & Sinh có điều kiện trên bằng chứng có thể đạt chất lượng ngữ nghĩa tốt, nhưng cần diễn giải đúng cấp đánh giá. & Kết quả đối chiếu SPACE ở cấp tóm tắt toàn cục và bộ chấm LLM. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Quy mô dữ liệu và kiểm định quy trình đầu cuối}
+\label{subsec:method1-scale-validation}
+
+Bảng~\ref{tab:method1-scale-validation} tóm tắt phạm vi chạy chính và số lượng phần tử được sinh ra qua từng bước của pipeline trên tập đánh giá khách sạn lớn.
+
+\begin{table}[htbp]
+\centering
+\caption{Quy mô và kiểm định tệp kết quả của phương pháp 1}
+\label{tab:method1-scale-validation}
+\small
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{l r p{7.5cm}}
+\toprule
+\textbf{Thành phần} & \textbf{Số lượng} & \textbf{Diễn giải (Mục tiêu chứng minh dòng chảy dữ liệu)} \\
+\midrule
+Khách sạn & \num{1660} & Số thực thể có tóm tắt cuối cùng. \\
+Đoạn ABSA cuối & \num{1595680} & Đơn vị khía cạnh--cảm xúc sau xử lý tách câu. \\
+Dòng đã gán cụm & \num{1595680} & Toàn bộ đoạn ABSA cuối đều được mapping vào cụm taxonomy. \\
+Dòng bằng chứng theo cụm & \num{131104} & Bằng chứng được gom theo khách sạn--khía cạnh--cảm xúc--cụm. \\
+Dòng tóm tắt cảm xúc theo cụm & \num{131104} & Tóm tắt trung gian theo cụm và cực tính cảm xúc. \\
+Dòng cụm ba cảm xúc & \num{61799} & Dạng xem gom ba cảm xúc cho từng cụm (Three-sentiment wide format). \\
+Dòng tóm tắt cuối & \num{10494} & Đầu ra tóm tắt cuối cùng ở cấp khách sạn/khía cạnh. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Bảng~\ref{tab:method1-scale-validation} trả lời câu hỏi đầu tiên trong Bảng~\ref{tab:method1-evaluation-map}: quy trình có tạo được đầy đủ các tầng dữ liệu cần thiết cho kiểm chứng đầu cuối hay không. Điểm quan trọng không chỉ nằm ở số lượng dòng kết quả, mà ở sự liên tục giữa các tầng. Tập \num{1595680} đoạn ABSA cuối đều được gán cụm, sau đó được nén thành \num{131104} bucket theo khía cạnh--cảm xúc--cụm và tiếp tục được dùng để sinh \num{10494} tóm tắt cuối. Cấu trúc này cho thấy UASum không sinh tóm tắt trực tiếp từ văn bản thô, mà đi qua một tầng bằng chứng trung gian có thể kiểm tra.
+
+Do đó, phần kiểm định tiếp theo tập trung vào dữ liệu trung gian và chuỗi ghi vết của một khách sạn cụ thể. Các tệp trace phản ánh cách dữ liệu thực sự được tách, phân lớp, gom cụm và đưa vào tóm tắt qua từng tầng của pipeline. Cách trình bày này nhằm làm rõ hướng tiếp cận của phương pháp~1: chất lượng tóm tắt được xem là hệ quả của chuỗi xử lý có kiểm soát, chứ không chỉ là kết quả sinh văn bản ở tầng cuối.
+
+\subsubsection{Phân tích chuỗi dữ liệu trace thực tế trên Khách sạn 10638}
+\label{subsec:method1-hotel-review1-trace}
+
+Để kiểm tra tính đúng đắn của chuỗi xử lý bằng dữ liệu thật, nghiên cứu này
+truy vết trực tiếp khách sạn \texttt{10638} từ các bảng kết quả trung gian.
+Chuỗi truy vết được tổ chức theo luồng:
+\texttt{preseg} $\rightarrow$ \texttt{semantic\_trace\_samples}
+$\rightarrow$ \texttt{absa\_to\_cluster\_trace} $\rightarrow$
+\texttt{cluster\_three\_sentiment} $\rightarrow$ \texttt{aspect\_summary}
+$\rightarrow$ \texttt{overall\_summary} $\rightarrow$ \texttt{metrics}. Tab
+\texttt{absa\_to\_cluster\_trace} có \num{4558} dòng và không tồn tại dòng
+trống \texttt{cluster\_code}, nên có thể dùng làm nguồn audit cho các nhận
+định bên dưới.
+
+Mục tiêu của case study này không phải chỉ minh họa một vài câu đúng, mà là
+kiểm tra ba yêu cầu đã nêu ở Chương~3: UOS/ABSA phải tách được các ý kiến khác
+nhau trong cùng review; cluster/descriptor phải gom được bằng chứng thành
+nhóm có ý nghĩa; và tóm tắt cuối phải có thể lần ngược về bucket, cụm và review
+gốc. Bảng~\ref{tab:method1-10638-summary-trace} giữ lại các câu tóm tắt cụ thể
+được sinh từ trace của khách sạn này để cho thấy đầu ra cuối sử dụng bằng chứng
+theo cụm thay vì sinh tự do từ review thô.
+
+\begin{table}[tbp]
+\centering
+\caption{Ví dụ tóm tắt UASum từ trace của khách sạn \texttt{10638}}
+\label{tab:method1-10638-summary-trace}
+\small
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.12}
+\begin{tabularx}{\textwidth}{L{0.16\textwidth} L{0.18\textwidth} Y}
+\toprule
+\textbf{Cấp tóm tắt} & \textbf{Bucket/cụm hỗ trợ} & \textbf{Nội dung sinh ra} \\
+\midrule
+Facility &
+\texttt{FAC15}, \texttt{FAC14}, \texttt{FAC1}, \texttt{FAC12} &
+\textit{Khách sạn sở hữu lợi thế lớn về vị trí khi nằm sát khu vực trung tâm tiện lợi cho việc di chuyển và có tầm nhìn cảnh quan xung quanh rất đẹp. Tuy nhiên, chất lượng phòng nghỉ còn một số điểm cần cải thiện khi ghi nhận nhiều phản hồi tiêu cực về tình trạng sàn nhà ẩm ướt, thiếu vệ sinh cùng hệ thống điều hòa cũ vận hành phát ra tiếng ồn khó chịu.} \\
+Service &
+\texttt{SER1} &
+\textit{Mảng dịch vụ nhân sự nhận được lượng phản hồi tích cực áp đảo, đa số du khách khen thái độ nhân viên thân thiện, nhiệt tình và chất lượng phục vụ tại nhà ăn tốt. Mặc dù vậy, khách sạn vẫn ghi nhận một số phàn nàn về cung cách ứng xử của đội ngũ lễ tân khi còn thiếu sự chuyên nghiệp và khéo léo.} \\
+Amenity &
+\texttt{AM2} &
+\textit{Về dịch vụ ăn uống, một số du khách bày tỏ sự hài lòng với thực đơn bữa sáng đa dạng. Tuy nhiên, xét trên tổng thể, khía cạnh tiện ích ăn sáng vẫn nghiêng về trạng thái tiêu cực khi nhiều khách hàng góp ý chất lượng chế biến chưa đồng đều và chưa tương xứng với kỳ vọng.} \\
+Overall &
+\texttt{facility}, \texttt{service}, \texttt{amenity} &
+\textit{Tổng thể khách sạn \num{10638} đem lại trải nghiệm tương đối tốt nhờ vị trí trung tâm, cảnh quan đẹp và đội ngũ nhân viên phục vụ thân thiện. Dẫu vậy, điểm nghẽn lớn nằm ở khâu thủ tục của nhân viên lễ tân, kết hợp với các sự cố hạ tầng phòng nghỉ như nền nhà ẩm và máy lạnh kêu. Dịch vụ ăn sáng tuy đa dạng về số lượng món nhưng cần nâng cao hơn về chất lượng chế biến.} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Các bảng tiếp theo trình bày chi tiết đường đi của bằng chứng tạo ra những câu
+tóm tắt trên. Nhờ đó, phần thực nghiệm trả lời trực tiếp câu hỏi: một claim
+trong summary có được hỗ trợ bởi bucket và review gốc hay không.
+
+\subsubsection{Truy vết chi tiết từ review mẫu đến tóm tắt cuối}
+\label{subsubsec:method1-hotel-review1-trace}
+
+Để bổ sung cho phân tích trên, phần này trình bày lại ba review mẫu dưới dạng bảng nhằm cho thấy rõ hơn cách từng bằng chứng đi từ review gốc đến cụm, thống kê khía cạnh và tóm tắt cuối. Chuỗi dữ liệu được đọc theo đúng luồng xử lý:
+\texttt{preseg} $\rightarrow$ \texttt{semantic\_trace\_samples} $\rightarrow$
+\texttt{absa\_to\_cluster\_trace} $\rightarrow$
+\texttt{cluster\_three\_sentiment} $\rightarrow$ \texttt{aspect\_summary}
+$\rightarrow$ \texttt{overall\_summary} $\rightarrow$ \texttt{metrics}. Trong
+tab \texttt{absa\_to\_cluster\_trace}, bảng truy vết đầy đủ có \num{4558} dòng
+và không còn dòng trống \texttt{cluster\_code}; do đó, nguồn audit đúng cho
+phần này là trace ở cấp câu/đơn vị ABSA, không phải \texttt{segmentation\_trace}
+cũ.
+
+
+Ba review trong Bảng~\ref{tab:method1-selected-review-traces} được chọn vì có
+độ dài vừa đủ và thể hiện ba tình huống khác nhau: review tích cực đa khía cạnh,
+review có khen--chê trong cùng một cụm dịch vụ, và review hỗn hợp gồm vị trí,
+bữa sáng, độ ẩm phòng và điều hòa. Các review này đều thuộc
+\texttt{hotel\_id=10638}, được truy vết trong các bảng trung gian thay vì chỉ
+được trích từ phần tóm tắt cuối.
+
+\begin{table}[tbp]
+\centering
+\caption{Ba review thực tế được chọn để truy vết chi tiết}
+\label{tab:method1-selected-review-traces}
+\small
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.08}
+\begin{tabularx}{\textwidth}{L{0.12\textwidth} Y L{0.22\textwidth} Y}
+\toprule
+\textbf{Review ID} & \textbf{Câu review gốc} & \textbf{Preseg} & \textbf{Lý do chọn} \\
+\midrule
+\texttt{291003} &
+\textit{Khách sạn có view đẹp, rất thích khách sạn và nhân viên cực kì thân thiện} &
+\texttt{unit\_count=1}, \texttt{conf.=0.95} &
+Một câu tích cực nhưng chứa ba khía cạnh: cơ sở vật chất, trải nghiệm và dịch vụ. \\
+\texttt{291009} &
+\textit{Phòng nghỉ, nhà ăn phục vụ tốt Nhân viên lê tân chưa đặt lắm, hơi thiếu cái duyên làm nghề} &
+\texttt{unit\_count=2}, \texttt{conf.=0.95} &
+Một review có hai ý kiến trái chiều cùng rơi vào cụm \textit{Staff Friendliness}. \\
+\texttt{291020} &
+\textit{Gần trung tâm, ăn sáng đa dạng Phòng và nền nhà ẩm, máy lạnh kêu} &
+\texttt{unit\_count=1}, \texttt{conf.=0.95} &
+Một review hỗn hợp, đồng thời có vị trí/bữa sáng tích cực và phòng/điều hòa tiêu cực. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Bảng~\ref{tab:method1-three-review-absa-cluster-trace} trình bày tầng xử lý
+quan trọng nhất: từ từng câu sau tiền phân đoạn, hệ thống tạo đơn vị ABSA, gán
+khía cạnh--cảm xúc, sau đó ánh xạ sang cụm chủ đề. Đây là tầng chứng minh rằng
+tóm tắt sau cùng có thể truy ngược đến bằng chứng cụ thể.
+
+\begin{table}[tbp]
+\centering
+\caption{Truy vết ABSA và gán cụm cho ba review được chọn}
+\label{tab:method1-three-review-absa-cluster-trace}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.08}
+\begin{tabularx}{\textwidth}{L{0.10\textwidth} L{0.22\textwidth} L{0.19\textwidth} L{0.16\textwidth} Y}
+\toprule
+\textbf{Review ID} & \textbf{Câu/ý sau preseg} & \textbf{Đơn vị ABSA chuẩn hóa} & \textbf{Nhãn ABSA} & \textbf{Gán cụm và độ tin cậy} \\
+\midrule
+\texttt{291003} & Khách sạn có view đẹp, rất thích khách sạn và nhân viên cực kì thân thiện &
+Khách sạn có view đẹp &
+\texttt{facility}/\texttt{positive} &
+\texttt{FAC14} -- \textit{View \& Surrounding Scenery}; \texttt{sentiment\_conf.=0.95}, \texttt{cluster\_conf.=0.95}, nguồn \texttt{llm}. \\
+\texttt{291003} & Khách sạn có view đẹp, rất thích khách sạn và nhân viên cực kì thân thiện &
+Rất thích khách sạn &
+\texttt{experience}/\texttt{positive} &
+\texttt{EXP1} -- \textit{Overall Satisfaction}; \texttt{sentiment\_conf.=0.95}, \texttt{cluster\_conf.=0.93}, nguồn \texttt{llm}. \\
+\texttt{291003} & Khách sạn có view đẹp, rất thích khách sạn và nhân viên cực kì thân thiện &
+Nhân viên cực kỳ thân thiện &
+\texttt{service}/\texttt{positive} &
+\texttt{SER1} -- \textit{Staff Friendliness}; \texttt{sentiment\_conf.=0.98}, \texttt{cluster\_conf.=0.95}, nguồn \texttt{llm}. \\
+\addlinespace
+\texttt{291009} & Phòng nghỉ, nhà ăn phục vụ tốt &
+Phòng nghỉ, nhà ăn phục vụ tốt &
+\texttt{service}/\texttt{positive} &
+\texttt{SER1} -- \textit{Staff Friendliness}; \texttt{sentiment\_conf.=0.95}, \texttt{cluster\_conf.=0.90}, nguồn \texttt{llm}. \\
+\texttt{291009} & Nhân viên lê tân chưa đặt lắm, hơi thiếu cái duyên làm nghề &
+Nhân viên lễ tân chưa đặt lắm, hơi thiếu cái duyên làm nghề &
+\texttt{service}/\texttt{negative} &
+\texttt{SER1} -- \textit{Staff Friendliness}; \texttt{sentiment\_conf.=0.92}, \texttt{cluster\_conf.=0.95}, nguồn \texttt{llm}. \\
+\addlinespace
+\texttt{291020} & Gần trung tâm &
+Vị trí gần trung tâm &
+\texttt{facility}/\texttt{positive} &
+\texttt{FAC15} -- \textit{Location \& Surroundings}; \texttt{sentiment\_conf.=0.89}, \texttt{cluster\_conf.=0.95}, nguồn \texttt{rule\_anchor\_repair:location\_code}. \\
+\texttt{291020} & ăn sáng đa dạng &
+Ăn sáng đa dạng &
+\texttt{amenity}/\texttt{positive} &
+\texttt{AM2} -- \textit{Breakfast Quality}; \texttt{sentiment\_conf.=0.90}, \texttt{cluster\_conf.=0.95}, nguồn \texttt{llm}. \\
+\texttt{291020} & Phòng và nền nhà ẩm &
+Phòng và sàn nhà ẩm ướt &
+\texttt{facility}/\texttt{negative} &
+\texttt{FAC1} -- \textit{Room Cleanliness}; \texttt{sentiment\_conf.=0.97}, \texttt{cluster\_conf.=0.95}, nguồn \texttt{llm}. \\
+\texttt{291020} & máy lạnh kêu &
+Máy lạnh kêu &
+\texttt{facility}/\texttt{negative} &
+\texttt{FAC12} -- \textit{Air Conditioning}; \texttt{sentiment\_conf.=0.95}, \texttt{cluster\_conf.=0.95}, nguồn \texttt{llm}. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Sau khi các đơn vị ABSA được gán cụm, pipeline không sinh tóm tắt trực tiếp từ
+từng review riêng lẻ. Thay vào đó, mỗi đơn vị được nhập vào một bucket bằng
+chứng theo \texttt{hotel\_id}--\texttt{aspect}--\texttt{sentiment}--\texttt{cluster\_code}.
+Bảng~\ref{tab:method1-three-review-cluster-rollup} cho thấy các cụm liên quan
+đến ba review trên khi được đặt vào bảng ba cảm xúc. Cách tổ chức này đặc biệt
+quan trọng với \texttt{SER1}: cùng một cụm \textit{Staff Friendliness} chứa cả
+khen và chê, nên phần tóm tắt dịch vụ phải phản ánh hai chiều thay vì chỉ chọn
+một cực cảm xúc.
+
+\begin{table}[tbp]
+\centering
+\caption{Roll-up ba cảm xúc của các cụm xuất hiện trong ba review mẫu}
+\label{tab:method1-three-review-cluster-rollup}
+\small
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.08}
+\begin{tabularx}{\textwidth}{L{0.12\textwidth} L{0.24\textwidth} R{0.10\textwidth} R{0.10\textwidth} R{0.10\textwidth} Y}
+\toprule
+\textbf{Mã cụm} & \textbf{Nhãn cụm} & \textbf{Tích cực} & \textbf{Tiêu cực} & \textbf{Trung lập} & \textbf{Ý nghĩa đối với tóm tắt} \\
+\midrule
+\texttt{FAC14} & View \& Surrounding Scenery & \num{188} & \num{30} & \num{55} & Tầm nhìn/cảnh quan là điểm mạnh nhưng vẫn có một phần góp ý tiêu cực và trung lập. \\
+\texttt{EXP1} & Overall Satisfaction & \num{163} & \num{128} & \num{79} & Mức hài lòng tổng thể nghiêng tích cực nhưng phân hóa đáng kể. \\
+\texttt{SER1} & Staff Friendliness & \num{435} & \num{167} & \num{64} & Dịch vụ nhân viên là điểm mạnh lớn nhất, đồng thời vẫn có cụm phàn nàn về thái độ. \\
+\texttt{FAC15} & Location \& Surroundings & \num{512} & \num{108} & \num{237} & Vị trí là lợi thế chính, nhưng các ý kiến về khó tìm hoặc bất tiện vẫn được giữ lại. \\
+\texttt{AM2} & Breakfast Quality & \num{92} & \num{141} & \num{76} & Bữa sáng có khen về độ đa dạng nhưng tổng thể nghiêng về góp ý tiêu cực. \\
+\texttt{FAC1} & Room Cleanliness & \num{283} & \num{192} & \num{73} & Độ sạch phòng có nhiều khen, song các vấn đề ẩm/cũ/bẩn vẫn đủ lớn để xuất hiện trong tóm tắt. \\
+\texttt{FAC12} & Air Conditioning & \num{5} & \num{43} & \num{9} & Điều hòa là cụm nhỏ hơn nhưng nghiêng tiêu cực rõ, phù hợp với phản ánh ``máy lạnh kêu''. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Từ các bucket trên, tầng \texttt{aspect\_summary} tổng hợp theo từng khía cạnh.
+Đối với \texttt{hotel\_id=10638}, \texttt{facility} có \num{2296} câu
+(\num{1165} tích cực, \num{689} tiêu cực, \num{442} trung lập), \texttt{service}
+có \num{845} câu (\num{501} tích cực, \num{248} tiêu cực, \num{96} trung lập),
+\texttt{amenity} có \num{780} câu (\num{213} tích cực, \num{332} tiêu cực,
+\num{235} trung lập), và \texttt{experience} có \num{610} câu (\num{327} tích cực,
+\num{155} tiêu cực, \num{128} trung lập). Tầng \texttt{overall\_summary} sau đó
+gom toàn bộ \num{4558} đơn vị ABSA của khách sạn, trong đó có \num{2232} đơn vị
+tích cực, \num{1424} đơn vị tiêu cực và \num{902} đơn vị trung lập. Các chỉ số
+trong tab \texttt{metrics} tiếp tục kiểm tra mức bao phủ của tóm tắt theo từng
+khía cạnh, ví dụ \texttt{coverage\_score} đạt \num{0.109986} với
+\texttt{facility}, \num{0.174332} với \texttt{service}, \num{0.145009} với
+\texttt{amenity} và \num{0.135969} với \texttt{experience}. Như vậy, ba review
+mẫu không chỉ minh họa việc gán nhãn từng câu, mà còn cho thấy cách một bằng
+chứng nhỏ đi vào thống kê cụm, tóm tắt khía cạnh và báo cáo tổng thể của khách
+sạn.
+\subsubsection{Đánh giá ABSA trên tập gán nhãn của tập đầy đủ đánh giá
+khách sạn}
+\label{subsubsec:method1-absa}
+
+Chất lượng tóm tắt của phương pháp~1 phụ thuộc trực tiếp vào độ đúng của bước
+suy luận khía cạnh--cảm xúc. Bảng~\ref{tab:method1-absa-performance} so sánh
+mốc luật từ khóa với quy trình SLM của phương pháp~1 trên tập ABSA được gán nhãn.
+
+\begin{table}[tbp]
+\centering
+\caption{Đánh giá ABSA của phương pháp 1 trên tập gán nhãn}
+\label{tab:method1-absa-performance}
+\begin{threeparttable}
+\small
+\setlength{\tabcolsep}{3.5pt}
+\renewcommand{\arraystretch}{1.08}
+\begin{tabularx}{\textwidth}{L{0.22\textwidth} C{0.18\textwidth} C{0.18\textwidth} C{0.18\textwidth} C{0.12\textwidth}}
+\toprule
+\textbf{Phương pháp} & \textbf{Đúng khía cạnh} & \textbf{Đúng cảm xúc} & \textbf{Đúng kết hợp} & \textbf{Thời gian} \\
+\midrule
+Mốc luật từ khóa & \num{0.6479} & \num{0.5205} & \num{0.3688} & \num{1.035}s \\
+SLM & \textbf{\num{0.8311}} & \textbf{\num{0.9724}} & \textbf{\num{0.8113}} & \num{858.653}s \\
+\bottomrule
+\end{tabularx}
+\begin{tablenotes}
+\footnotesize
+\item Thời gian chạy chỉ dùng như thông tin tham khảo cho lần chạy này; không nên xem đây là bộ đánh giá độ trễ công bằng nếu hai phương pháp dùng bộ xử lý, API hoặc phần cứng khác nhau.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+Độ chính xác kết hợp \num{0.8113} là chỉ số quan trọng nhất của phần ABSA vì nó yêu
+cầu khía cạnh và cảm xúc đều đúng trên cùng một đơn vị đánh giá. So với mốc luật từ khóa, quy trình SLM cải thiện mạnh khả năng nhận diện cảm xúc và nâng
+đáng kể độ chính xác kết hợp. Tuy nhiên, kết quả này không nên được diễn giải
+như ``giải quyết hoàn toàn ABSA'' cho mọi khía cạnh, vì các lớp hiếm như
+branding vẫn có số mẫu hỗ trợ thấp và độ chính xác khía cạnh còn yếu. Do đó, các kết quả
+trung bình vĩ mô/theo từng khía cạnh vẫn cần được dùng khi thảo luận về khả năng khái quát.
+
+\subsubsection{Đối chiếu trên tóm tắt toàn cục của SPACE}
+\label{subsubsec:method1-space-global}
+
+Ngoài lần chạy đầy đủ trên dữ liệu khách sạn, phương pháp~1 còn được đối chiếu trên SPACE ở cấp
+tóm tắt toàn cục. Kết quả này được trình bày trong
+Bảng~\ref{tab:method1-space-global}.
+
+\begin{table}[tbp]
+\centering
+\caption{Kết quả tóm tắt toàn cục trên SPACE của phương pháp 1}
+\label{tab:method1-space-global}
+\begin{tabular}{l r r r r}
+\toprule
+\textbf{Phương pháp} & \textbf{ROUGE-1} & \textbf{ROUGE-2} & \textbf{ROUGE-L} & \textbf{MiMo overall} \\
+\midrule
+SLM & \num{0.348} & \num{0.054} & \num{0.163} & \num{4.820} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Bảng~\ref{tab:method1-space-global} cho thấy phương pháp~1 có thể tạo tóm tắt
+toàn cục có điểm bộ chấm LLM cao và ROUGE-1 tương đối tốt trên SPACE. Tuy nhiên,
+đây là kết quả ở cấp tóm tắt toàn cục, không cùng cấp với các chỉ số
+cấp khía cạnh trong phương pháp~2. Vì vậy, ROUGE-1 \num{0.348} ở đây không nên
+được so trực tiếp với ROUGE-1 \num{0.309} của SemAE M3 trong phương pháp~2 như một
+bảng xếp hạng cùng đơn vị.
+\paragraph{Minh họa đối chiếu định tính trên SPACE}
+
+Để phần đối chiếu trên SPACE không trở thành phần liệt kê log chạy, ba case
+study được nén lại trong Bảng~\ref{tab:method1-space-case-summary}. Mỗi case
+được chọn để kiểm tra một kiểu tình huống khác nhau: phản hồi hỗn hợp đa khía
+cạnh, trải nghiệm tích cực đồng nhất, và phản hồi tiêu cực về giá trị--dịch vụ.
+
+\begin{table}[tbp]
+\centering
+\caption{Ba case study SPACE minh họa khả năng sinh tóm tắt có khóa bằng chứng của UASum}
+\label{tab:method1-space-case-summary}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.10}
+\begin{tabularx}{\textwidth}{L{0.12\textwidth} L{0.30\textwidth} Y Y}
+\toprule
+\textbf{Hotel} & \textbf{Bằng chứng/cụm chính} & \textbf{Tóm tắt toàn cục được sinh} & \textbf{Ý nghĩa kiểm chứng} \\
+\midrule
+\texttt{204} &
+\texttt{LOC\_BCH\_01} tích cực về vị trí gần biển; \texttt{SER\_FRN\_01} tích cực về lễ tân; \texttt{FAC\_BTH\_03} và \texttt{FAC\_WFI\_02} tiêu cực về nước nóng và Wi-Fi. &
+\textit{While Hotel 204 stands out for its exceptional beachside location and highly welcoming front desk team, the guest experience is substantially undermined by severe infrastructural flaws, notably the lack of functional hot water and unstable Wi-Fi access throughout the stay.} &
+Cho thấy UASum giữ được cả điểm mạnh và điểm yếu trong cùng một khách sạn, không ép phản hồi hỗn hợp về một cực cảm xúc duy nhất. \\
+\addlinespace
+\texttt{415} &
+\texttt{FAC\_POL\_02} tích cực về hồ bơi và tầm nhìn; \texttt{FOD\_BRK\_01} tích cực về buffet sáng; \texttt{SER\_HOU\_01} tích cực về housekeeping. &
+\textit{Hotel 415 provides a premium luxury stay backed by flawless daily housekeeping, an outstandingly varied breakfast buffet, and a signature infinity pool that delivers panoramic skyline views. Overall guest satisfaction remains exceptionally strong across all operational departments.} &
+Minh họa trường hợp bằng chứng nhất quán tích cực: summary tổng hợp nhiều cụm nhưng vẫn giữ cùng hướng sentiment. \\
+\addlinespace
+\texttt{782} &
+\texttt{VAL\_PRC\_02} và \texttt{VAL\_BIL\_01} tiêu cực về giá/thu phí; \texttt{SER\_STF\_04} và \texttt{SER\_CHK\_03} tiêu cực về thái độ phục vụ. &
+\textit{Hotel 782 receives severe backlash regarding its value proposition and service standards. Guests consistently experience dismissive behavior from staff, unprofessional conduct at check-out, and incorrect billing attempts, leading to a consensus that the property is significantly overpriced.} &
+Cho thấy summary có thể gom các bằng chứng tiêu cực thuộc nhiều aspect thành một nhận định tổng thể có thể truy vết về cụm. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Ba ví dụ này không được dùng như bằng chứng định lượng thay thế cho ROUGE hoặc
+bộ chấm LLM. Vai trò của chúng là minh họa rằng cơ chế evidence bucket trong
+UASum có thể chuyển các cụm bằng chứng cụ thể thành nhận định tổng hợp, đồng
+thời vẫn giữ được đường truy vết từ summary về aspect, sentiment và cluster
+nguồn.
+
+\subsubsection{Kết luận kiểm chứng các giả thiết của UASum}
+\label{subsubsec:method1-hypothesis-conclusion}
+
+Bảng~\ref{tab:method1-hypothesis-conclusion} tổng hợp lại vai trò của các kết
+quả trên đối với ba giả thiết thiết kế đã nêu ở Chương~3. Cách đọc bảng này là:
+kết quả nào có đối chứng định lượng thì kết luận ở mức mạnh hơn; kết quả nào
+chủ yếu dựa trên trace và ví dụ summary thì được diễn giải như bằng chứng định
+tính, không mở rộng quá phạm vi dữ liệu đã kiểm tra.
+
+\begin{table}[tbp]
+\centering
+\caption{Kết luận thực nghiệm cho các giả thiết thiết kế của UASum}
+\label{tab:method1-hypothesis-conclusion}
+\small
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.12}
+\begin{tabularx}{\textwidth}{L{0.24\textwidth} Y Y}
+\toprule
+\textbf{Giả thiết từ Chương 3} & \textbf{Bằng chứng trong Chương 4} & \textbf{Kết luận cần diễn giải} \\
+\midrule
+UOS/ABSA giúp giữ quan hệ target--aspect--sentiment tốt hơn mốc xử lý đơn giản. &
+Độ đúng kết hợp ABSA của SLM đạt \num{0.8113}, cao hơn mốc luật từ khóa \num{0.3688}; case study \texttt{10638} cho thấy một review hỗn hợp được tách thành nhiều đơn vị có nhãn riêng. &
+Được hỗ trợ bởi kết quả định lượng và trace. Tuy nhiên, vì chưa có ablation riêng ``không UOS'', kết luận nên viết là UOS/ABSA cung cấp nền tốt hơn cho pipeline, không khẳng định giải quyết triệt để mọi trường hợp mixed sentiment. \\
+Cluster và descriptor làm summary cụ thể hơn so với chỉ dùng aspect--sentiment. &
+Roll-up ba cảm xúc theo cụm cho thấy cùng một aspect vẫn có nhiều vấn đề con như \texttt{FAC15}, \texttt{FAC1}, \texttt{FAC12}, \texttt{SER1}; các summary ví dụ nêu rõ vị trí, view, sàn ẩm, điều hòa kêu, lễ tân và bữa sáng. &
+Được hỗ trợ mạnh ở mức định tính. Nếu muốn kết luận định lượng hơn, cần thêm ablation summary không dùng cluster/descriptor. \\
+Evidence-locked generation giúp giảm tính hộp đen và tăng traceability. &
+Chuỗi \texttt{review} $\rightarrow$ \texttt{ABSA} $\rightarrow$ \texttt{cluster} $\rightarrow$ \texttt{summary} được minh họa bằng \num{4558} dòng trace của khách sạn \texttt{10638}; kết quả SPACE đạt ROUGE-1 \num{0.348} và MiMo overall \num{4.820}. &
+Được hỗ trợ bởi trace và điểm đánh giá summary. Cần diễn giải là giảm rủi ro hallucination và hỗ trợ audit claim, không phải bảo đảm mọi token trong summary đều có alignment tuyệt đối. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Tổng hợp phần kết quả của phương pháp~1 cho thấy UASum đã làm rõ hướng tiếp cận
+của mình: tóm tắt không được sinh trực tiếp từ toàn bộ văn bản thô, mà đi qua
+chuỗi UOS, ABSA, evidence bucket, summary theo khía cạnh và summary tổng thể.
+Nhờ chuỗi trung gian này, người đọc có thể thấy một nhận định trong summary
+đến từ cụm bằng chứng nào và review gốc nào. Lợi thế chính của phương pháp là
+khả năng tạo tóm tắt giàu thông tin và có thể audit; đổi lại, hệ thống cần
+nhiều bước gọi mô hình, nhiều lớp hậu kiểm, bộ nhớ đệm và cơ chế dự phòng. Vì
+vậy, UASum phù hợp với bối cảnh cần báo cáo phân tích chất lượng cao, chấp nhận
+chi phí vận hành lớn hơn và cần truy vết nguồn cho các nhận định quan trọng.
+
+\subsection{Kết quả phương pháp 2: SemAE}
+\label{subsec:method2}
+Thực nghiệm phương pháp~2 sử dụng điểm lưu SemAE huấn luyện trên SPACE và suy luận trên HASOS. SPACE được dùng như tập đối chiếu vì có các khía cạnh tổng quát và tóm tắt tham chiếu theo định dạng gần với thiết kế SemAE ban đầu. HASOS là tập mục tiêu chính, có hệ phân loại gồm 6 khía cạnh chính được phân rã thành 29 khía cạnh con và dữ liệu đánh giá khách sạn ở cấp thực thể.
+
+Trong phần này, SemAE M1--SemAE M4 luôn được hiểu là bốn biến thể của phương pháp SemAE, tương ứng SemAE M1 đến SemAE M4. Điểm chung của bốn biến thể là cùng dùng tầng chọn bằng chứng SemAE; điểm khác nhau nằm ở bước sau khi có bằng chứng: giữ nguyên câu, sinh trừu tượng trực tiếp, tách cảm xúc bằng từ khóa hoặc tách cảm xúc bằng BERT-ABSA. Vì vậy, các bảng dưới đây không so sánh bốn tập dữ liệu khác nhau, mà so sánh bốn cách dùng cùng nền bằng chứng SemAE.
+
+Trong HASOS, vì tóm tắt tham chiếu chỉ bao phủ bốn nhóm khía cạnh cha, các kết quả ở 29 khía cạnh con được ánh xạ về bốn nhóm khía cạnh chính có tóm tắt tham chiếu khi tính ROUGE. Hai nhóm Branding và Loyalty không được đưa vào mẫu số ROUGE của HASOS vì không có tóm tắt tham chiếu tương ứng. Cách xử lý này tránh việc báo điểm trên những trường hợp không có tham chiếu hợp lệ.
+
+\begin{table}[H]
+\centering
+\caption{Tóm tắt dữ liệu HASOS sử dụng trong phương pháp 2}
+\label{tab:hasos-data-summary}
+\begin{tabularx}{\textwidth}{L{0.28\textwidth} r Y}
+\toprule
+\textbf{Thành phần} & \textbf{Số lượng} & \textbf{Ghi chú} \\
+\midrule
+Khách sạn / thực thể & 50 & Mỗi thực thể gồm nhiều đánh giá người dùng. \\
+Đánh giá & 5.000 & Dữ liệu đầu vào dạng văn bản tự nhiên. \\
+Câu đánh giá & 45.529 & Đơn vị được SemAE xếp hạng làm bằng chứng. \\
+Nhóm khía cạnh chính & 6 & Facility, Amenity, Service, Experience, Branding và Loyalty. \\
+Khía cạnh con HASOS & 29 & Các khía cạnh con được tổ chức dưới 6 nhóm chính để phục vụ tóm tắt chi tiết. \\
+Nhóm khía cạnh có tóm tắt tham chiếu & 4 & Facility, Amenity, Service, Experience. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[tbp]
+\centering
+\caption{Thiết lập sử dụng trong so sánh cuối cùng trên HASOS}
+\label{tab:optimal-settings}
+\begin{threeparttable}
+\begin{tabularx}{\textwidth}{l c c Y}
+\toprule
+\textbf{Biến thể} & \textbf{Ngưỡng $T$} & \textbf{Ngân sách $B$} & \textbf{Diễn giải} \\
+\midrule
+SemAE M1 & -- & 40 từ & Mốc đối chứng nội bộ trích rút SemAE từ \texttt{space\_hasos\_full\_e20}; không dùng bộ giải mã sinh và không có cơ chế dự phòng. \\
+SemAE M2 & 0.0075 & 128 token & Tóm tắt trừu tượng trước khi tách cảm xúc. \\
+SemAE M3 & 0.0055 & 96 token & Tách cảm xúc bằng luật/từ khóa, sau đó sinh tóm tắt. \\
+SemAE M4 & 0.0050 & 96 token & Tách cảm xúc bằng BERT-ABSA, sau đó sinh tóm tắt. \\
+\bottomrule
+\end{tabularx}
+\begin{tablenotes}
+\footnotesize
+\item Với SemAE M1, $B$ là giới hạn số từ của tóm tắt trích rút. Với SemAE M2--SemAE M4, $B$ là \texttt{max\_new\_tokens}; $T$ là ngưỡng giữ bằng chứng $score \leq T$.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\begin{table}[tbp]
+\centering
+\caption{Độ nhạy ngân sách trích rút $B$ của SemAE M1}
+\label{tab:m1-token-sweep}
+\small
+\begin{tabular}{r r r r}
+\toprule
+\textbf{$B$ (từ)} & \textbf{ROUGE-1} & \textbf{ROUGE-2} & \textbf{ROUGE-L} \\
+\midrule
+40  & \textbf{\num{0.2078}} & \textbf{\num{0.0591}} & \textbf{\num{0.1245}} \\
+64  & \num{0.1592} & \num{0.0524} & \num{0.0986} \\
+80  & \num{0.1374} & \num{0.0479} & \num{0.0869} \\
+96  & \num{0.1210} & \num{0.0448} & \num{0.0781} \\
+120 & \num{0.1031} & \num{0.0403} & \num{0.0680} \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.35em}
+\begin{minipage}{0.82\textwidth}
+\footnotesize\RaggedRight
+\textit{Ghi chú.} Đây là kiểm tra độ nhạy hậu nghiệm, không phải một phương pháp mới. Lần phát lại dùng nhật ký bằng chứng dài hơn của lần chạy \texttt{space\_hasos\_threshold\_full} để kiểm tra $B \leq 120$; kết quả ROUGE chính của SemAE M1 trong các bảng so sánh vẫn lấy từ mốc đối chứng nội bộ \texttt{space\_hasos\_full\_e20} với $B=40$.
+\end{minipage}
+\end{table}
+
+Các bảng trong phần này được tổ chức theo từng nhóm câu hỏi thực nghiệm. Bảng~\ref{tab:hasos-data-summary} mô tả dữ liệu, Bảng~\ref{tab:optimal-settings} và Bảng~\ref{tab:m1-token-sweep} ghi cấu hình so sánh và kiểm tra độ nhạy của SemAE M1. Bảng~\ref{tab:evidence-faithfulness} và Bảng~\ref{tab:judge-errors} tách riêng chất lượng bằng chứng và lỗi do bộ chấm LLM nhận diện. Bảng~\ref{tab:summary-utility} và Bảng~\ref{tab:summary-quality} trình bày chất lượng tóm tắt. Bảng~\ref{tab:production-ops}, Bảng~\ref{tab:production-rouge}, Bảng~\ref{tab:space-rouge} và Bảng~\ref{tab:metric-availability} gom các chỉ số vận hành, ROUGE, phạm vi hợp lệ và nguyên tắc diễn giải kết quả.
+
+Cần lưu ý rằng \textit{N} trong các bảng bộ chấm LLM không phải là cùng một mẫu số cố định cho mọi biến thể, mà là số mục tóm tắt hợp lệ thực sự được đưa vào chấm. SemAE M1 có 1.370 mục vì mốc đối chứng nội bộ \texttt{space\_hasos\_full\_e20} chỉ sinh đầu ra không rỗng cho 1.370 cặp thực thể--khía cạnh con. SemAE M2 có 1.372 mục từ ngưỡng tập bằng chứng tối ưu. SemAE M3 và SemAE M4 có ít mục hơn (907 và 804) vì hai biến thể này tách bằng chứng theo cảm xúc dương/âm; các ô không có bằng chứng hoặc không có đầu ra hợp lệ không được đưa vào bộ chấm. SemAE M4 còn dùng bộ xử lý BERT-ABSA nghiêm ngặt hơn nên số ô hợp lệ thấp hơn SemAE M3. Vì vậy, \textit{N} phản ánh phạm vi đầu ra hợp lệ của từng quy trình, không phải điểm chất lượng.
+
+\FloatBarrier
+
+\subsubsection{Kết quả quét tham số}
+
+Kết quả quét tham số cho thấy SPACE giữ ngưỡng mặc định $T=0{,}0082$, trong khi HASOS cần thiết lập riêng theo phương pháp. Như Bảng~\ref{tab:optimal-settings} trình bày, SemAE M2 cải thiện khi tăng ngưỡng lên 0{,}0075, SemAE M3 cải thiện mạnh ở 0{,}0055, còn SemAE M4 giữ ngưỡng mặc định 0{,}005. Ngân sách token tốt nhất cho ba biến thể trừu tượng lần lượt là 128, 96 và 96. Các thiết lập này được dùng làm cấu hình nền cho các bảng chỉ số cuối cùng.
+
+\subsubsection{Kết quả ROUGE}
+
+\begin{table}[tbp]
+\centering
+\caption{ROUGE trên HASOS}
+\label{tab:production-rouge}
+\begin{tabular}{l r r r}
+\toprule
+\textbf{Phương pháp} & \textbf{ROUGE-1} & \textbf{ROUGE-2} & \textbf{ROUGE-L} \\
+\midrule
+SemAE M1 & \num{0.203} & \num{0.055} & \num{0.122} \\
+SemAE M2 & \num{0.232} & \num{0.044} & \num{0.150} \\
+SemAE M3 & \textbf{\num{0.262}} & \textbf{\num{0.071}} & \textbf{\num{0.168}} \\
+SemAE M4 & \num{0.209} & \num{0.040} & \num{0.137} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Theo ROUGE trên HASOS ở Bảng~\ref{tab:production-rouge}, SemAE M3 đạt ROUGE-1 cao nhất với \num{0.262}, tiếp theo là SemAE M2 với \num{0.232} và SemAE M4 với \num{0.209}. Điều này cho thấy tách cảm xúc bằng từ khóa trước khi sinh tóm tắt giúp tăng độ trùng khớp bề mặt với tóm tắt tham chiếu. Tuy nhiên, ROUGE chỉ phản ánh độ trùng n-gram; nó không khẳng định bản tóm tắt có hoàn toàn trung thực với bằng chứng hay đúng cực tính hay không. Vì vậy, kết quả ROUGE cần được đọc cùng các bảng bộ chấm LLM ở phần sau.
+
+\begin{table}[tbp]
+\centering
+\caption{ROUGE trên SPACE dùng như phụ lục đối chiếu}
+\label{tab:space-rouge}
+\begin{tabularx}{\textwidth}{Y r r r}
+\toprule
+\textbf{Phương pháp} & \textbf{ROUGE-1} & \textbf{ROUGE-2} & \textbf{ROUGE-L} \\
+\midrule
+SemAE M1 & \num{0.304} & \num{0.087} & \num{0.222} \\
+SemAE M2 & \num{0.307} & \num{0.086} & \num{0.235} \\
+SemAE M3 & \textbf{\num{0.309}} & \textbf{\num{0.089}} & \textbf{\num{0.240}} \\
+SemAE M4 & \num{0.308} & \textbf{\num{0.089}} & \num{0.239} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Kết quả SPACE trong Bảng~\ref{tab:space-rouge} cho thấy bốn biến thể SemAE có điểm ROUGE khá gần nhau, với SemAE M3 nhỉnh hơn ở ROUGE-1 và ROUGE-L. Khoảng cách trên HASOS rõ hơn vì HASOS dùng hệ phân loại phân cấp gồm 6 nhóm chính và các khía cạnh con chi tiết hơn, làm cho việc chọn và tổ chức bằng chứng theo khía cạnh có ảnh hưởng lớn hơn.
+
+\subsubsection{Đánh giá bằng bộ chấm LLM}
+
+Bộ chấm LLM được chạy trên 4.453 mục HASOS bằng một mô hình ngôn ngữ lớn, với bộ tiêu chí chấm (rubric) cố định, đầu ra JSON được kiểm tra hợp lệ và có bộ nhớ đệm để tái lập. Mỗi mục được chấm theo các trục hỗ trợ bằng chứng, đúng khía cạnh, đúng cảm xúc, độ bao phủ (coverage), độ cụ thể (specificity) và độ hữu ích (usefulness), đồng thời có các cờ lỗi như khẳng định không căn cứ (unsupported claim), sai khía cạnh và lật cảm xúc (sentiment flip). Các chỉ số này được tách thành Bảng~\ref{tab:evidence-faithfulness}, Bảng~\ref{tab:judge-errors}, Bảng~\ref{tab:summary-utility} và Bảng~\ref{tab:summary-quality} để dễ đọc hơn.
+
+\begin{table}[tbp]
+\centering
+\caption{Chất lượng bằng chứng và độ trung thực theo bộ chấm LLM}
+\label{tab:evidence-faithfulness}
+\begin{threeparttable}
+\begin{tabular}{l r r r r}
+\toprule
+\textbf{Phương pháp} & \textbf{N} & \textbf{P@5} & \textbf{Support@5} & \makecell{\textbf{Điểm hỗ trợ}\\\textbf{trung bình}} \\
+\midrule
+SemAE M1 & 1370 & \num{0.860} & \num{0.876} & \num{4.401} \\
+SemAE M2 & 1372 & \num{0.855} & \num{0.695} & \num{4.353} \\
+SemAE M3 &  907 & \num{0.909} & \num{0.841} & \num{4.530} \\
+SemAE M4 &  804 & \textbf{\num{0.926}} & \textbf{\num{0.875}} & \textbf{\num{4.627}} \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item \textit{N} = số mục hợp lệ được đưa vào bộ chấm; \textit{P@5} = tỷ lệ bằng chứng đúng trong năm câu đầu; \textit{Support@5} = tỷ lệ bằng chứng đầu hỗ trợ nhận định; điểm hỗ trợ trung bình theo thang 1--5.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\begin{table}[tbp]
+\centering
+\caption{Các tỷ lệ lỗi theo bộ chấm LLM}
+\label{tab:judge-errors}
+\begin{threeparttable}
+\begin{tabular}{l r r r r}
+\toprule
+\textbf{Phương pháp} & \makecell{\textbf{Lệch}\\\textbf{khía cạnh}} & \makecell{\textbf{Lệch}\\\textbf{cảm xúc}} & \makecell{\textbf{Không}\\\textbf{căn cứ}} & \makecell{\textbf{Lật}\\\textbf{cảm xúc}} \\
+\midrule
+SemAE M1 & \num{0.067} & \textbf{\num{0.006}} & \textbf{\num{0.093}} & \textbf{\num{0.016}} \\
+SemAE M2 & \textbf{\num{0.044}} & \textbf{\num{0.006}} & \num{0.147} & \num{0.020} \\
+SemAE M3 & \num{0.053} & \num{0.024} & \num{0.110} & \num{0.099} \\
+SemAE M4 & \num{0.050} & \num{0.013} & \num{0.091} & \num{0.061} \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item Các cột đều là tỷ lệ lỗi nên giá trị thấp hơn tốt hơn. SemAE M4 giảm tốt nhất cả lệch khía cạnh lẫn khẳng định không căn cứ trong nhóm biến thể sinh.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+Bảng~\ref{tab:evidence-faithfulness} cho thấy SemAE M4 đạt P@5 cao nhất (\num{0.926}), Support@5 cao nhất (\num{0.875}) và điểm hỗ trợ trung bình cao nhất (\num{4.627}) trong cả bốn biến thể. SemAE M3 đứng thứ hai về P@5 (\num{0.909}) và điểm hỗ trợ (\num{4.530}). SemAE M1, dù là mốc đối chứng nội bộ trích rút, chỉ đạt P@5 = \num{0.860} và Support@5 = \num{0.876}; điều này cho thấy các biến thể sinh với cơ chế trung thực bằng chứng không chỉ ngang bằng mà còn vượt SemAE M1 về chất lượng bằng chứng được bộ chấm nhận diện.
+
+Bảng~\ref{tab:judge-errors} cho thấy SemAE M4 có tỷ lệ khẳng định không căn cứ thấp nhất (\num{0.091}), thấp hơn cả SemAE M1 (\num{0.093}). SemAE M2 giảm khẳng định không căn cứ xuống \num{0.147} nhờ cơ chế trung thực, trong khi không có cơ chế thì tỷ lệ này cao hơn đáng kể. Lật cảm xúc ở SemAE M4 (\num{0.061}) thấp hơn SemAE M3 (\num{0.099}) nhờ bộ xử lý BERT-ABSA gán nhãn cảm xúc chính xác hơn bộ xử lý từ khóa.
+
+\begin{table}[tbp]
+\centering
+\caption{Đánh giá đúng khía cạnh và cảm xúc theo bộ chấm LLM}
+\label{tab:summary-utility}
+\begin{threeparttable}
+\begin{tabular}{l r r r r}
+\toprule
+\textbf{Phương pháp} & \makecell{\textbf{Tỷ lệ}\\\textbf{vượt chuẩn}} & \makecell{\textbf{Đúng}\\\textbf{khía cạnh}} & \makecell{\textbf{Đúng}\\\textbf{cảm xúc}} & \makecell{\textbf{Nhớ}\\\textbf{chủ đề}} \\
+\midrule
+SemAE M1 & \num{0.720} & \num{4.456} & \num{4.593} & \num{0.903} \\
+SemAE M2 & \num{0.700} & \num{4.491} & \num{4.522} & \num{0.880} \\
+SemAE M3 & \num{0.734} & \num{4.527} & \num{4.512} & \num{0.916} \\
+SemAE M4 & \textbf{\num{0.787}} & \textbf{\num{4.568}} & \textbf{\num{4.673}} & \textbf{\num{0.917}} \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item Các điểm đúng khía cạnh và đúng cảm xúc theo thang 1--5; tỷ lệ vượt chuẩn và nhớ chủ đề nằm trong khoảng 0--1.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+Bảng~\ref{tab:summary-utility} là kết quả trọng tâm của báo cáo. Trên HASOS, SemAE M4 đạt tỷ lệ vượt chuẩn cao nhất với \num{0.787}, tiếp theo là SemAE M3 với \num{0.734}, SemAE M1 với \num{0.720} và SemAE M2 với \num{0.700}. SemAE M1 được xem là mốc đối chứng nội bộ vì nó dùng cùng tập bằng chứng SemAE nhưng không sinh văn bản mới; do đó, khi SemAE M3 và SemAE M4 vượt SemAE M1, kết quả này cho thấy bước tách cảm xúc và sinh có kiểm soát mang lại lợi ích ngữ nghĩa chứ không chỉ do thay đổi tập bằng chứng đầu vào. SemAE M4 cũng đạt điểm đúng khía cạnh cao nhất (\num{4.568}), điểm đúng cảm xúc cao nhất (\num{4.673}) và tỷ lệ nhớ chủ đề cao nhất (\num{0.917}). Kết quả này khẳng định rằng cơ chế trung thực bằng chứng kết hợp với bộ xử lý BERT-ABSA giúp SemAE M4 tạo ra tóm tắt vừa trung thực vừa đúng cảm xúc.
+
+\begin{table}[tbp]
+\centering
+\caption{Đánh giá độ bao phủ và tính hữu ích theo bộ chấm LLM}
+\label{tab:summary-quality}
+\begin{threeparttable}
+\begin{tabular}{l r r r r}
+\toprule
+\textbf{Phương pháp} & \makecell{\textbf{Bao}\\\textbf{phủ}} & \makecell{\textbf{Cụ}\\\textbf{thể}} & \makecell{\textbf{Hữu}\\\textbf{ích}} & \makecell{\textbf{Chung}\\\textbf{chung}} \\
+\midrule
+SemAE M1 & \num{4.002} & \num{4.067} & \num{4.043} & \textbf{\num{0.096}} \\
+SemAE M2 & \num{3.804} & \num{3.910} & \num{3.985} & \num{0.149} \\
+SemAE M3 & \num{4.166} & \num{4.205} & \num{4.179} & \num{0.110} \\
+SemAE M4 & \textbf{\num{4.300}} & \textbf{\num{4.333}} & \textbf{\num{4.310}} & \num{0.100} \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item Bao phủ, cụ thể và hữu ích theo thang 1--5. Cột chung chung là tỷ lệ lỗi nên giá trị thấp hơn tốt hơn.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+Bảng~\ref{tab:summary-quality} cho thấy SemAE M4 dẫn đầu về độ bao phủ (\num{4.300}), độ cụ thể (\num{4.333}) và độ hữu ích (\num{4.310}). SemAE M3 đứng thứ hai trong nhóm sinh. SemAE M1 có tỷ lệ tóm tắt chung chung thấp nhất (\num{0.096}), nhưng các điểm bao phủ và cụ thể thấp hơn SemAE M3--SemAE M4, phù hợp với bản chất trích rút: SemAE M1 giữ nguyên câu bằng chứng nên không bị chung chung, nhưng cũng không có khả năng tổng hợp và diễn đạt lại.
+
+\begin{table}[tbp]
+\centering
+\caption{Chỉ số vận hành trên HASOS}
+\label{tab:production-ops}
+\begin{threeparttable}
+\begin{tabular}{l r c c r r r}
+\toprule
+\textbf{Phương pháp} & \textbf{Dòng} & \textbf{Sinh} & \textbf{Dự phòng} & \textbf{Sao chép} & \textbf{BC} & \textbf{Nén} \\
+\midrule
+SemAE M1 & 1370 & -- & -- & \num{1.000} & \num{2.613} & \num{1.000} \\
+SemAE M2 & 1372 & \num{0.562} & \num{0.329} & \num{0.185} & \num{18.389} & \num{0.491} \\
+SemAE M3 &  907 & \num{0.428} & \num{0.436} & \num{0.521} & \num{2.834} & \num{0.732} \\
+SemAE M4 &  804 & \num{0.345} & \num{0.515} & \num{0.614} & \num{1.919} & \num{0.822} \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item Cột sinh và dự phòng không áp dụng cho SemAE M1 vì SemAE M1 không sinh văn bản; SemAE M1 chỉ cắt và ghép câu bằng chứng đã chọn. BC = số bằng chứng trung bình; Nén = tỷ lệ nén. Dự phòng của SemAE M3/SemAE M4 bao gồm cả dự phòng do lật cảm xúc và do đầu ra chung chung.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+Bảng~\ref{tab:production-ops} cho thấy SemAE M2 có tỷ lệ sinh thành công cao nhất (\num{0.562}) và tỷ lệ sao chép thấp nhất (\num{0.185}) trong nhóm sinh, nhưng số bằng chứng trung bình rất cao (\num{18.389}) do không tách cảm xúc. SemAE M3 và SemAE M4 có tỷ lệ dự phòng cao hơn vì cơ chế trung thực bằng chứng chuyển sang dự phòng khi phát hiện lật cảm xúc hoặc đầu ra chung chung. Tỷ lệ sao chép của SemAE M4 (\num{0.614}) cao hơn SemAE M2, phản ánh việc cơ chế dự phòng ghép câu bằng chứng khi mô hình sinh thất bại.
+
+\begin{table}[tbp]
+\centering
+\caption{Phạm vi hợp lệ của các nhóm chỉ số}
+\label{tab:metric-availability}
+\begin{tabularx}{\textwidth}{L{0.23\textwidth} L{0.20\textwidth} Y}
+\toprule
+\textbf{Nhóm chỉ số} & \textbf{Trạng thái} & \textbf{Diễn giải} \\
+\midrule
+ROUGE-1/2/L & Tính trực tiếp & Dùng tóm tắt tham chiếu theo nhóm khía cạnh; đầu ra của 29 khía cạnh con trong HASOS được ánh xạ về 4 nhóm khía cạnh chính có tham chiếu. \\
+Bằng chứng và độ trung thực & Dựa trên bộ chấm & Bộ chấm LLM chấm 4.453 mục SemAE M1--SemAE M4 theo bộ tiêu chí cố định, có bộ nhớ đệm và lược đồ JSON. \\
+Tỷ lệ nén / dự phòng / sao chép & Tính trực tiếp & Lấy từ tệp kết quả sinh tóm tắt và tệp bằng chứng JSONL; các cột sinh/dự phòng không áp dụng cho SemAE M1. \\
+ABSA Macro-F1 / Pair-F1 & Chưa báo chính thức & Dữ liệu hiện tại không có nhãn chuẩn khía cạnh--cảm xúc ở cấp câu, nên không giả lập F1 như chỉ số dựa trên nhãn chuẩn. \\
+Quad exact/partial F1 & Chưa báo chính thức & Cần nhãn chuẩn ở cấp vùng văn bản, hiện không tồn tại trong tệp kết quả. \\
+Độ trễ p95 / bộ nhớ đệm / thử lại & Chưa báo chính thức & Cần đo thời gian chạy chi tiết; báo cáo hiện chỉ có chi phí bộ chấm và các tỷ lệ từ tệp kết quả. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+
+Tổng hợp các kết quả SemAE M1--SemAE M4 cho thấy không có một biến thể duy nhất tối ưu trên mọi thước đo. SemAE M3 đạt ROUGE tốt nhất trên HASOS, phản ánh lợi thế về trùng khớp bề mặt với tóm tắt tham chiếu. Tuy nhiên, SemAE M4 thể hiện tốt hơn khi xét đồng thời đúng khía cạnh, đúng cảm xúc, mức hỗ trợ bằng chứng và độ hữu ích theo bộ chấm LLM. Vì vậy, trong phạm vi phương pháp~2, SemAE M4 được xem là biến thể toàn diện nhất: không nhất thiết cao nhất ở ROUGE, nhưng cân bằng tốt hơn giữa chất lượng ngữ nghĩa và kiểm soát lỗi.
+
+\subsection{So sánh kết quả giữa hai phương pháp}
+
+Kết quả của hai phương pháp cần được đọc theo đúng mục tiêu thiết kế của từng phương pháp. Phương pháp~1 tập trung chứng minh khả năng vận hành của một quy trình ABSA--tóm tắt có kiểm soát ở quy mô lớn. Phương pháp~2 tập trung so sánh các biến thể SemAE trong điều kiện nền bằng chứng được cố định và có thể truy vết. Vì vậy, phần này không xem hai phương pháp như hai mô hình cạnh tranh trực tiếp trên cùng một mẫu số, mà đối chiếu chúng theo chất lượng tóm tắt, khả năng kiểm soát lỗi, khả năng truy vết bằng chứng và chi phí vận hành.
+
+\begin{table}[tbp]
+\centering
+\caption{So sánh định hướng giữa UASum và SemAE M4}
+\label{tab:method-cost-quality-comparison}
+\small
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabularx}{\textwidth}{L{0.22\textwidth} Y Y}
+\toprule
+\textbf{Tiêu chí} & \textbf{UASum} & \textbf{SemAE M4} \\
+\midrule
+Chất lượng tổng hợp & Tạo tóm tắt giàu thông tin nhờ nhiều tầng phân tích và sinh văn bản có kiểm soát. & Tóm tắt ngắn gọn, gần bằng chứng hơn, cân bằng tốt trong nhóm SemAE. \\
+Chi phí vận hành & Cao hơn do nhiều bước gọi mô hình, hậu kiểm, cache, retry và fallback. & Nhẹ hơn tương đối vì cố định tầng chọn bằng chứng, dù vẫn cần BERT-ABSA và bộ sinh ở SemAE M4. \\
+Truy vết & Truy vết qua UOS, ABSA, cụm bằng chứng và tóm tắt. & Truy vết qua câu nguồn, điểm SemAE, ngưỡng bằng chứng và nhãn cảm xúc. \\
+Phạm vi phù hợp & Báo cáo phân tích chuyên sâu cần chất lượng diễn đạt, độ bao phủ và audit claim. & Phân tích có kiểm soát, dashboard và kịch bản cần cân bằng giữa chất lượng và chi phí. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Phân tích và thảo luận}
+
+Các kết quả thực nghiệm cho thấy hai kết luận chính. Thứ nhất, UASum làm rõ
+hướng tiếp cận tóm tắt có kiểm soát: tổ chức bằng chứng trước khi sinh văn bản,
+từ đó tạo ra tóm tắt giàu thông tin và có thể truy vết, nhưng phải đánh đổi
+bằng chi phí vận hành cao hơn do sử dụng mô hình ngôn ngữ ở nhiều tầng. Thứ
+hai, trong nhóm SemAE, nếu ưu tiên giống tóm tắt tham chiếu theo ROUGE, SemAE M3 là
+lựa chọn tốt nhất trên HASOS với ROUGE-1 = \num{0.262}; nếu ưu tiên độ trung
+thực và đúng cảm xúc theo bộ chấm LLM, SemAE M4 là lựa chọn mạnh nhất với tỷ lệ vượt
+chuẩn = \num{0.787}, vượt cả mốc đối chứng nội bộ SemAE M1 (\num{0.720}). Thứ tự tỷ
+lệ vượt chuẩn trên HASOS là SemAE M4 $>$ SemAE M3 $>$ SemAE M1 $>$ SemAE M2, cho thấy các biến thể sinh
+có tách cảm xúc đã vượt mốc đối chứng nội bộ trích rút nhờ cơ chế trung thực bằng chứng
+kết hợp bộ xử lý cảm xúc chất lượng cao.
+
+Kết quả này cho thấy cơ chế trung thực bằng chứng đã thay đổi câu chuyện so sánh giữa trích rút và sinh trừu tượng. Trước khi áp dụng cơ chế này, mốc đối chứng nội bộ SemAE M1 thường đạt tỷ lệ vượt chuẩn cao nhất vì không có ảo giác từ bộ giải mã. Sau khi áp dụng, các biến thể sinh SemAE M3 và SemAE M4 giảm khẳng định không căn cứ và lật cảm xúc đủ để vượt SemAE M1, đồng thời giữ được lợi thế về độ bao phủ, độ cụ thể và khả năng diễn đạt lại.
+
+Trên SPACE (Bảng~\ref{tab:space-rouge}), bốn biến thể có ROUGE gần nhau, cho thấy khi hệ phân loại đơn giản hơn (6 khía cạnh), sự khác biệt giữa các biến thể nhỏ hơn. Kết quả bộ chấm LLM trên SPACE cho thấy SemAE M3 và SemAE M4 cải thiện và vượt SemAE M2, nhưng vẫn nằm gần SemAE M1. Điều này phù hợp với kỳ vọng: SPACE có ít khía cạnh hơn, tập bằng chứng gọn hơn, nên lợi thế của tách cảm xúc và cơ chế trung thực ít rõ hơn trên HASOS.
+
+Từ kết quả trên, có thể rút ra một hướng dẫn thực tiễn. Với bảng điều khiển phân tích nội bộ cần độ tin cậy và tránh lật cảm xúc, SemAE M4 là lựa chọn phù hợp nhất. Với báo cáo theo tóm tắt tham chiếu hoặc bộ đánh giá chuẩn truyền thống, SemAE M3 có thể được ưu tiên do điểm ROUGE tốt hơn. Một hướng kết hợp hợp lý là dùng SemAE M3 để tối ưu độ trùng khớp và dùng bộ chấm LLM như lớp kiểm soát chất lượng trước khi xuất bản tóm tắt.
+\subsection{Phân tích chất lượng tóm tắt và so sánh hai phương pháp}
+
+
+Phần này là phần so sánh tổng hợp giữa hai phương pháp sau khi đã trình bày
+kết quả riêng của từng phương pháp. Do phương pháp~1 và phương pháp~2 không
+hoàn toàn cạnh tranh trực tiếp, phần so sánh không trình bày một bảng
+thắng--thua tuyệt đối. Thay vào đó, hai phương pháp được đối chiếu theo mục
+tiêu đánh giá, dữ liệu sử dụng, đơn vị xử lý, điểm mạnh, kết quả nổi bật và
+giới hạn diễn giải.
+
+Phương pháp~1 nhấn mạnh hệ thống ABSA và tóm tắt ở quy mô lớn, khả năng
+kiểm tra lại và truy vết. Phương pháp~2 nhấn mạnh phân tích loại bỏ thành phần có kiểm soát về
+xếp hạng bằng chứng, tách cảm xúc và độ trung thực. Vì vậy, so sánh hợp lý nhất là
+so sánh theo nhóm năng lực hệ thống và phạm vi đánh giá, không ép hai phương
+pháp vào cùng một bảng xếp hạng.
+
+\begin{table}[tbp]
+\centering
+\caption{Vai trò chính của hai phương pháp}
+\label{tab:two-method-role-simple}
+\small
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.12}
+\begin{tabularx}{\textwidth}{L{0.19\textwidth} Y Y}
+\toprule
+\textbf{Tiêu chí} & \textbf{Phương pháp 1: Quy trình SLM có kiểm soát} & \textbf{Phương pháp 2: SemAE M4 (SemAE + BERT-ABSA)} \\
+\midrule
+Mục tiêu & Xây dựng quy trình SLM cho ABSA và tóm tắt đánh giá khách sạn & So sánh các biến thể SemAE M1--SemAE M4 trong chọn bằng chứng và sinh tóm tắt \\
+Đơn vị xử lý & Đánh giá, đoạn ABSA, cụm bằng chứng và tóm tắt theo khách sạn & Tóm tắt theo thực thể--khía cạnh/cảm xúc \\
+Điểm mạnh & Có khả năng truy vết bằng chứng và phù hợp triển khai quy trình & Có phân tích loại bỏ thành phần rõ ràng, dễ phân tích tác động của từng cơ chế \\
+Vai trò đánh giá & Đánh giá chất lượng quy trình và tóm tắt có kiểm soát & Đánh giá tác động của xếp hạng bằng chứng, cực tính và độ trung thực \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Bảng~\ref{tab:two-method-role-simple} cho thấy hai phương pháp bổ sung cho nhau. Phương pháp~1 phù hợp để chứng minh khả năng xây dựng hệ thống xử lý đánh giá hoàn chỉnh, trong khi biến thể SemAE M4 của phương pháp~2 phù hợp để phân tích sâu các lựa chọn thiết kế trong bài toán sinh tóm tắt theo bằng chứng. Nói cách khác, phương pháp~1 trả lời câu hỏi ``quy trình có thể vận hành và truy vết như thế nào'', còn phương pháp~2 trả lời câu hỏi ``cơ chế chọn bằng chứng và kiểm soát độ trung thực ảnh hưởng đến chất lượng tóm tắt ra sao''.
+
+\begin{table}[tbp]
+\centering
+\caption{Kết quả đại diện của hai phương pháp trong các thiết lập tương ứng}
+\label{tab:two-method-key-results}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.10}
+\begin{tabular}{L{0.18\textwidth} C{0.16\textwidth} C{0.07\textwidth} C{0.07\textwidth} C{0.07\textwidth} C{0.09\textwidth} C{0.09\textwidth} C{0.11\textwidth}}
+\toprule
+\textbf{Phương pháp}
+& \textbf{ABSA / Vượt chuẩn}
+& \textbf{R-1}
+& \textbf{R-2}
+& \textbf{R-L}
+& \textbf{Bao phủ}
+& \textbf{Hữu ích}
+& \textbf{Độ trung thực} \\
+\midrule
+SLM
+& \num{0.8113}
+& \num{0.348}
+& \num{0.054}
+& \num{0.163}
+& \num{4.800}
+& \num{4.900}
+& \num{0.0297} \\
+SemAE M4
+& \num{0.787}
+& \num{0.309}
+& \num{0.089}
+& \num{0.240}
+& \num{4.423}
+& \num{4.507}
+& \num{0.033} \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.15cm}
+\footnotesize
+ABSA / Vượt chuẩn: SLM dùng độ đúng kết hợp ABSA; SemAE M4 dùng tỷ lệ vượt chuẩn theo bộ chấm LLM. R-1, R-2 và R-L là ROUGE. Bao phủ và hữu ích chấm theo thang 1--5. Độ trung thực của SLM dùng xác suất mâu thuẫn NLI; SemAE M4 dùng tỷ lệ khẳng định không căn cứ, thấp hơn là tốt hơn. Vì mẫu số và định nghĩa chỉ số khác nhau, bảng này dùng để tóm tắt kết quả đại diện, không dùng để xếp hạng tuyệt đối từng cột.
+\end{table}
+
+Bảng~\ref{tab:two-method-key-results} nên được đọc như một bảng tóm tắt xu
+hướng, không phải bảng xếp hạng tuyệt đối. Phương pháp~1 đạt ROUGE-1 cao và
+các tiêu chí bộ chấm như bao phủ, cụ thể, hữu ích ở mức tốt trong thiết lập
+toàn cục của SPACE, cho thấy quy trình có khả năng tạo tóm tắt giàu thông tin
+và có tính tổng hợp. SemAE M4 đạt ROUGE-2 và ROUGE-L cao hơn trong
+thiết lập SemAE, đồng thời có tỷ lệ khẳng định không căn cứ thấp, cho thấy tóm
+tắt của biến thể SemAE M4 bám sát cụm bằng chứng và giữ cấu trúc gần tham chiếu hơn.
+Sự khác biệt này phản ánh hai phong cách: phương pháp~1 thiên về tóm tắt tổng
+hợp theo cụm, còn SemAE M4 thiên về tóm tắt gần bằng chứng trong thiết
+lập phân tích loại bỏ thành phần.
+
+
+\subsection{Phân tích khả năng kiểm soát lỗi và truy vết}
+
+Để so sánh định tính công bằng hơn, các ví dụ trong Bảng~\ref{tab:matched-summary-examples} được chọn theo cùng \texttt{entity\_id}, khía cạnh và cực tính cảm xúc trên SPACE. Cách chọn này tránh việc so sánh một tóm tắt toàn cục với một tóm tắt cấp khía cạnh không tương ứng. Ba ví dụ được chọn gồm các trường hợp tích cực và tiêu cực để kiểm tra liệu hai phương pháp có giữ được cùng nội dung cốt lõi và cùng cực tính hay không.
+
+\begin{table}[p]
+\centering
+\caption{So sánh định tính các tóm tắt được ghép theo cùng thực thể, khía cạnh và cảm xúc}
+\label{tab:matched-summary-examples}
+\scriptsize
+\begin{threeparttable}
+\renewcommand{\arraystretch}{1.08}
+\begin{tabularx}{\textwidth}{L{0.16\textwidth} Y Y Y}
+\toprule
+\textbf{Khóa so sánh} & \textbf{Phương pháp 1} & \textbf{SemAE M4} & \textbf{Nhận xét} \\
+\midrule
+\texttt{224665} / location / pos
+&
+The location is superb, situated right next to Notre Dame in the heart of Old Montreal. It offers walking distance to everything, including the waterfront, restaurants, and the metro within 200 yards, making it an excellent spot for exploring the city.
+&
+The location of the hotel is excellent. It is in the heart of Old Montreal, close to restaurants and the waterfront.
+&
+Hai tóm tắt cùng giữ nhận định chính: vị trí ở Old Montreal, gần Notre Dame, nhà hàng và waterfront. Phương pháp~1 diễn giải giàu hơn, còn SemAE M4 nén gọn và gần bằng chứng hơn. \\
+\midrule
+\texttt{2516165} / food / neg
+&
+Guests criticize the lack of breakfast beyond a cup of coffee, noting it is difficult and expensive for the hotel to provide pastries. One review states there is no breakfast and it does not offer much, forcing guests to venture out in the morning.
+&
+The main criticism is that they do not provide any breakfast beyond a cup of coffee; it would not be difficult or expensive for them to provide some pastries and it would save guests having to venture out for breakfast in the morning.
+&
+Hai tóm tắt cùng phản ánh cực tính tiêu cực và cùng nội dung chính: khách phàn nàn vì không có bữa sáng ngoài cà phê. SemAE M4 gần câu bằng chứng hơn, trong khi phương pháp~1 tổng hợp lại theo văn phong báo cáo. \\
+\midrule
+\texttt{203139} / service / pos
+&
+The staff is fantastic, very good customer service, and extremely friendly. Front desk staff were helpful, accommodating, professional, smiling, and courteous. Service was top notch and fantastic, with everyone from doormen to concierge going out of their way to make the stay pleasant.
+&
+The front desk staff was professional, helpful, and courteous. The free internet, and good staff service was great. The staff is very professional, smiling and always helpful.
+&
+Hai tóm tắt cùng nhấn mạnh nhân viên chuyên nghiệp, thân thiện và hữu ích. Phương pháp~1 tổng hợp rộng hơn trên nhiều vai trò dịch vụ, còn SemAE M4 giữ văn phong gần các câu bằng chứng hơn. \\
+\bottomrule
+\end{tabularx}
+\end{threeparttable}
+\end{table}
+
+Bảng~\ref{tab:matched-summary-examples} cho thấy hai phương pháp thường giữ được cùng nhận định cốt lõi khi được so sánh trên cùng lát dữ liệu. Phương pháp~1 có xu hướng tạo tóm tắt mang tính tổng hợp hơn, kết nối nhiều chi tiết thành một nhận định hoàn chỉnh. SemAE M4 thường gần với câu bằng chứng hơn và nén thông tin mạnh hơn. Vì vậy, phần định tính nên được diễn giải như minh họa về phong cách tóm tắt: phương pháp~1 thiên về tóm tắt tổng hợp theo cụm, còn SemAE M4 thiên về tóm tắt gần bằng chứng.
+
+\FloatBarrier
+
+\subsection{Phân tích ưu điểm, hạn chế và phạm vi phù hợp của từng phương pháp}
+
+Tổng hợp lại, hai phương pháp phục vụ hai mục tiêu bổ sung. Phương pháp~1 chứng minh rằng một quy trình SLM có thể xử lý đánh giá thành các tóm tắt có truy vết và có kiểm soát. SemAE M4 chứng minh rằng việc chọn bằng chứng, tách cảm xúc và kiểm soát độ trung thực có ảnh hưởng rõ rệt đến chất lượng tóm tắt trong thí nghiệm SemAE M1--SemAE M4. Do đó, đóng góp chung của nghiên cứu không nằm ở việc chọn một phương pháp duy nhất, mà ở việc kết hợp góc nhìn hệ thống của phương pháp~1 với góc nhìn phân tích loại bỏ thành phần của phương pháp~2 để đánh giá đầy đủ hơn bài toán tóm tắt đánh giá theo khía cạnh.
+
+\section{Ứng dụng thực tế}
+\label{sec:web-interface}
+
+Nhằm trực quan hóa quy trình và hỗ trợ người dùng tương tác trực tiếp với chuỗi truy vết dữ liệu (\textit{data audit trail}), toàn bộ hệ thống đã được đóng gói và triển khai thực tế dưới dạng ứng dụng web tại địa chỉ \url{https://space-hotel-aspect-dashboard.vercel.app/space-dashboard}. Ứng dụng đóng vai trò là lớp giao diện (Frontend) kết nối trực tiếp với kho lưu trữ kết quả và tệp tin trace trung gian của hai phương pháp.
+
+\subsection{Minh họa giao diện hệ thống}
+
+Giao diện hệ thống được cấu trúc thành các thành phần cốt lõi nhằm phản ánh chính xác tư duy hệ thống bám sát dữ liệu thực nghiệm:
+\begin{itemize}
+    \item \textbf{Phân hệ Bộ lọc Thực thể (Entity Selector):} Hỗ trợ người dùng tra cứu và chọn lựa chính xác theo mã định danh \texttt{hotel\_id} hoặc thực thể cần phân tích hệ thống.
+    \item \textbf{Phân hệ Trực quan hóa Ma trận Cảm xúc (Aspect Sentiment Matrix View):} Chuyển đổi dữ liệu từ tệp vết định dạng dọc (\textit{long format}) sang bảng biểu đồ trực quan, giúp hiển thị ngay lập tức phân phối định lượng của ba trạng thái cảm xúc (\texttt{positive}, \texttt{negative}, \texttt{neutral}) trên từng cụm khía cạnh chuẩn hóa.
+    \item \textbf{Phân hệ Hiển thị Tóm tắt Đa tầng (Multi-level Summary View):} Cô đọng và trình bày song song hai tầng văn bản sinh ra bao gồm tóm tắt phân đoạn cấp khía cạnh (\textit{Aspect Summary}) và tóm tắt tổng thể toàn cục (\textit{Global Summary}).
+\end{itemize}
+
+\subsection{Khả năng ứng dụng trong phân tích phản hồi khách sạn}
+
+Các thành phần giao diện thực tế của ứng dụng dashboard được minh họa chi tiết
+tại Hình~\ref{fig:dashboard-interface-group}. Điểm quan trọng của giao diện
+không chỉ là trình bày kết quả cuối, mà là cho phép người dùng đi từ tóm tắt
+tổng thể xuống ma trận khía cạnh--cảm xúc và các bằng chứng trung gian để kiểm
+tra nguồn gốc của nhận định.
+
+\begin{figure}[H] % Ép hình nằm cố định tại vị trí này, không cho nhảy lung tung
+    \centering
+    % HÌNH THỨ NHẤT: Bảng điều khiển / Bộ lọc
+    \begin{subfigure}[b]{0.95\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{dashboard_main1.png} % TeX tự động tìm file này trong thư mục figures/ nhờ graphicspath của bạn
+        \caption{Giao diện phân hệ bộ lọc thực thể và bảng điều khiển tổng quan}
+        \label{fig:dashboard-main}
+    \end{subfigure}
+
+    \vspace{0.5cm} % Tạo khoảng cách dọc vừa phải giữa hai hình cho thoáng mắt
+
+    % HÌNH THỨ HAI: Phần hiển thị ma trận / kết quả tóm tắt
+    \begin{subfigure}[b]{0.95\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{dashboard_main3.png}
+        \caption{Giao diện trực quan hóa ma trận ba cảm xúc và kết xuất tóm tắt đa tầng}
+        \label{fig:dashboard-trace-summary}
+    \end{subfigure}
+
+    \caption{Giao diện ứng dụng thực tế hệ thống SPACE Hotel Aspect Dashboard trên nền tảng Vercel}
+    \label{fig:dashboard-interface-group}
+\end{figure}
+
+\section{Kết luận chương}
+
+Chương này đã trình bày thiết lập thực nghiệm và kết quả đánh giá cho hai
+phương pháp UASum và SemAE. Kết quả cho thấy UASum làm rõ hướng tiếp cận tóm
+tắt có kiểm soát: dữ liệu được xử lý qua nhiều tầng gồm tách đơn vị ý kiến,
+phân tích ABSA, tổ chức bằng chứng và sinh tóm tắt dựa trên bucket. Cách tiếp
+cận này tạo ra tóm tắt giàu thông tin và có khả năng audit claim, nhưng đi kèm
+chi phí vận hành cao hơn do hệ thống cần nhiều bước gọi mô hình, nhiều lớp hậu
+kiểm, cache, retry và cơ chế dự phòng.
+
+Đối với phương pháp~2, các biến thể SemAE M1--SemAE M4 cho thấy vai trò của từng quyết định thiết kế sau khi đã cố định tầng chọn bằng chứng SemAE. SemAE M3 đạt ROUGE cao nhất, phù hợp khi ưu tiên mức trùng khớp với tóm tắt tham chiếu. Tuy nhiên, SemAE M4 là biến thể toàn diện nhất vì cân bằng tốt hơn giữa đúng khía cạnh, đúng cảm xúc, độ trung thực bằng chứng và tính hữu ích theo đánh giá LLM. Do đó, hai phương pháp không loại trừ nhau: UASum phù hợp với báo cáo chất lượng cao khi có thể chấp nhận chi phí lớn hơn, còn SemAE M4 phù hợp với phân tích có kiểm soát, truy vết ổn định và chi phí vận hành hợp lý hơn.

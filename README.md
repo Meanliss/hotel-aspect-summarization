@@ -1,252 +1,94 @@
-# SPACE-trained SemAE HASOS Report
+# Hotel Aspect Summarization Thesis
 
-This repository contains the SemAE training/inference code used to run the
-SPACE-trained epoch-20 checkpoint on the HASOS hotel review benchmark.
+This repository contains the source code, thesis draft, curated evaluation
+tables, and web dashboard prototype for a graduation thesis on hotel
+aspect-based opinion summarization.
 
-## Current state
+The work studies two complementary approaches:
 
-The current analysis has moved beyond the original reference-free HASOS-only
-run described below. The repo now contains two evaluation views:
+- **UASum**: a structured evidence pipeline for aspect and sentiment-aware
+  hotel review summarization.
+- **SemAE on HASOS**: a SemAE-based extractive evidence selector adapted to
+  hotel aspect summarization, with M1-M4 variants for evidence selection,
+  synthesis, thresholding, and evaluation.
 
-- Original SemAE compatibility: SPACE can be evaluated with the upstream
-  pyrouge layout. HASOS still does not have a `data/hasos/gold/<aspect>/`
-  directory in the original SemAE format.
-- Current paper/web analysis: HASOS is scored against references in
-  `data/hasos/hasos_summ.json`, with the 29 child aspects aggregated to the
-  four parent aspects that have gold coverage. Branding and Loyalty remain out
-  of the HASOS ROUGE denominator because they do not have parent gold.
+The repository is prepared as a lightweight thesis submission package. Large
+local artifacts such as checkpoints, raw generated outputs, request caches, and
+full training logs are intentionally excluded from Git.
 
-The threshold and abstractive token-budget sweeps have been completed for HASOS
-M2/M3/M4. SPACE keeps the original `T=0.0082`; the current HASOS base is
-method-specific: M2 uses `T=0.0075, B=128`, M3 uses `T=0.0055, B=96`, and M4
-uses `T=0.005, B=96`.
+## Repository Layout
 
-Latest evaluated run:
+| Path | Purpose |
+| --- | --- |
+| `src/` | Core SemAE model, dataset, and inference utilities. |
+| `scripts/` | Training, inference, conversion, evaluation, and thesis figure helpers. |
+| `data/` | Small taxonomy, seed, and tokenizer assets required by the included code. |
+| `reports/` | Curated metric summaries and sweep tables used in the thesis. |
+| `paper/` | LaTeX thesis source, references, tables, and final figures. |
+| `web/` | Next.js dashboard prototype for inspecting hotel aspect summaries. |
 
-```text
-run_id: space_hasos_full_e20
-checkpoint: checkpoints/space_full_11402x20_stable_resume_e7/space_full_11402x20_stable_resume_e7_20_model.pt
-taxonomy: HASOS 29 aspects
-mode: aspect summary + sentiment split
-metrics: reference-free metrics + BERTScore
+## What Is Included
+
+- Source code for training, inference, evaluation, and report generation.
+- HASOS aspect taxonomy and seed lexicons.
+- SentencePiece tokenizer files needed by the SemAE pipeline.
+- Curated ROUGE, operational, and LLM-judge metric summaries.
+- The thesis LaTeX source split into chapter files.
+- Final method and evaluation figures referenced by the thesis.
+- A dashboard prototype with small public data files.
+
+## What Is Excluded
+
+The following files are kept local and ignored to keep the GitHub repository
+submission-friendly:
+
+- virtual environments and dependency folders;
+- raw datasets and CSV exports;
+- model checkpoints and downloaded pretrained models;
+- generated output directories with per-entity/per-aspect files;
+- LLM judge request caches and raw JSONL judgment datasets;
+- LaTeX build products and temporary Overleaf upload packages.
+
+## Setup
+
+Create a Python environment and install the project dependencies:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+pip install -r requirements_abstractive.txt
 ```
 
-## Status
+For the web dashboard:
 
-The reference-free scoring run is complete. The original SemAE ROUGE evaluation
-layout is not available for this HASOS run because `data/hasos/` does not have
-`gold/<aspect>/#ID#_[012].txt` files. Separate current reports score HASOS
-against `data/hasos/hasos_summ.json` after aggregating child aspects to the
-available parent references.
-
-Validation shape:
-
-| Item | Count |
-| --- | ---: |
-| Entities | 50 |
-| Reviews | 5,000 |
-| Sentences | 45,529 |
-| HASOS aspects | 29 |
-
-Generated outputs:
-
-| Output | Count |
-| --- | ---: |
-| Aspect summary files | 1,450 |
-| Sentiment-split files | 4,350 |
-| Aspect line rows | 3,580 |
-| Sentiment line rows | 3,580 |
-| Sentence provenance rows | 3,580 |
-| Empty aspect files retained | 80 |
-
-The expected 1,450 aspect files are exactly `50 entities x 29 aspects`.
-The sentiment tree contains `pos`, `neg`, and `neu` splits for each aspect/entity.
-
-## Main Artifacts
-
-The full generated outputs are intentionally ignored by git because they are
-run artifacts. The repo tracks the code and a compact presentation report.
-
-Tracked report deck:
-
-- [reports/space_hasos_full_e20_report.pptx](reports/space_hasos_full_e20_report.pptx)
-- [reports/space_hasos_stage_io.pptx](reports/space_hasos_stage_io.pptx)
-- [reports/space_eval_e20_official_rouge.md](reports/space_eval_e20_official_rouge.md)
-- [reports/space_old_aspects_e20_official_rouge.md](reports/space_old_aspects_e20_official_rouge.md)
-
-GitHub release artifacts:
-
-- [Release `space_hasos_full_e20`](https://github.com/Meanliss/tesing/releases/tag/space_hasos_full_e20)
-- Checkpoint: `space_full_11402x20_stable_resume_e7_20_model.pt`
-- Final result archive: `space_hasos_full_e20_results.tar.gz`
-- Manifest/checksums: [artifacts/space_hasos_full_e20_release.md](artifacts/space_hasos_full_e20_release.md)
-
-Local generated artifacts after running the pipeline:
-
-```text
-outputs/space_hasos_full_e20/
-outputs/space_hasos_full_e20_sentiment/
-outputs/space_hasos_full_e20_lines.jsonl
-outputs/space_hasos_full_e20_lines.tsv
-outputs/space_hasos_full_e20_aspect_sentiment_lines.jsonl
-outputs/space_hasos_full_e20_aspect_sentiment_lines.tsv
-outputs/space_hasos_full_e20_provenance.jsonl
-outputs/space_hasos_full_e20_report.md
-outputs/space_hasos_full_e20_report.json
-outputs/space_hasos_full_e20_metrics.md
-outputs/space_hasos_full_e20_metrics.json
-outputs/space_hasos_full_e20_report.pptx
-logs/space_hasos_full_e20_pipeline_trace.md
-logs/space_hasos_full_e20_inference.log
-logs/space_hasos_full_e20_score_outputs.log
+```powershell
+cd web
+npm install
+npm run build
 ```
 
-## Original SemAE ROUGE Compatibility
+## Thesis Source
 
-The upstream SemAE repository evaluates generated summaries with `pyrouge`.
-For aspect summarization, `src/aspect_inference.py` expects:
+The thesis source is in `paper/`.
 
-```text
-system summaries: outputs/<run_id>/<aspect>/<dev|test>_<entity_id>
-gold summaries:   data/<dataset>/gold/<aspect>/#ID#_[012].txt
-output:           outputs/eval_<run_id>.txt
-                  outputs/eval_<run_id>.json
+```powershell
+cd paper
+pdflatex -interaction=nonstopmode main.tex
+bibtex main
+pdflatex -interaction=nonstopmode main.tex
+pdflatex -interaction=nonstopmode main.tex
 ```
 
-That is the official SemAE comparison path. It cannot be computed on the
-current HASOS files because `data/hasos/` contains taxonomy and review JSON /
-summary references, but not the upstream pyrouge directory layout:
+A local TeX distribution with Vietnamese support is required.
 
-```text
-data/hasos/hasos_summ.json
-data/hasos/aspect_taxonomy.tsv
-data/hasos/aspect_taxonomy.json
-```
+## Reproducibility Notes
 
-To compare exactly like the original repo, add HASOS gold summaries in pyrouge
-format under `data/hasos/gold/<aspect>/`, then rerun aspect inference without
-`--no_eval` and point `--gold_data` to `data/hasos/gold`. For the current paper
-view, see `reports/rouge_comparison_hasos.md` and `reports/sweep/`.
+This repository keeps the code and compact evidence needed to inspect the
+methodology and thesis results. Full model checkpoints, raw output dumps, and
+large intermediate artifacts should be regenerated from the scripts or stored
+outside Git when a complete reproduction package is needed.
 
-The old/original SPACE baseline was rerun as `space_old_aspects_e20` with the
-six original SPACE aspects and official ROUGE:
+## License
 
-| Split | ROUGE-1 | ROUGE-2 | ROUGE-L |
-| --- | ---: | ---: | ---: |
-| Dev macro | 0.30681 | 0.08267 | 0.21949 |
-| Test macro | 0.30022 | 0.08787 | 0.21793 |
-| All macro | 0.30327 | 0.08565 | 0.21885 |
-
-## Reference-free Macro Metrics
-
-The original HASOS adaptation run below was evaluated with reference-free
-extractive-summary metrics plus BERTScore. Newer reports also include parent
-ROUGE based on `data/hasos/hasos_summ.json`.
-
-| Metric | Value | Interpretation |
-| --- | ---: | --- |
-| `source_fidelity` | 0.6094 | Fraction of summary sentences found verbatim in source reviews. Lower than 1.0 mainly because outputs are truncated by token budget. |
-| `source_fidelity_excl_truncated` | 0.9692 | Same exact-match check, excluding sentences intentionally cut by `max_tokens`. |
-| `aspect_keyword_coverage` | 0.7441 | Fraction of selected sentences containing at least one target-aspect or sentiment keyword. |
-| `aspect_purity` | 0.5517 | Fraction of selected sentences whose strongest keyword match is the target aspect. Multi-aspect hotel sentences reduce this. |
-| `distinct_1` | 0.2846 | Unique unigram ratio across summaries. |
-| `distinct_2` | 0.7179 | Unique bigram ratio across summaries. |
-| `self_bleu4` | 0.0109 | Pairwise BLEU-4 within the same aspect; lower means less template reuse. |
-| `compression_ratio` | 0.0028 | Summary tokens divided by source-review tokens. |
-| `avg_sentence_len` | 15.57 | Mean token length of selected sentences. |
-| `cross_aspect_jaccard` | 0.1050 | Token overlap between aspect summaries of the same entity; lower means better separation. |
-| `bert_f1_aspect` | 0.8098 | BERTScore-F1 between summary and target-aspect description. |
-| `bert_f1_source` | 0.8074 | BERTScore-F1 between summary and source-review pool. |
-
-## Best and Weakest Aspect Signals
-
-Highest aspect purity:
-
-| Aspect | Purity | Notes |
-| --- | ---: | --- |
-| `LOY_RECOMMEND` | 0.894 | Recommendation language is very explicit. |
-| `SER_ATTITUDE` | 0.889 | Staff attitude vocabulary is strong and repeated. |
-| `FAC_VIEW_LOCATION` | 0.815 | Location/view phrases are distinctive. |
-| `FAC_ROOM` | 0.814 | Room-related phrases are common and clear. |
-| `AM_FOOD` | 0.764 | Food/restaurant/breakfast signals are strong. |
-
-Lowest aspect purity:
-
-| Aspect | Purity | Likely reason |
-| --- | ---: | --- |
-| `BRA_REPUTE` | 0.258 | Reputation/brand language overlaps with overall experience. |
-| `AM_UTILITY` | 0.338 | Utility words overlap with room amenities and service. |
-| `EXP_EMOTION` | 0.345 | Emotion language is broad and often appears with overall satisfaction. |
-| `EXP_OVERALL` | 0.372 | Overall summaries naturally borrow from many aspects. |
-| `FAC_SECURITY` | 0.378 | Security appears sparsely and overlaps with safety/room issues. |
-
-## Pipeline
-
-The run uses the trained SemAE model as an extractive aspect summarizer:
-
-1. Read HASOS entity-level hotel reviews.
-2. Tokenize with the SPACE SentencePiece model used during training.
-3. Encode review sentences with the trained SemAE encoder.
-4. Build aspect prototypes from the fixed HASOS 29-aspect taxonomy/seeds.
-5. Rank sentences for each `(entity, aspect)` by KL-divergence scoring.
-6. Truncate selected sentences to the token budget.
-7. Write aspect-only summaries.
-8. Split selected aspect sentences into `pos`, `neg`, and `neu` buckets.
-9. Export line-level JSONL/TSV.
-10. Compute metrics, including BERTScore.
-11. Build the Markdown/JSON/PPTX reports.
-
-The aspect clusters are fixed by the HASOS taxonomy files:
-
-```text
-data/hasos/aspect_taxonomy.tsv
-data/hasos/aspect_taxonomy.json
-data/seeds_hasos/*.txt
-```
-
-They are not dynamic LLM labels.
-
-## Reproduce
-
-Run from the repository root:
-
-```bash
-conda activate vllm_qwen312
-cd /home/llm/llm/tesing
-
-python scripts/run_space_hasos_after_model.py \
-  --run_id space_hasos_full_e20 \
-  --source_json data/hasos/hasos_summ.source.json \
-  --model checkpoints/space_full_11402x20_stable_resume_e7/space_full_11402x20_stable_resume_e7_20_model.pt \
-  --sentencepiece data/sentencepiece/space_unigram_32k.model \
-  --gpu 0 \
-  --num_shards 4 \
-  --max_tokens 40
-```
-
-Do not pass `--skip_bert_score` if the final report must include BERTScore.
-
-Expected checks:
-
-```bash
-find outputs/space_hasos_full_e20 -type f | wc -l
-# 1450
-
-find outputs/space_hasos_full_e20_sentiment -type f | wc -l
-# 4350
-
-grep -E "bert_f1_aspect|bert_f1_source" outputs/space_hasos_full_e20_metrics.md
-```
-
-## Notes
-
-- Checkpoints, logs, raw HASOS source JSON, and generated outputs are ignored by
-  git to avoid pushing large or regenerated artifacts.
-- `src/train.py` includes a PyTorch 2.6 resume fix via `weights_only=False`.
-- `src/train.py` also avoids CUDA boolean-indexing inside `grad_report`, which
-  previously caused a CUDA launch timeout after epoch diagnostics.
-- `scripts/run_space_hasos_aspect_parallel.py` resolves the checkpoint path to
-  an absolute path before launching shards, so subprocesses do not fail from
-  `cwd=src`.
-- `scripts/export_space_hasos_lines.py` writes both detailed names and the
-  expected aliases: `*_aspect_lines.*` and `*_lines.*`.
+This project preserves the upstream license in `LICENSE`.
