@@ -82,3 +82,7 @@ web/.env*.local
 *.bak_*
 *.tmp
 *.swp
+
+# Keep submission documentation minimal: only the root README is tracked.
+*.md
+!/README.md
