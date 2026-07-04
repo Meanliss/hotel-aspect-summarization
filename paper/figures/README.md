@@ -1,11 +1,6 @@
 # Figures
 
-The report uses inline TikZ figures in `paper/main.tex` to avoid external image
-dependencies:
+Final thesis figures are stored in `method2/`.
 
-- overall two-method research design,
-- SemAE method-2 pipeline,
-- evaluation flow from generated outputs to paper tables.
-
-Keep this folder for future exported figures if the TikZ diagrams are later
-converted to standalone PDFs or PNGs.
+Temporary candidates, generated drafts, and Overleaf upload bundles are ignored
+by Git.

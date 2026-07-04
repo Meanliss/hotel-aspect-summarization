@@ -1,38 +1,21 @@
-# Hotel Summary Web
+# Dashboard Prototype
 
-Next.js dashboard for the SPACE hotel summarization outputs.
+Static Next.js dashboard for inspecting curated hotel aspect-summary data.
 
-## Local frontend
+## Run
 
-```bash
+```powershell
 npm install
 npm run dev
 ```
 
 Open `http://127.0.0.1:3000`.
 
-## Optional backend
+## Build
 
-The frontend works without a backend by reading `public/data/*.json`. To use
-the FastAPI service:
-
-```bash
-cd ../backend
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```powershell
+npm run build
 ```
 
-Then set `web/.env.local`:
-
-```bash
-NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
-```
-
-## Deploy
-
-- Frontend: deploy `web/` to Vercel or any Node host.
-- Backend: deploy `backend/` to a Python host if dynamic API/search is needed.
-- Model inference is intentionally not part of the frontend. Put model-serving
-  endpoints behind the FastAPI service on GPU/CPU infrastructure.
+The dashboard reads compact JSON files from `public/data/`. Model inference and
+large generated outputs are not part of the frontend package.
